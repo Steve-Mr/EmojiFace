@@ -37,8 +37,12 @@ class EmojiViewModel @Inject constructor(
     private val _outputBitmap = MutableLiveData<Bitmap>()
     val outputBitmap: LiveData<Bitmap> = _outputBitmap
 
+    // LiveData 保存每个检测目标对应的选取的 emoji 顺序
+    private val _selectedEmojis = MutableLiveData<List<String>>()
+    val selectedEmojis: LiveData<List<String>> = _selectedEmojis
+
     /**
-     * 调用模型进行检测，将原始检测结果暂存。
+     * 调用模型进行检测，并暂存检测结果。
      */
     fun detect(input: Bitmap) {
         val sessionOptions = OrtSession.SessionOptions().apply {
@@ -56,47 +60,50 @@ class EmojiViewModel @Inject constructor(
     }
 
     /**
-     * 对传入的 Bitmap 根据已存储的检测结果绘制 emoji。
-     * 每个检测目标采用其边界框中心为绘制中心，
-     * 边界框对角线长度作为 emoji 尺寸，
-     * 并根据左右眼计算出的人脸旋转角度对 emoji 进行旋转，
-     * 同时随机选取一组预定义 emoji 中的一个。
+     * 根据已存储的检测结果，对输入 Bitmap 绘制 emoji：
+     * - 每个检测目标采用边界框中心作为绘制中心，
+     * - 使用加权平均计算 emoji 的直径：当宽高接近时以宽度为准，否则平滑过渡到对角线值，
+     * - 根据左右眼计算人脸的 roll 角度对 emoji 进行旋转，
+     * - 从预定义列表中随机选取 emoji，但避免连续重复。
+     *
+     * 同时将选取的 emoji 顺序保存在 _selectedEmojis 中，供 UI 展示。
      */
     fun processDetections(input: Bitmap): Bitmap {
-        // 创建可修改的 Bitmap 用于绘制
         val mutableBitmap = input.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(mutableBitmap)
-
-        // 定义绘制 emoji 的 Paint
         val emojiPaint = Paint().apply {
             color = Color.BLACK
             textAlign = Paint.Align.CENTER
         }
+        // 定义可用的 emoji 列表
+        val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡","😊", "😜", "🤠")
+        // 用于保存每个检测对应选取的 emoji
+        val selectedEmojiList = mutableListOf<String>()
 
-        detectionResult?.detections?.forEach { detection ->
-            // 假设检测结果格式为:
-            // [x_center, y_center, width, height, confidence, classId, keypoints...]
+        // 排序检测结果（例如按照 xCenter 排序）保证顺序的一致性
+        val sortedDetections = detectionResult?.detections?.sortedBy { it[0] } ?: emptyList()
+
+        // 使用可变列表来跟踪剩余可用的 emoji
+        val remainingEmojiOptions = emojiOptions.toMutableList()
+
+        sortedDetections.forEach { detection ->
             val xCenter = detection[0]
             val yCenter = detection[1]
             val width = detection[2]
             val height = detection[3]
-            // 以边界框对角线长度作为 emoji 的直径
-//            val diameter = Math.sqrt((width * width + height * height).toDouble()).toFloat()
-//            val diameter = width.toFloat()
+            // 使用方式2动态计算直径：根据宽和对角线加权平均
             val diagonal = Math.sqrt((width * width + height * height).toDouble()).toFloat()
             val diffRatio = kotlin.math.abs(width - height) / kotlin.math.max(width, height)
-            // diffRatio 范围在 0 到 1 之间，我们可以将它作为权重直接用于插值
             val diameter = width * (1 - diffRatio) + diagonal * diffRatio
 
-
-            // 提取关键点信息，假设从索引 6 开始，每个关键点 3 个数，5 个关键点
+            // 提取关键点信息（假设从索引6开始，每个关键点3个数，共5个关键点）
             val keypoints = Array(5) { FloatArray(3) }
             for (i in 0 until 5) {
-                keypoints[i][0] = detection[6 + i * 3]     // x 坐标
-                keypoints[i][1] = detection[6 + i * 3 + 1] // y 坐标
-                keypoints[i][2] = detection[6 + i * 3 + 2] // 置信度
+                keypoints[i][0] = detection[6 + i * 3]
+                keypoints[i][1] = detection[6 + i * 3 + 1]
+                keypoints[i][2] = detection[6 + i * 3 + 2]
             }
-            // 使用第一个和第二个关键点（假设分别为左眼和右眼）计算人脸的 roll 角度
+            // 使用左眼和右眼（假设分别为第一个和第二个关键点）计算人脸的 roll 角度
             val leftEye = keypoints[0]
             val rightEye = keypoints[1]
             val angle = Math.toDegrees(
@@ -106,28 +113,32 @@ class EmojiViewModel @Inject constructor(
                 )
             ).toFloat()
 
-            // 从预定义 emoji 列表中随机选择一个
-            val emojiOptions = listOf("😀", "😃", "😄", "😁")
-            val randomEmoji = emojiOptions.random()
+            if (remainingEmojiOptions.isEmpty()) {
+                remainingEmojiOptions.addAll(emojiOptions)
+            }
 
-            // 调用封装好的函数绘制单个 emoji
-            drawEmoji(canvas, xCenter, yCenter, diameter, angle, randomEmoji, emojiPaint)
+            //从剩余的表情列表中随机选择一个表情
+            val chosenEmoji = remainingEmojiOptions.random()
+
+            selectedEmojiList.add(chosenEmoji) //将选择的表情添加到已选择表情列表中
+            remainingEmojiOptions.remove(chosenEmoji)// 从剩余表情列表中移除选中的表情
+
+            // 绘制单个 emoji（调用封装好的 drawEmoji 函数）
+            drawEmoji(canvas, xCenter, yCenter, diameter, angle, chosenEmoji, emojiPaint)
         }
+
+        // 将生成的 emoji 顺序保存到 LiveData 中，供 EmojiRow 使用
+        _selectedEmojis.postValue(selectedEmojiList)
 
         return mutableBitmap
     }
 
     /**
-     * 绘制单个 emoji：
-     * 在指定中心位置绘制 emoji，使用指定直径（可作为文本大小）及旋转角度。
-     *
-     * @param canvas 目标 Canvas
-     * @param centerX emoji 绘制中心的 X 坐标
-     * @param centerY emoji 绘制中心的 Y 坐标
-     * @param diameter 作为 emoji 尺寸的直径
-     * @param rotationAngle emoji 的旋转角度（与人脸 roll 角度一致）
-     * @param emoji 要绘制的 emoji 字符串
-     * @param paint 用于绘制的 Paint 对象
+     * 在指定的 Canvas 上绘制单个 emoji：
+     * - 在 (centerX, centerY) 处绘制，
+     * - 使用 diameter 作为文本大小，
+     * - 根据 rotationAngle 旋转，
+     * - 绘制 emoji 时通过调整 baseline 使文本垂直居中。
      */
     private fun drawEmoji(
         canvas: Canvas,
@@ -138,16 +149,10 @@ class EmojiViewModel @Inject constructor(
         emoji: String,
         paint: Paint
     ) {
-        // 根据直径设置文本大小
         paint.textSize = diameter
-        // 保存当前 Canvas 状态
         canvas.save()
-        // 旋转 Canvas，使得绘制的 emoji 方向与人脸朝向一致
         canvas.rotate(rotationAngle, centerX, centerY)
-        // 为了使 emoji 居中绘制，需要计算 baseline 调整：
-        // (centerY - (ascent + descent)/2) 可以使文本垂直居中
         canvas.drawText(emoji, centerX, centerY - (paint.ascent() + paint.descent()) / 2, paint)
-        // 恢复 Canvas 状态
         canvas.restore()
     }
 

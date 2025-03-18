@@ -75,15 +75,17 @@ fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String){
 fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     val context = LocalContext.current
 
-    // 观察 ViewModel 中的 LiveData，当检测完成后返回处理后的 Bitmap
+    // 观察 ViewModel 中的 LiveData，检测完成后返回处理后的 Bitmap
     val resultBitmap by emojiViewModel.outputBitmap.observeAsState()
+    // 观察 ViewModel 中的 LiveData，检测完成后返回选取的 emoji 顺序
+    val emojiList by emojiViewModel.selectedEmojis.observeAsState(listOf("⏳", "⏳", "⏳"))
 
     // 从资源中加载测试图片
     val testBitmap = remember {
-        BitmapFactory.decodeResource(context.resources, R.drawable.test2)
+        BitmapFactory.decodeResource(context.resources, R.drawable.test)
     }
 
-    // 在组合函数启动时调用 detect 方法对测试图片进行检测
+    // 在组合函数启动时调用 detect 方法进行检测
     LaunchedEffect(Unit) {
         emojiViewModel.detect(testBitmap)
     }
@@ -94,13 +96,14 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 .fillMaxWidth()
                 .padding(innerPadding)
         ) {
-            // 显示检测后的图片，如果尚未返回检测结果则显示测试图片
+            // 如果检测结果尚未返回，则显示测试图片；否则显示处理后的结果
             ResultImg(
                 modifier = Modifier.weight(1f),
                 bitmap = (resultBitmap ?: testBitmap).asImageBitmap(),
                 description = "检测结果"
             )
-            EmojiRow(emojiList = listOf("😀", "😃", "😄", "😁", "😀", "😃", "😄", "😁"))
+            // 使用 ViewModel 中的 emoji 列表展示 EmojiRow
+            EmojiRow(emojiList = emojiList)
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
