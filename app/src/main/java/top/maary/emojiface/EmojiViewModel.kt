@@ -30,96 +30,73 @@ class EmojiViewModel @Inject constructor(
     private lateinit var model: ByteArray
     private val modelId = R.raw.face
     private val faceDetector = YoloPoseDetector()
-    private lateinit var detectionResult: DetectionResult
+    // 暂存检测结果，供后续多次调用 processDetections 使用
+    private var detectionResult: DetectionResult? = null
 
     // LiveData 用于将处理后的 Bitmap 传递给 UI 层显示
     private val _outputBitmap = MutableLiveData<Bitmap>()
     val outputBitmap: LiveData<Bitmap> = _outputBitmap
 
-    fun detect(input: Bitmap){
-
-        val sessionOptions: OrtSession.SessionOptions = OrtSession.SessionOptions()
-        sessionOptions.registerCustomOpLibrary(OrtxPackage.getLibraryPath())
-
+    /**
+     * 调用模型进行检测，将原始检测结果暂存。
+     */
+    fun detect(input: Bitmap) {
+        val sessionOptions = OrtSession.SessionOptions().apply {
+            registerCustomOpLibrary(OrtxPackage.getLibraryPath())
+        }
         model = application.resources.openRawResource(modelId).readBytes()
         ortSession = ortEnv.createSession(model, sessionOptions)
 
         viewModelScope.launch {
             detectionResult = faceDetector.detect(bitmapToInputStream(input), ortEnv, ortSession)
-            val processedBitmap = processDetections(input, detectionResult.detections)
-            // 更新 LiveData，UI 层可以观察到变化
+            // 初次处理检测结果，绘制 emoji，并更新 LiveData
+            val processedBitmap = processDetections(input)
             _outputBitmap.postValue(processedBitmap)
         }
     }
 
-    private fun bitmapToInputStream(bitmap: Bitmap?): InputStream {
-        val outputStream = ByteArrayOutputStream()
-        bitmap?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-        return ByteArrayInputStream(outputStream.toByteArray())
-    }
-
     /**
-     * 处理模型的检测结果：
-     *  - 假设每个检测结果包含 21 个数值：
-     *      [x_center, y_center, width, height, confidence, class_id, keypoints...]
-     *  - 前 4 个数用于计算边界框（中心点 + 宽高转化为左上/右下坐标）
-     *  - 第 5 个数表示置信度，第 6 个表示类别
-     *  - 剩下 15 个数为 5 个关键点的数据（每个关键点 3 个数：x, y, confidence）
+     * 对传入的 Bitmap 根据已存储的检测结果绘制 emoji。
+     * 每个检测目标采用其边界框中心为绘制中心，
+     * 边界框对角线长度作为 emoji 尺寸，
+     * 并根据左右眼计算出的人脸旋转角度对 emoji 进行旋转，
+     * 同时随机选取一组预定义 emoji 中的一个。
      */
-    private fun processDetections(inputBitmap: Bitmap, detections: Array<FloatArray>): Bitmap {
-        // 创建一个可修改的 Bitmap 用于绘制
-        val mutableBitmap = inputBitmap.copy(Bitmap.Config.ARGB_8888, true)
+    fun processDetections(input: Bitmap): Bitmap {
+        // 创建可修改的 Bitmap 用于绘制
+        val mutableBitmap = input.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(mutableBitmap)
 
-        // 绘制边框的 Paint
-        val rectPaint = Paint().apply {
-            color = Color.GREEN
-            strokeWidth = 2f
-            style = Paint.Style.STROKE
-        }
-        // 绘制文本的 Paint
-        val textPaint = Paint().apply {
-            color = Color.GREEN
-            textSize = 32f
-        }
-        // 绘制关键点和箭头的 Paint
-        val pointPaint = Paint().apply {
-            color = Color.RED
-            strokeWidth = 2f
+        // 定义绘制 emoji 的 Paint
+        val emojiPaint = Paint().apply {
+            color = Color.BLACK
+            textAlign = Paint.Align.CENTER
         }
 
-        // 遍历每个检测结果
-        for (detection in detections) {
-            // 解析边界框数据：假设格式为 [x_center, y_center, width, height]
+        detectionResult?.detections?.forEach { detection ->
+            // 假设检测结果格式为:
+            // [x_center, y_center, width, height, confidence, classId, keypoints...]
             val xCenter = detection[0]
             val yCenter = detection[1]
             val width = detection[2]
             val height = detection[3]
-            val confidence = detection[4]
-            // 如果需要可以使用 classId = detection[5].toInt()
+            // 以边界框对角线长度作为 emoji 的直径
+//            val diameter = Math.sqrt((width * width + height * height).toDouble()).toFloat()
+//            val diameter = width.toFloat()
+            val diagonal = Math.sqrt((width * width + height * height).toDouble()).toFloat()
+            val diffRatio = kotlin.math.abs(width - height) / kotlin.math.max(width, height)
+            // diffRatio 范围在 0 到 1 之间，我们可以将它作为权重直接用于插值
+            val diameter = width * (1 - diffRatio) + diagonal * diffRatio
 
-            // 转换中心坐标为左上角和右下角坐标
-            val x1 = (xCenter - width / 2).toInt()
-            val y1 = (yCenter - height / 2).toInt()
-            val x2 = (xCenter + width / 2).toInt()
-            val y2 = (yCenter + height / 2).toInt()
 
-            // 绘制边框
-            canvas.drawRect(x1.toFloat(), y1.toFloat(), x2.toFloat(), y2.toFloat(), rectPaint)
-            // 绘制置信度文本
-            canvas.drawText("%.2f".format(confidence), x1.toFloat(), (y1 - 10).toFloat(), textPaint)
-
-            // 解析关键点信息：从索引 6 开始，总共 15 个数，5 个关键点，每个 (x, y, conf)
+            // 提取关键点信息，假设从索引 6 开始，每个关键点 3 个数，5 个关键点
             val keypoints = Array(5) { FloatArray(3) }
             for (i in 0 until 5) {
                 keypoints[i][0] = detection[6 + i * 3]     // x 坐标
                 keypoints[i][1] = detection[6 + i * 3 + 1] // y 坐标
-                keypoints[i][2] = detection[6 + i * 3 + 2] // 关键点置信度
-                // 绘制关键点
-                canvas.drawCircle(keypoints[i][0], keypoints[i][1], 4f, pointPaint)
+                keypoints[i][2] = detection[6 + i * 3 + 2] // 置信度
             }
-
-            // 根据左右眼关键点计算人脸的 roll 角度（假设 keypoints[0] 为左眼，keypoints[1] 为右眼）
+            // 使用第一个和第二个关键点（假设分别为左眼和右眼）计算人脸的 roll 角度
             val leftEye = keypoints[0]
             val rightEye = keypoints[1]
             val angle = Math.toDegrees(
@@ -127,22 +104,56 @@ class EmojiViewModel @Inject constructor(
                     (rightEye[1] - leftEye[1]).toDouble(),
                     (rightEye[0] - leftEye[0]).toDouble()
                 )
-            )
+            ).toFloat()
 
-            // 计算左右眼中点，作为箭头起点
-            val midX = (leftEye[0] + rightEye[0]) / 2
-            val midY = (leftEye[1] + rightEye[1]) / 2
-            val arrowLength = 50f
-            val angleRad = Math.toRadians(angle)
-            val endX = midX + arrowLength * Math.cos(angleRad).toFloat()
-            val endY = midY + arrowLength * Math.sin(angleRad).toFloat()
+            // 从预定义 emoji 列表中随机选择一个
+            val emojiOptions = listOf("😀", "😃", "😄", "😁")
+            val randomEmoji = emojiOptions.random()
 
-            // 绘制表示人脸朝向的箭头
-            canvas.drawLine(midX, midY, endX, endY, pointPaint)
-            // 绘制角度文本
-            canvas.drawText("Roll: %.2f".format(angle), midX, midY, textPaint)
+            // 调用封装好的函数绘制单个 emoji
+            drawEmoji(canvas, xCenter, yCenter, diameter, angle, randomEmoji, emojiPaint)
         }
+
         return mutableBitmap
     }
 
+    /**
+     * 绘制单个 emoji：
+     * 在指定中心位置绘制 emoji，使用指定直径（可作为文本大小）及旋转角度。
+     *
+     * @param canvas 目标 Canvas
+     * @param centerX emoji 绘制中心的 X 坐标
+     * @param centerY emoji 绘制中心的 Y 坐标
+     * @param diameter 作为 emoji 尺寸的直径
+     * @param rotationAngle emoji 的旋转角度（与人脸 roll 角度一致）
+     * @param emoji 要绘制的 emoji 字符串
+     * @param paint 用于绘制的 Paint 对象
+     */
+    private fun drawEmoji(
+        canvas: Canvas,
+        centerX: Float,
+        centerY: Float,
+        diameter: Float,
+        rotationAngle: Float,
+        emoji: String,
+        paint: Paint
+    ) {
+        // 根据直径设置文本大小
+        paint.textSize = diameter
+        // 保存当前 Canvas 状态
+        canvas.save()
+        // 旋转 Canvas，使得绘制的 emoji 方向与人脸朝向一致
+        canvas.rotate(rotationAngle, centerX, centerY)
+        // 为了使 emoji 居中绘制，需要计算 baseline 调整：
+        // (centerY - (ascent + descent)/2) 可以使文本垂直居中
+        canvas.drawText(emoji, centerX, centerY - (paint.ascent() + paint.descent()) / 2, paint)
+        // 恢复 Canvas 状态
+        canvas.restore()
+    }
+
+    private fun bitmapToInputStream(bitmap: Bitmap?): InputStream {
+        val outputStream = ByteArrayOutputStream()
+        bitmap?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+        return ByteArrayInputStream(outputStream.toByteArray())
+    }
 }
