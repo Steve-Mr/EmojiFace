@@ -145,6 +145,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     }
 
     // 弹窗对话框：修改 emoji 和直径（可扩展为输入框和滑块）
+// 弹窗对话框：修改 emoji 和直径（可扩展为输入框和滑块）
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -156,13 +157,28 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                         onValueChange = { newEmoji = it },
                         label = { Text("新 Emoji") }
                     )
-                    // 这里可以添加 Slider 控件用于调整 newDiameter
-                Slider(value = newDiameter, onValueChange = { newDiameter = it }, valueRange = 20f..500f)
+                    // 新增：预置 emoji 选择行
+                    LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
+                        itemsIndexed(emojiViewModel.emojiOptions) { _, emoji ->
+                            Card(
+                                modifier = Modifier
+                                    .wrapContentHeight()
+                                    .padding(horizontal = 4.dp)
+                                    .clickable { newEmoji = emoji }
+                            ) {
+                                Text(text = emoji, fontSize = 20.sp, modifier = Modifier.padding(8.dp))
+                            }
+                        }
+                    }
+                    Slider(
+                        value = newDiameter,
+                        onValueChange = { newDiameter = it },
+                        valueRange = 20f..500f
+                    )
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    // 调用 ViewModel 更新函数
                     if (selectedIndex >= 0) {
                         emojiViewModel.updateEmoji(selectedIndex, newEmoji, newDiameter)
                     }

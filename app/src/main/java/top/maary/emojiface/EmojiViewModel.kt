@@ -33,6 +33,9 @@ class EmojiViewModel @Inject constructor(
     // 暂存检测结果，供后续多次调用 processDetections 使用
     private var detectionResult: DetectionResult? = null
 
+    val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡", "😊", "😜", "🤠")
+
+
     // LiveData 用于将处理后的 Bitmap 传递给 UI 层显示
     private val _outputBitmap = MutableLiveData<Bitmap>()
     val outputBitmap: LiveData<Bitmap> = _outputBitmap
@@ -81,7 +84,6 @@ class EmojiViewModel @Inject constructor(
             color = Color.BLACK
             textAlign = Paint.Align.CENTER
         }
-        val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡", "😊", "😜", "🤠")
         val selectedEmojiList = mutableListOf<EmojiDetection>()
         val sortedDetections = detectionResult?.detections?.sortedBy { it[0] } ?: emptyList()
         val remainingEmojiOptions = emojiOptions.toMutableList()
