@@ -3,23 +3,39 @@ package top.maary.emojiface
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.extensions.OrtxPackage
+import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
+import androidx.compose.ui.res.stringResource
+import androidx.core.content.FileProvider
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import javax.inject.Inject
 
@@ -57,6 +73,15 @@ class EmojiViewModel @Inject constructor(
     private var scaleFactorX: Float = 1.0f
     private var scaleFactorY: Float = 1.0f
 
+    // 在 EmojiViewModel.kt 中添加
+    sealed class ShareEvent {
+        data class ShareImage(val uri: Uri) : ShareEvent()
+        data class Error(val message: String) : ShareEvent()
+    }
+
+    private val _shareEvent = MutableSharedFlow<ShareEvent>()
+    val shareEvent: SharedFlow<ShareEvent> = _shareEvent.asSharedFlow()
+
     // 清空图片方法
     fun clearImage() {
         _currentImage.postValue(null)
@@ -93,11 +118,74 @@ class EmojiViewModel @Inject constructor(
         }
     }
 
+    // 修改后的 shareImage 函数
+    fun shareImage(bitmap: Bitmap) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // 保存到缓存文件
+                val cachePath = File(application.cacheDir, "images").apply { mkdirs() }
+                val file = File(cachePath, "shared_${System.currentTimeMillis()}.png").apply {
+                    FileOutputStream(this).use { stream ->
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                    }
+                }
+
+                // 生成安全 Uri
+                val uri = FileProvider.getUriForFile(
+                    application,
+                    "${application.packageName}.fileprovider",
+                    file
+                )
+
+                // 发送分享事件
+                _shareEvent.emit(ShareEvent.ShareImage(uri))
+            } catch (e: Exception) {
+                _shareEvent.emit(ShareEvent.Error(e.message ?: "Unknown error"))
+            }
+        }
+    }
+
+    // 工具函数：保存图片到相册
+    fun saveImageToGallery(bitmap: Bitmap) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // 使用 MediaStore API 保存到公共目录
+                val folderName = "FaceMoji"
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, "facemoji_${System.currentTimeMillis()}.png")
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    put(MediaStore.Images.Media.RELATIVE_PATH,  "${Environment.DIRECTORY_PICTURES}/$folderName")
+                }
+
+                // 插入 MediaStore 并获取 Uri
+                val resolver = application.contentResolver
+                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                    ?: throw IOException("cannot create file")
+
+                // 写入图片数据
+                resolver.openOutputStream(uri)?.use { stream ->
+                    if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                        throw IOException("failed")
+                    }
+                }
+
+                // 提示成功
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(application, R.string.save_success, Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(application, application.getString(R.string.save_failed, e.message), Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
 
     /**
      * 对传入的 Bitmap 根据检测结果绘制 emoji，并构造 EmojiDetection 列表
      */
-    fun processDetections(): Bitmap {
+    private fun processDetections(): Bitmap {
         val mutableBitmap = base.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(mutableBitmap)
         val emojiPaint = Paint().apply {

@@ -1,6 +1,8 @@
 package top.maary.emojiface.ui.components
 
 import android.app.Activity
+import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,6 +42,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -123,7 +127,31 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
 
     val currentImage by emojiViewModel.currentImage.observeAsState()
 
-    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        emojiViewModel.shareEvent.collect { event ->
+            when (event) {
+                is EmojiViewModel.ShareEvent.ShareImage -> {
+                    val shareIntent = Intent.createChooser(
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "image/*"
+                            putExtra(Intent.EXTRA_STREAM, event.uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        },
+                        context.getString(R.string.share)
+                    )
+                    context.startActivity(shareIntent)
+                }
+                is EmojiViewModel.ShareEvent.Error -> {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.share_failed, event.message),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
 
     // Photo Picker 相关
     val photoPicker = rememberLauncherForActivityResult(
@@ -229,8 +257,15 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                ShareButton { }
-                SaveButton { }
+                ShareButton {
+                    // 获取当前显示的 Bitmap
+                    val bitmap = resultBitmap?.asImageBitmap()?.asAndroidBitmap()
+                    bitmap?.let { emojiViewModel.shareImage(it) }
+                }
+                SaveButton {
+                    val bitmap = resultBitmap?.asImageBitmap()?.asAndroidBitmap()
+                    bitmap?.let { emojiViewModel.saveImageToGallery(it) }
+                }
             }
             Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
         }

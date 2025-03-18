@@ -5,4 +5,7 @@
     <string name="clear_photo">Clear current image</string>
     <string name="exit">Exit</string>
     <string name="choose_image">Choose Image</string>
+    <string name="save_success">Saved</string>
+    <string name="save_failed">Save failed: %s</string>
+    <string name="share_failed">Share failed %s</string>
 </resources>
