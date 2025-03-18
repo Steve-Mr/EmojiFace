@@ -2,6 +2,9 @@ package top.maary.emojiface.ui.components
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Parcelable
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -115,6 +118,7 @@ fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String) {
 @Composable
 fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     val context = LocalContext.current
+    val activity = context as? Activity
     val resultBitmap by emojiViewModel.outputBitmap.observeAsState()
 
     val emojiDetections by emojiViewModel.selectedEmojis.observeAsState(
@@ -127,6 +131,15 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
 
     val currentImage by emojiViewModel.currentImage.observeAsState()
 
+    LaunchedEffect(Unit) {
+        val intent = activity?.intent
+        if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
+            val sharedUri: Uri? = intent.getParcelableExtraCompat(Intent.EXTRA_STREAM)
+            sharedUri?.let {
+                emojiViewModel.detect(it)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         emojiViewModel.shareEvent.collect { event ->
@@ -184,10 +197,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 title = {
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        val activity = (context as? Activity)
-                        activity?.finish()
-                    }) {
+                    IconButton(onClick = { activity?.finish() }) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
                             contentDescription = stringResource(R.string.exit)
@@ -225,7 +235,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                         bitmap = (resultBitmap ?: currentImage!!).asImageBitmap(),
                         description = "处理结果"
                     )
-                } else {
+                } else if (activity?.intent?.action != Intent.ACTION_SEND) {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.Center,
@@ -324,6 +334,15 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 }
             }
         )
+    }
+}
+
+@Suppress("DEPRECATION")
+inline fun <reified T : Parcelable> Intent.getParcelableExtraCompat(name: String): T? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        getParcelableExtra(name, T::class.java)
+    } else {
+        getParcelableExtra(name) as? T
     }
 }
 

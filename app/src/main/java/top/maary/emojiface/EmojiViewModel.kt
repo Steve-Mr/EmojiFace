@@ -94,6 +94,7 @@ class EmojiViewModel @Inject constructor(
      */
     fun detect(inputUri: Uri) {
         viewModelScope.launch(Dispatchers.Default) {
+            clearImage()  // 先清除旧数据
             application.contentResolver.openInputStream(inputUri)?.use { stream ->
                 val input = BitmapFactory.decodeStream(stream)
                 val scaledBitmap = scaleBitmapIfNeeded(input)
