@@ -5,15 +5,18 @@ import ai.onnxruntime.OrtSession
 import ai.onnxruntime.extensions.OrtxPackage
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -34,11 +37,11 @@ class EmojiViewModel @Inject constructor(
     private var detectionResult: DetectionResult? = null
 
     val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡", "😊", "😜", "🤠")
-
+    val emptyEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "⏳")
 
     // LiveData 用于将处理后的 Bitmap 传递给 UI 层显示
-    private val _outputBitmap = MutableLiveData<Bitmap>()
-    val outputBitmap: LiveData<Bitmap> = _outputBitmap
+    private val _outputBitmap = MutableLiveData<Bitmap?>()
+    val outputBitmap: MutableLiveData<Bitmap?> = _outputBitmap
 
     // LiveData 保存每个检测目标对应的选取的 emoji 顺序
     private val _selectedEmojis = MutableLiveData<List<EmojiDetection>>()
@@ -46,22 +49,38 @@ class EmojiViewModel @Inject constructor(
 
     private lateinit var base: Bitmap
 
+    // 添加图片状态
+    private val _currentImage = MutableLiveData<Bitmap?>(null)
+    val currentImage: LiveData<Bitmap?> = _currentImage
+
+    // 清空图片方法
+    fun clearImage() {
+        _currentImage.postValue(null)
+        _outputBitmap.postValue(null)
+        _selectedEmojis.postValue(listOf(emptyEmojiDetection, emptyEmojiDetection, emptyEmojiDetection))
+    }
+
     /**
      * 调用模型进行检测，并暂存检测结果。
      */
-    fun detect(input: Bitmap) {
-        base = input
-        val sessionOptions = OrtSession.SessionOptions().apply {
-            registerCustomOpLibrary(OrtxPackage.getLibraryPath())
-        }
-        model = application.resources.openRawResource(modelId).readBytes()
-        ortSession = ortEnv.createSession(model, sessionOptions)
+    fun detect(inputUri: Uri) {
+        viewModelScope.launch(Dispatchers.Default) {
+            application.contentResolver.openInputStream(inputUri)?.use { stream ->
+                val input = BitmapFactory.decodeStream(stream)
 
-        viewModelScope.launch {
-            detectionResult = faceDetector.detect(bitmapToInputStream(input), ortEnv, ortSession)
-            // 初次处理检测结果，绘制 emoji，并更新 LiveData
-            val processedBitmap = processDetections(input)
-            _outputBitmap.postValue(processedBitmap)
+                _currentImage.postValue(input)
+                base = input
+                val sessionOptions = OrtSession.SessionOptions().apply {
+                    registerCustomOpLibrary(OrtxPackage.getLibraryPath())
+                }
+                model = application.resources.openRawResource(modelId).readBytes()
+                ortSession = ortEnv.createSession(model, sessionOptions)
+
+                detectionResult = faceDetector.detect(bitmapToInputStream(input), ortEnv, ortSession)
+                // 初次处理检测结果，绘制 emoji，并更新 LiveData
+                val processedBitmap = processDetections(input)
+                _outputBitmap.postValue(processedBitmap)
+            }
         }
     }
 

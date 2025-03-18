@@ -2,4 +2,6 @@
     <string name="app_name">Emoji Face</string>
     <string name="share">Share</string>
     <string name="save">Save</string>
+    <string name="clear_photo">Clear current image</string>
+    <string name="exit">Exit</string>
 </resources>
