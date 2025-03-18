@@ -1,8 +1,6 @@
 package top.maary.emojiface.ui.components
 
 import android.app.Activity
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,12 +15,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Close
@@ -44,7 +40,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -53,25 +48,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
 import top.maary.emojiface.EmojiDetection
 import top.maary.emojiface.EmojiViewModel
 import top.maary.emojiface.R
 
 @Composable
-fun ShareButton(onClick: () -> Unit){
+fun ShareButton(onClick: () -> Unit) {
     ExtendedFloatingActionButton(onClick = onClick, modifier = Modifier.padding(8.dp),
         icon = { Icon(Icons.Default.Share, stringResource(R.string.share)) },
         text = { Text(text = stringResource(R.string.share)) })
@@ -81,7 +72,7 @@ fun ShareButton(onClick: () -> Unit){
 fun SaveButton(onClick: () -> Unit) {
     ExtendedFloatingActionButton(onClick = onClick, modifier = Modifier.padding(8.dp),
         icon = { Icon(Icons.Rounded.SaveAlt, stringResource(R.string.save)) },
-        text = { Text(text = stringResource(R.string.save)) } )
+        text = { Text(text = stringResource(R.string.save)) })
 }
 
 @Composable
@@ -111,7 +102,7 @@ fun EmojiRow(
 
 
 @Composable
-fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String){
+fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String) {
     Image(bitmap = bitmap, contentDescription = description, modifier = modifier.padding(8.dp))
 }
 
@@ -123,7 +114,12 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     val resultBitmap by emojiViewModel.outputBitmap.observeAsState()
 
     val emojiDetections by emojiViewModel.selectedEmojis.observeAsState(
-        listOf(emojiViewModel.emptyEmojiDetection, emojiViewModel.emptyEmojiDetection, emojiViewModel.emptyEmojiDetection))
+        listOf(
+            emojiViewModel.emptyEmojiDetection,
+            emojiViewModel.emptyEmojiDetection,
+            emojiViewModel.emptyEmojiDetection
+        )
+    )
 
     val currentImage by emojiViewModel.currentImage.observeAsState()
 
@@ -148,7 +144,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
-    Scaffold (
+    Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 
         topBar = {
@@ -183,7 +179,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 scrollBehavior = scrollBehavior,
             )
         }
-    )  { innerPadding ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -194,11 +190,6 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .clickable {
-                        if (currentImage == null) {
-                            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }
-                    }
             ) {
                 if (currentImage != null) {
                     ResultImg(
@@ -212,12 +203,18 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            Icons.Outlined.AddPhotoAlternate,
-                            contentDescription = "选择图片",
-                            modifier = Modifier.size(64.dp)
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            icon = {
+                                Icon(
+                                    Icons.Outlined.AddPhotoAlternate,
+                                    contentDescription = stringResource(R.string.choose_image),
+                                )
+                            },
+                            text = { Text(text = stringResource(R.string.choose_image)) },
                         )
-                        Text("点击选择图片", style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
@@ -261,7 +258,11 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                                     .padding(horizontal = 4.dp)
                                     .clickable { newEmoji = emoji }
                             ) {
-                                Text(text = emoji, fontSize = 20.sp, modifier = Modifier.padding(8.dp))
+                                Text(
+                                    text = emoji,
+                                    fontSize = 20.sp,
+                                    modifier = Modifier.padding(8.dp)
+                                )
                             }
                         }
                     }
@@ -290,7 +291,6 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
         )
     }
 }
-
 
 
 @Preview(showBackground = true, showSystemUi = true)

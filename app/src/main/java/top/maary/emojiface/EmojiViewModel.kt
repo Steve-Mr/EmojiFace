@@ -53,6 +53,10 @@ class EmojiViewModel @Inject constructor(
     private val _currentImage = MutableLiveData<Bitmap?>(null)
     val currentImage: LiveData<Bitmap?> = _currentImage
 
+    // 在 EmojiViewModel 中添加以下变量
+    private var scaleFactorX: Float = 1.0f
+    private var scaleFactorY: Float = 1.0f
+
     // 清空图片方法
     fun clearImage() {
         _currentImage.postValue(null)
@@ -67,37 +71,34 @@ class EmojiViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.Default) {
             application.contentResolver.openInputStream(inputUri)?.use { stream ->
                 val input = BitmapFactory.decodeStream(stream)
+                val scaledBitmap = scaleBitmapIfNeeded(input)
+                scaleFactorX = input.width.toFloat() / scaledBitmap.width.toFloat()
+                scaleFactorY = input.height.toFloat() / scaledBitmap.height.toFloat()
 
                 _currentImage.postValue(input)
-                base = input
+                base = input // 保存原图
+
                 val sessionOptions = OrtSession.SessionOptions().apply {
                     registerCustomOpLibrary(OrtxPackage.getLibraryPath())
                 }
                 model = application.resources.openRawResource(modelId).readBytes()
                 ortSession = ortEnv.createSession(model, sessionOptions)
 
-                detectionResult = faceDetector.detect(bitmapToInputStream(input), ortEnv, ortSession)
-                // 初次处理检测结果，绘制 emoji，并更新 LiveData
-                val processedBitmap = processDetections(input)
+                // 使用缩放后的图片进行检测
+                detectionResult = faceDetector.detect(bitmapToInputStream(scaledBitmap), ortEnv, ortSession)
+                // 处理检测结果，传入原图
+                val processedBitmap = processDetections()
                 _outputBitmap.postValue(processedBitmap)
             }
         }
     }
 
-    /**
-     * 根据已存储的检测结果，对输入 Bitmap 绘制 emoji：
-     * - 每个检测目标采用边界框中心作为绘制中心，
-     * - 使用加权平均计算 emoji 的直径：当宽高接近时以宽度为准，否则平滑过渡到对角线值，
-     * - 根据左右眼计算人脸的 roll 角度对 emoji 进行旋转，
-     * - 从预定义列表中随机选取 emoji，但避免连续重复。
-     *
-     * 同时将选取的 emoji 顺序保存在 _selectedEmojis 中，供 UI 展示。
-     */
+
     /**
      * 对传入的 Bitmap 根据检测结果绘制 emoji，并构造 EmojiDetection 列表
      */
-    fun processDetections(input: Bitmap): Bitmap {
-        val mutableBitmap = input.copy(Bitmap.Config.ARGB_8888, true)
+    fun processDetections(): Bitmap {
+        val mutableBitmap = base.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(mutableBitmap)
         val emojiPaint = Paint().apply {
             color = Color.BLACK
@@ -108,19 +109,20 @@ class EmojiViewModel @Inject constructor(
         val remainingEmojiOptions = emojiOptions.toMutableList()
 
         sortedDetections.forEach { detection ->
-            val xCenter = detection[0]
-            val yCenter = detection[1]
-            val width = detection[2]
-            val height = detection[3]
-            val diagonal = Math.sqrt((width * width + height * height).toDouble()).toFloat()
+            // 转换坐标到原图尺寸
+            val xCenter = detection[0] * scaleFactorX
+            val yCenter = detection[1] * scaleFactorY
+            val width = detection[2] * scaleFactorX
+            val height = detection[3] * scaleFactorY
+            val diagonal = Math.hypot(width.toDouble(), height.toDouble()).toFloat()
             val diffRatio = kotlin.math.abs(width - height) / kotlin.math.max(width, height)
             val diameter = width * (1 - diffRatio) + diagonal * diffRatio
 
-            // 解析关键点并计算旋转角度（示例中使用左眼、右眼）
+            // 处理关键点坐标
             val keypoints = Array(5) { FloatArray(3) }
             for (i in 0 until 5) {
-                keypoints[i][0] = detection[6 + i * 3]
-                keypoints[i][1] = detection[6 + i * 3 + 1]
+                keypoints[i][0] = detection[6 + i * 3] * scaleFactorX
+                keypoints[i][1] = detection[6 + i * 3 + 1] * scaleFactorY
                 keypoints[i][2] = detection[6 + i * 3 + 2]
             }
             val leftEye = keypoints[0]
@@ -138,11 +140,9 @@ class EmojiViewModel @Inject constructor(
             val chosenEmoji = remainingEmojiOptions.random()
             remainingEmojiOptions.remove(chosenEmoji)
 
-            // 构造一个 EmojiDetection 对象，保存该检测的所有信息
             val emojiDetection = EmojiDetection(xCenter, yCenter, diameter, angle, chosenEmoji)
             selectedEmojiList.add(emojiDetection)
 
-            // 绘制单个 emoji
             drawEmoji(canvas, xCenter, yCenter, diameter, angle, chosenEmoji, emojiPaint)
         }
 
@@ -203,6 +203,28 @@ class EmojiViewModel @Inject constructor(
         canvas.rotate(rotationAngle, centerX, centerY)
         canvas.drawText(emoji, centerX, centerY - (paint.ascent() + paint.descent()) / 2, paint)
         canvas.restore()
+    }
+
+    // 添加缩放函数
+    private fun scaleBitmapIfNeeded(bitmap: Bitmap): Bitmap {
+        val maxSize = 1024 // 设置最大边长阈值
+        val width = bitmap.width
+        val height = bitmap.height
+
+        if (width <= maxSize && height <= maxSize) {
+            return bitmap
+        }
+
+        val scaleFactor = if (width > height) {
+            maxSize.toFloat() / width
+        } else {
+            maxSize.toFloat() / height
+        }
+
+        val scaledWidth = (width * scaleFactor).toInt()
+        val scaledHeight = (height * scaleFactor).toInt()
+
+        return Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
     }
 
     private fun bitmapToInputStream(bitmap: Bitmap?): InputStream {
