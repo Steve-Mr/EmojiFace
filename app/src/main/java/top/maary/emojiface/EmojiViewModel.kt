@@ -38,13 +38,16 @@ class EmojiViewModel @Inject constructor(
     val outputBitmap: LiveData<Bitmap> = _outputBitmap
 
     // LiveData 保存每个检测目标对应的选取的 emoji 顺序
-    private val _selectedEmojis = MutableLiveData<List<String>>()
-    val selectedEmojis: LiveData<List<String>> = _selectedEmojis
+    private val _selectedEmojis = MutableLiveData<List<EmojiDetection>>()
+    val selectedEmojis: LiveData<List<EmojiDetection>> = _selectedEmojis
+
+    private lateinit var base: Bitmap
 
     /**
      * 调用模型进行检测，并暂存检测结果。
      */
     fun detect(input: Bitmap) {
+        base = input
         val sessionOptions = OrtSession.SessionOptions().apply {
             registerCustomOpLibrary(OrtxPackage.getLibraryPath())
         }
@@ -68,6 +71,9 @@ class EmojiViewModel @Inject constructor(
      *
      * 同时将选取的 emoji 顺序保存在 _selectedEmojis 中，供 UI 展示。
      */
+    /**
+     * 对传入的 Bitmap 根据检测结果绘制 emoji，并构造 EmojiDetection 列表
+     */
     fun processDetections(input: Bitmap): Bitmap {
         val mutableBitmap = input.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(mutableBitmap)
@@ -75,15 +81,9 @@ class EmojiViewModel @Inject constructor(
             color = Color.BLACK
             textAlign = Paint.Align.CENTER
         }
-        // 定义可用的 emoji 列表
-        val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡","😊", "😜", "🤠")
-        // 用于保存每个检测对应选取的 emoji
-        val selectedEmojiList = mutableListOf<String>()
-
-        // 排序检测结果（例如按照 xCenter 排序）保证顺序的一致性
+        val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡", "😊", "😜", "🤠")
+        val selectedEmojiList = mutableListOf<EmojiDetection>()
         val sortedDetections = detectionResult?.detections?.sortedBy { it[0] } ?: emptyList()
-
-        // 使用可变列表来跟踪剩余可用的 emoji
         val remainingEmojiOptions = emojiOptions.toMutableList()
 
         sortedDetections.forEach { detection ->
@@ -91,19 +91,17 @@ class EmojiViewModel @Inject constructor(
             val yCenter = detection[1]
             val width = detection[2]
             val height = detection[3]
-            // 使用方式2动态计算直径：根据宽和对角线加权平均
             val diagonal = Math.sqrt((width * width + height * height).toDouble()).toFloat()
             val diffRatio = kotlin.math.abs(width - height) / kotlin.math.max(width, height)
             val diameter = width * (1 - diffRatio) + diagonal * diffRatio
 
-            // 提取关键点信息（假设从索引6开始，每个关键点3个数，共5个关键点）
+            // 解析关键点并计算旋转角度（示例中使用左眼、右眼）
             val keypoints = Array(5) { FloatArray(3) }
             for (i in 0 until 5) {
                 keypoints[i][0] = detection[6 + i * 3]
                 keypoints[i][1] = detection[6 + i * 3 + 1]
                 keypoints[i][2] = detection[6 + i * 3 + 2]
             }
-            // 使用左眼和右眼（假设分别为第一个和第二个关键点）计算人脸的 roll 角度
             val leftEye = keypoints[0]
             val rightEye = keypoints[1]
             val angle = Math.toDegrees(
@@ -116,20 +114,50 @@ class EmojiViewModel @Inject constructor(
             if (remainingEmojiOptions.isEmpty()) {
                 remainingEmojiOptions.addAll(emojiOptions)
             }
-
-            //从剩余的表情列表中随机选择一个表情
             val chosenEmoji = remainingEmojiOptions.random()
+            remainingEmojiOptions.remove(chosenEmoji)
 
-            selectedEmojiList.add(chosenEmoji) //将选择的表情添加到已选择表情列表中
-            remainingEmojiOptions.remove(chosenEmoji)// 从剩余表情列表中移除选中的表情
+            // 构造一个 EmojiDetection 对象，保存该检测的所有信息
+            val emojiDetection = EmojiDetection(xCenter, yCenter, diameter, angle, chosenEmoji)
+            selectedEmojiList.add(emojiDetection)
 
-            // 绘制单个 emoji（调用封装好的 drawEmoji 函数）
+            // 绘制单个 emoji
             drawEmoji(canvas, xCenter, yCenter, diameter, angle, chosenEmoji, emojiPaint)
         }
 
-        // 将生成的 emoji 顺序保存到 LiveData 中，供 EmojiRow 使用
         _selectedEmojis.postValue(selectedEmojiList)
+        return mutableBitmap
+    }
 
+    /**
+     * 当用户修改某个 emoji 时调用：
+     * 更新对应的 EmojiDetection 对象，并重新绘制图片
+     */
+    fun updateEmoji(index: Int, newEmoji: String, newDiameter: Float) {
+        val currentList = _selectedEmojis.value?.toMutableList() ?: return
+        val updated = currentList[index].copy(emoji = newEmoji, diameter = newDiameter)
+        currentList[index] = updated
+        _selectedEmojis.postValue(currentList)
+        // 根据更新后的 emoji 列表，重新绘制图片
+        // 这里假设你保留了原始输入图像 inputBitmap 作为基础（可以在 ViewModel 中存储）
+        val baseBitmap = base /* 需要保存原始输入图像 */
+        val newBitmap = redrawBitmapWithEmojis(baseBitmap, currentList)
+        _outputBitmap.postValue(newBitmap)
+    }
+
+    /**
+     * 根据传入的 baseBitmap 与当前 EmojiDetection 列表重绘图片
+     */
+    private fun redrawBitmapWithEmojis(baseBitmap: Bitmap, emojiDetections: List<EmojiDetection>): Bitmap {
+        val mutableBitmap = baseBitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(mutableBitmap)
+        val emojiPaint = Paint().apply {
+            color = Color.BLACK
+            textAlign = Paint.Align.CENTER
+        }
+        emojiDetections.forEach { ed ->
+            drawEmoji(canvas, ed.xCenter, ed.yCenter, ed.diameter, ed.angle, ed.emoji, emojiPaint)
+        }
         return mutableBitmap
     }
 
@@ -162,3 +190,12 @@ class EmojiViewModel @Inject constructor(
         return ByteArrayInputStream(outputStream.toByteArray())
     }
 }
+
+data class EmojiDetection(
+    val xCenter: Float,
+    val yCenter: Float,
+    val diameter: Float,
+    val angle: Float,
+    var emoji: String
+)
+
