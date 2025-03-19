@@ -8,4 +8,9 @@
     <string name="save_success">Saved</string>
     <string name="save_failed">Save failed: %s</string>
     <string name="share_failed">Share failed %s</string>
+    <string name="settings">Settings</string>
+    <string name="hide_home">Hide App icon</string>
+    <string name="choose_font">Choose font file</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">Ok</string>
 </resources>

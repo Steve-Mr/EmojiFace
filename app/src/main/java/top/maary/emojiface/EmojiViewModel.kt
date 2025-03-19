@@ -53,7 +53,8 @@ class EmojiViewModel @Inject constructor(
     private var detectionResult: DetectionResult? = null
 
     val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡", "😊", "😜", "🤠")
-    val emptyEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "⏳")
+    private val emptyEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "⏳")
+    private val addEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "➕")
 
     // LiveData 用于将处理后的 Bitmap 传递给 UI 层显示
     private val _outputBitmap = MutableLiveData<Bitmap?>()
@@ -86,7 +87,7 @@ class EmojiViewModel @Inject constructor(
     fun clearImage() {
         _currentImage.postValue(null)
         _outputBitmap.postValue(null)
-        _selectedEmojis.postValue(listOf(emptyEmojiDetection, emptyEmojiDetection, emptyEmojiDetection))
+        _selectedEmojis.postValue(emptyList())
     }
 
     /**
@@ -254,6 +255,17 @@ class EmojiViewModel @Inject constructor(
         val newBitmap = redrawBitmapWithEmojis(baseBitmap, currentList)
         _outputBitmap.postValue(newBitmap)
     }
+
+    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float) {
+        val currentList = _selectedEmojis.value?.toMutableList() ?: mutableListOf()
+        // 默认角度设置为 0
+        val newDetection = EmojiDetection(xCenter = x, yCenter = y, diameter = diameter, angle = 0f, emoji = emoji)
+        currentList.add(newDetection)
+        _selectedEmojis.postValue(currentList)
+        val newBitmap = redrawBitmapWithEmojis(base, currentList)
+        _outputBitmap.postValue(newBitmap)
+    }
+
 
     /**
      * 根据传入的 baseBitmap 与当前 EmojiDetection 列表重绘图片

@@ -11,6 +11,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,28 +22,40 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,10 +67,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -83,14 +98,37 @@ fun SaveButton(onClick: () -> Unit) {
 }
 
 @Composable
-fun EmojiCard(emojiDetection: EmojiDetection, onClick: () -> Unit) {
+fun SettingsButton(onClick: () -> Unit) {
+    FloatingActionButton(onClick = onClick, modifier = Modifier.padding(8.dp)) {
+        Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
+    }
+}
+
+@Composable
+fun EmojiCard(emoji: String, onClick: () -> Unit, clickable: Boolean = true) {
     Card(
         modifier = Modifier
             .wrapContentHeight()
             .padding(horizontal = 8.dp, vertical = 16.dp)
-            .clickable { onClick() }  // 添加点击事件
+            .clickable(enabled = clickable) { onClick() }  // 添加点击事件
     ) {
-        Text(text = emojiDetection.emoji, fontSize = 60.sp)
+        Text(text = emoji, fontSize = 60.sp)
+    }
+}
+
+@Composable
+fun EmojiCardSmall(emoji: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .wrapContentHeight()
+            .padding(horizontal = 4.dp)
+            .clickable { onClick }
+    ) {
+        Text(
+            text = emoji,
+            fontSize = 20.sp,
+            modifier = Modifier.padding(8.dp)
+        )
     }
 }
 
@@ -98,11 +136,16 @@ fun EmojiCard(emojiDetection: EmojiDetection, onClick: () -> Unit) {
 @Composable
 fun EmojiRow(
     emojiDetections: List<EmojiDetection>,
-    onEmojiClick: (Int, EmojiDetection) -> Unit
+    onEmojiClick: (Int, EmojiDetection) -> Unit,
+    onAddClick: () -> Unit,
+    addClickable: Boolean
 ) {
     LazyRow {
         itemsIndexed(emojiDetections) { index, item ->
-            EmojiCard(emojiDetection = item, onClick = { onEmojiClick(index, item) })
+            EmojiCard(emoji = item.emoji, onClick = { onEmojiClick(index, item) })
+        }
+        item {
+            EmojiCard(emoji = "➕", onClick = { onAddClick() }, clickable = addClickable)
         }
     }
 }
@@ -113,6 +156,114 @@ fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String) {
     Image(bitmap = bitmap, contentDescription = description, modifier = modifier.padding(8.dp))
 }
 
+@Composable
+fun PredefinedEmojiSettings(emojiOptions: List<String>, onEmojiClick: () -> Unit, onAddClick: () -> Unit) {
+    LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
+        itemsIndexed(emojiOptions) { _, emoji ->
+            EmojiCardSmall(emoji = emoji) { onEmojiClick }
+        }
+        item { EmojiCardSmall(emoji = "➕") { onAddClick } }
+    }
+}
+
+@Composable
+fun HomeSwitchRow(
+    state: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    onCheckedChange(!state) // 当点击 SwitchRow 时触发点击事件
+                }
+            }
+            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(modifier = Modifier.weight(1f), text = stringResource(R.string.hide_home))
+        Switch(checked = state, onCheckedChange = onCheckedChange)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DropdownItem(modifier: Modifier, options: MutableList<String>, position: Int, onItemClicked: (Int) -> Unit) {
+    var expanded by remember {
+        mutableStateOf(false)
+    }
+
+    Box(modifier = modifier) {
+        ExposedDropdownMenuBox(
+            modifier =
+            Modifier.padding(8.dp),
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+        ) {
+            OutlinedTextField(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                value = options[position],//text,
+                onValueChange = {},
+                readOnly = true,
+                singleLine = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            )
+            ExposedDropdownMenu(
+                modifier = Modifier.wrapContentWidth(),
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        modifier = Modifier.wrapContentWidth(),
+                        text = { Text(option) },
+                        onClick = {
+                            expanded = false
+                            onItemClicked(options.indexOf(option))
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DropdownRow(options: MutableList<String>, position: Int, onItemClicked: (Int) -> Unit, onAddClick: () -> Unit) {
+    Row(
+        modifier =
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        DropdownItem(modifier = Modifier.weight(1f), options = options,
+            position = position, onItemClicked = onItemClicked)
+        OutlinedIconButton(onClick = { onAddClick }) {
+            Icon(Icons.Outlined.AttachFile, stringResource(R.string.choose_font))
+        }
+    }
+}
+
+@Composable
+fun SettingsConfirmationRow(onCancel: () -> Unit, onConfirm: () -> Unit) {
+    Row (
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween){
+        TextButton(onClick = onCancel) {
+            Text(stringResource(R.string.cancel))
+        }
+        TextButton(onClick = onConfirm) {
+            Text(stringResource(R.string.ok))
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,13 +272,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     val activity = context as? Activity
     val resultBitmap by emojiViewModel.outputBitmap.observeAsState()
 
-    val emojiDetections by emojiViewModel.selectedEmojis.observeAsState(
-        listOf(
-            emojiViewModel.emptyEmojiDetection,
-            emojiViewModel.emptyEmojiDetection,
-            emojiViewModel.emptyEmojiDetection
-        )
-    )
+    val emojiDetections by emojiViewModel.selectedEmojis.observeAsState(emptyList())
 
     val currentImage by emojiViewModel.currentImage.observeAsState()
 
@@ -183,6 +328,15 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     var newEmoji by remember { mutableStateOf("") }
     var newDiameter by remember { mutableStateOf(0f) }
 
+    // 新增状态：是否处于添加模式，以及记录点击坐标
+    var isAddMode by remember { mutableStateOf(false) }
+    var tapPosition by remember { mutableStateOf(Offset.Zero) }
+
+    // 记住 Bottom Sheet 状态
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+    var showBottomSheet by remember { mutableStateOf(false) }
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
@@ -228,6 +382,17 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .then(
+                        if (isAddMode) Modifier.pointerInput(Unit) {
+                            detectTapGestures { offset ->
+                                tapPosition = offset
+                                newEmoji = emojiViewModel.emojiOptions.random()
+                                newDiameter = 100f
+                                showDialog = true
+                                isAddMode = false
+                            }
+                        } else Modifier
+                    )
             ) {
                 if (currentImage != null) {
                     ResultImg(
@@ -235,7 +400,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                         bitmap = (resultBitmap ?: currentImage!!).asImageBitmap(),
                         description = "处理结果"
                     )
-                } else if (activity?.intent?.action != Intent.ACTION_SEND) {
+                } else {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.Center,
@@ -256,13 +421,18 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                     }
                 }
             }
-            EmojiRow(emojiDetections = emojiDetections, onEmojiClick = { index, detection ->
+            EmojiRow(emojiDetections = emojiDetections,
+                onEmojiClick = { index, detection ->
                 // 点击某个 EmojiCard，打开对话框，同时初始化输入值
                 selectedIndex = index
                 newEmoji = detection.emoji
                 newDiameter = detection.diameter
-                showDialog = true
-            })
+                showDialog = true },
+                addClickable = (currentImage != null),
+                onAddClick = {
+                    selectedIndex = -1
+                    isAddMode = true
+                })
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
@@ -271,6 +441,9 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                     // 获取当前显示的 Bitmap
                     val bitmap = resultBitmap?.asImageBitmap()?.asAndroidBitmap()
                     bitmap?.let { emojiViewModel.shareImage(it) }
+                }
+                SettingsButton {
+                    showBottomSheet = true
                 }
                 SaveButton {
                     val bitmap = resultBitmap?.asImageBitmap()?.asAndroidBitmap()
@@ -282,7 +455,6 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     }
 
     // 弹窗对话框：修改 emoji 和直径（可扩展为输入框和滑块）
-// 弹窗对话框：修改 emoji 和直径（可扩展为输入框和滑块）
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -294,21 +466,10 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                         onValueChange = { newEmoji = it },
                         label = { Text("新 Emoji") }
                     )
-                    // 新增：预置 emoji 选择行
+                    // 预置 emoji 选择行
                     LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
                         itemsIndexed(emojiViewModel.emojiOptions) { _, emoji ->
-                            Card(
-                                modifier = Modifier
-                                    .wrapContentHeight()
-                                    .padding(horizontal = 4.dp)
-                                    .clickable { newEmoji = emoji }
-                            ) {
-                                Text(
-                                    text = emoji,
-                                    fontSize = 20.sp,
-                                    modifier = Modifier.padding(8.dp)
-                                )
-                            }
+                            EmojiCardSmall(emoji = emoji, onClick = { newEmoji = emoji })
                         }
                     }
                     Slider(
@@ -322,8 +483,12 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 TextButton(onClick = {
                     if (selectedIndex >= 0) {
                         emojiViewModel.updateEmoji(selectedIndex, newEmoji, newDiameter)
+                    } else {
+                        // 新增 emoji，使用之前记录的 tapPosition
+                        emojiViewModel.addEmoji(tapPosition.x, tapPosition.y, newEmoji, newDiameter)
                     }
                     showDialog = false
+                    selectedIndex = -1
                 }) {
                     Text("确定")
                 }
@@ -334,6 +499,24 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 }
             }
         )
+    }
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState
+        ) {
+//            SettingsConfirmationRow(onCancel = {}, onConfirm = {})
+            PredefinedEmojiSettings(
+                emojiOptions = emojiViewModel.emojiOptions,
+                onEmojiClick = {},
+                onAddClick = {})
+            HomeSwitchRow(state = false, onCheckedChange = {})
+            DropdownRow(
+                options = mutableListOf("0", "1", "2"),
+                position = 0,
+                onItemClicked = {},
+                onAddClick = {})
+        }
     }
 }
 
