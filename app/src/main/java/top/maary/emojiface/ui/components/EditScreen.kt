@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -73,9 +76,11 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -339,6 +344,8 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
+    var imageSize by remember { mutableStateOf(IntSize.Zero) }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 
@@ -381,22 +388,34 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
-                    .then(
-                        if (isAddMode) Modifier.pointerInput(Unit) {
-                            detectTapGestures { offset ->
-                                tapPosition = offset
-                                newEmoji = emojiViewModel.emojiOptions.random()
-                                newDiameter = 100f
-                                showDialog = true
-                                isAddMode = false
-                            }
-                        } else Modifier
-                    )
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
                 if (currentImage != null) {
                     ResultImg(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .aspectRatio(currentImage!!.width.toFloat() / currentImage!!.height.toFloat())
+                            .fillMaxSize()
+                            .onGloballyPositioned { imageSize = it.size }
+                            .then(
+                                if (isAddMode) Modifier.pointerInput(Unit) {
+                                detectTapGestures { offset ->
+                                    val baseBitmap = resultBitmap ?: currentImage
+                                    if (baseBitmap != null && imageSize.width > 0 && imageSize.height > 0) {
+                                        val scaleX = baseBitmap.width.toFloat() / imageSize.width
+                                        val scaleY = baseBitmap.height.toFloat() / imageSize.height
+                                        // 转换后的坐标就是原图坐标
+                                        val originalX = offset.x * scaleX
+                                        val originalY = offset.y * scaleY
+                                        tapPosition = Offset(originalX, originalY)
+                                    }
+                                    newEmoji = emojiViewModel.emojiOptions.random()
+                                    newDiameter = 100f
+                                    showDialog = true
+                                    isAddMode = false
+                                }
+                            } else Modifier
+                        ),
                         bitmap = (resultBitmap ?: currentImage!!).asImageBitmap(),
                         description = "处理结果"
                     )
@@ -407,15 +426,9 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         ExtendedFloatingActionButton(
-                            onClick = {
-                                photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            },
-                            icon = {
-                                Icon(
-                                    Icons.Outlined.AddPhotoAlternate,
-                                    contentDescription = stringResource(R.string.choose_image),
-                                )
-                            },
+                            onClick = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                            icon = { Icon(Icons.Outlined.AddPhotoAlternate,
+                                    contentDescription = stringResource(R.string.choose_image)) },
                             text = { Text(text = stringResource(R.string.choose_image)) },
                         )
                     }
