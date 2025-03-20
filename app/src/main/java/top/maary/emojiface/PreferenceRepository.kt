@@ -20,10 +20,11 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
         val EMOJI_LIST = stringPreferencesKey("emoji_options")
         // 定义默认的 emoji 列表
         val DEFAULT_EMOJI_LIST = listOf("😂", "😎", "😆", "😋", "🫡", "😊", "😜", "🤠")
+        val IS_ICON_HIDE = booleanPreferencesKey("hide_app_icon")
     }
 
     // 从 DataStore 中读取 emoji 列表（以逗号分隔存储）
-    val emojiOptionsFlow: Flow<List<String>> = context.dataStore.data.map { preferences ->
+    val emojiOptionsFlow: Flow<List<String>> = dataStore.data.map { preferences ->
         preferences[EMOJI_LIST]?.let { jsonString ->
             // 反序列化，如果失败则返回 null
             runCatching { Json.decodeFromString<EmojiList>(jsonString) }.getOrNull()?.emojis
@@ -36,6 +37,16 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
         val jsonString = Json.encodeToString(emojiList)
         dataStore.edit { preferences ->
             preferences[EMOJI_LIST] = jsonString
+        }
+    }
+
+    val isIconHide: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[IS_ICON_HIDE] ?: false
+    }
+
+    suspend fun updateIconState(state: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[IS_ICON_HIDE] = state
         }
     }
 }

@@ -3,8 +3,10 @@ package top.maary.emojiface
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.extensions.OrtxPackage
+import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -54,6 +56,7 @@ class EmojiViewModel @Inject constructor(
     // 暂存检测结果，供后续多次调用 processDetections 使用
     private var detectionResult: DetectionResult? = null
 
+    //TODO: emoji options to emojilist
     val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡", "😊", "😜", "🤠")
     private val emptyEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "⏳")
     private val addEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "➕")
@@ -61,9 +64,15 @@ class EmojiViewModel @Inject constructor(
     private val _emojiList = MutableLiveData<List<String>>()
     val emojiList: MutableLiveData<List<String>> = _emojiList
 
+    private val _iconHideState = MutableLiveData<Boolean>()
+    val iconHideState: MutableLiveData<Boolean> = _iconHideState
+
     init {
         preferenceRepository.emojiOptionsFlow.onEach {
             _emojiList.value = it
+        }.launchIn(viewModelScope)
+        preferenceRepository.isIconHide.onEach {
+            _iconHideState.value = it
         }.launchIn(viewModelScope)
     }
 
@@ -113,6 +122,25 @@ class EmojiViewModel @Inject constructor(
             preferenceRepository.updateEmojiOptions(emojiList)
         }
     }
+
+    fun toggleLauncherIcon(hideIcon: Boolean) {
+        viewModelScope.launch {
+            val packageManager = application.packageManager
+            val componentName = ComponentName(application, "${application.packageName}.MainActivityAlias")
+            val newState = if (hideIcon) {
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            } else {
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            }
+            packageManager.setComponentEnabledSetting(
+                componentName,
+                newState,
+                PackageManager.DONT_KILL_APP
+            )
+            preferenceRepository.updateIconState(hideIcon)
+        }
+    }
+
 
 
     private fun resetEmojiList() {
