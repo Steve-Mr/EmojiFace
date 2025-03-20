@@ -13,4 +13,5 @@
     <string name="choose_font">Choose font file</string>
     <string name="cancel">Cancel</string>
     <string name="ok">Ok</string>
+    <string name="done">Done</string>
 </resources>

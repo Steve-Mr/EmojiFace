@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Parcelable
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -18,22 +19,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material3.AlertDialog
@@ -57,6 +59,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
@@ -69,7 +72,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Alignment.Companion.Center
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -79,6 +84,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -127,8 +135,9 @@ fun EmojiCardSmall(emoji: String, onClick: () -> Unit) {
         modifier = Modifier
             .wrapContentHeight()
             .padding(horizontal = 4.dp)
-            .clickable { onClick }
+            .clickable { onClick() }
     ) {
+        Log.v("FACEMOJI", emoji)
         Text(
             text = emoji,
             fontSize = 20.sp,
@@ -162,13 +171,30 @@ fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String) {
 }
 
 @Composable
-fun PredefinedEmojiSettings(emojiOptions: List<String>, onEmojiClick: () -> Unit, onAddClick: () -> Unit) {
-    LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
+fun PredefinedEmojiSettings(
+    emojiOptions: List<String>,
+    onClick: () -> Unit
+) {
+    LazyRow(modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp)) {
         itemsIndexed(emojiOptions) { _, emoji ->
-            EmojiCardSmall(emoji = emoji) { onEmojiClick }
+            EmojiCardSmall(emoji = emoji) { onClick() }
         }
-        item { EmojiCardSmall(emoji = "➕") { onAddClick } }
     }
+}
+
+@Composable
+fun EditEmojiList(emojiOptions: List<String>, onClick: (String) -> Unit) {
+    var text by remember { mutableStateOf(emojiOptions.joinToString(separator = ""))}
+    OutlinedTextField(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        value = text,
+        trailingIcon = {
+            IconButton(onClick = { onClick(text) }) {
+                Icon(Icons.Outlined.Done, stringResource(R.string.done))
+            }
+        },
+        onValueChange = { text = it }
+    )
 }
 
 @Composable
@@ -195,7 +221,12 @@ fun HomeSwitchRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DropdownItem(modifier: Modifier, options: MutableList<String>, position: Int, onItemClicked: (Int) -> Unit) {
+fun DropdownItem(
+    modifier: Modifier,
+    options: MutableList<String>,
+    position: Int,
+    onItemClicked: (Int) -> Unit
+) {
     var expanded by remember {
         mutableStateOf(false)
     }
@@ -239,7 +270,12 @@ fun DropdownItem(modifier: Modifier, options: MutableList<String>, position: Int
 }
 
 @Composable
-fun DropdownRow(options: MutableList<String>, position: Int, onItemClicked: (Int) -> Unit, onAddClick: () -> Unit) {
+fun DropdownRow(
+    options: MutableList<String>,
+    position: Int,
+    onItemClicked: (Int) -> Unit,
+    onAddClick: () -> Unit
+) {
     Row(
         modifier =
         Modifier
@@ -248,9 +284,11 @@ fun DropdownRow(options: MutableList<String>, position: Int, onItemClicked: (Int
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        DropdownItem(modifier = Modifier.weight(1f), options = options,
-            position = position, onItemClicked = onItemClicked)
-        OutlinedIconButton(onClick = { onAddClick }) {
+        DropdownItem(
+            modifier = Modifier.weight(1f), options = options,
+            position = position, onItemClicked = onItemClicked
+        )
+        OutlinedIconButton(onClick = { onAddClick() }) {
             Icon(Icons.Outlined.AttachFile, stringResource(R.string.choose_font))
         }
     }
@@ -258,9 +296,10 @@ fun DropdownRow(options: MutableList<String>, position: Int, onItemClicked: (Int
 
 @Composable
 fun SettingsConfirmationRow(onCancel: () -> Unit, onConfirm: () -> Unit) {
-    Row (
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween){
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
         TextButton(onClick = onCancel) {
             Text(stringResource(R.string.cancel))
         }
@@ -280,6 +319,8 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     val emojiDetections by emojiViewModel.selectedEmojis.observeAsState(emptyList())
 
     val currentImage by emojiViewModel.currentImage.observeAsState()
+
+    val emojiList by emojiViewModel.emojiList.observeAsState()
 
     LaunchedEffect(Unit) {
         val intent = activity?.intent
@@ -305,6 +346,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                     )
                     context.startActivity(shareIntent)
                 }
+
                 is EmojiViewModel.ShareEvent.Error -> {
                     Toast.makeText(
                         context,
@@ -341,6 +383,8 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var showBottomSheet by remember { mutableStateOf(false) }
+
+    var isEditingEmojiList by remember { mutableStateOf(false) }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -399,23 +443,25 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                             .onGloballyPositioned { imageSize = it.size }
                             .then(
                                 if (isAddMode) Modifier.pointerInput(Unit) {
-                                detectTapGestures { offset ->
-                                    val baseBitmap = resultBitmap ?: currentImage
-                                    if (baseBitmap != null && imageSize.width > 0 && imageSize.height > 0) {
-                                        val scaleX = baseBitmap.width.toFloat() / imageSize.width
-                                        val scaleY = baseBitmap.height.toFloat() / imageSize.height
-                                        // 转换后的坐标就是原图坐标
-                                        val originalX = offset.x * scaleX
-                                        val originalY = offset.y * scaleY
-                                        tapPosition = Offset(originalX, originalY)
+                                    detectTapGestures { offset ->
+                                        val baseBitmap = resultBitmap ?: currentImage
+                                        if (baseBitmap != null && imageSize.width > 0 && imageSize.height > 0) {
+                                            val scaleX =
+                                                baseBitmap.width.toFloat() / imageSize.width
+                                            val scaleY =
+                                                baseBitmap.height.toFloat() / imageSize.height
+                                            // 转换后的坐标就是原图坐标
+                                            val originalX = offset.x * scaleX
+                                            val originalY = offset.y * scaleY
+                                            tapPosition = Offset(originalX, originalY)
+                                        }
+                                        newEmoji = emojiViewModel.emojiOptions.random()
+                                        newDiameter = 100f
+                                        showDialog = true
+                                        isAddMode = false
                                     }
-                                    newEmoji = emojiViewModel.emojiOptions.random()
-                                    newDiameter = 100f
-                                    showDialog = true
-                                    isAddMode = false
-                                }
-                            } else Modifier
-                        ),
+                                } else Modifier
+                            ),
                         bitmap = (resultBitmap ?: currentImage!!).asImageBitmap(),
                         description = "处理结果"
                     )
@@ -426,9 +472,19 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         ExtendedFloatingActionButton(
-                            onClick = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                            icon = { Icon(Icons.Outlined.AddPhotoAlternate,
-                                    contentDescription = stringResource(R.string.choose_image)) },
+                            onClick = {
+                                photoPicker.launch(
+                                    PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
+                            },
+                            icon = {
+                                Icon(
+                                    Icons.Outlined.AddPhotoAlternate,
+                                    contentDescription = stringResource(R.string.choose_image)
+                                )
+                            },
                             text = { Text(text = stringResource(R.string.choose_image)) },
                         )
                     }
@@ -436,11 +492,12 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
             }
             EmojiRow(emojiDetections = emojiDetections,
                 onEmojiClick = { index, detection ->
-                // 点击某个 EmojiCard，打开对话框，同时初始化输入值
-                selectedIndex = index
-                newEmoji = detection.emoji
-                newDiameter = detection.diameter
-                showDialog = true },
+                    // 点击某个 EmojiCard，打开对话框，同时初始化输入值
+                    selectedIndex = index
+                    newEmoji = detection.emoji
+                    newDiameter = detection.diameter
+                    showDialog = true
+                },
                 addClickable = (currentImage != null),
                 onAddClick = {
                     selectedIndex = -1
@@ -519,10 +576,19 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
             sheetState = sheetState
         ) {
 //            SettingsConfirmationRow(onCancel = {}, onConfirm = {})
-            PredefinedEmojiSettings(
-                emojiOptions = emojiViewModel.emojiOptions,
-                onEmojiClick = {},
-                onAddClick = {})
+            if (!isEditingEmojiList) {
+                PredefinedEmojiSettings(
+                    emojiOptions = emojiList!!,
+                    onClick = {
+                        isEditingEmojiList = true
+                    })
+            } else {
+                EditEmojiList(emojiList!!) {
+                    emojiViewModel.updateEmojiList(it)
+                    isEditingEmojiList = false
+                }
+            }
+
             HomeSwitchRow(state = false, onCheckedChange = {})
             DropdownRow(
                 options = mutableListOf("0", "1", "2"),

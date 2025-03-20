@@ -5,30 +5,29 @@ import ai.onnxruntime.OrtSession
 import ai.onnxruntime.extensions.OrtxPackage
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.net.Uri
-import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
-import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
@@ -37,11 +36,14 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.text.BreakIterator
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
 class EmojiViewModel @Inject constructor(
-    @ApplicationContext private val application: Context
+    @ApplicationContext private val application: Context,
+    private val preferenceRepository: PreferenceRepository
 ) : ViewModel() {
 
     private var ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
@@ -55,6 +57,15 @@ class EmojiViewModel @Inject constructor(
     val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡", "😊", "😜", "🤠")
     private val emptyEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "⏳")
     private val addEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "➕")
+
+    private val _emojiList = MutableLiveData<List<String>>()
+    val emojiList: MutableLiveData<List<String>> = _emojiList
+
+    init {
+        preferenceRepository.emojiOptionsFlow.onEach {
+            _emojiList.value = it
+        }.launchIn(viewModelScope)
+    }
 
     // LiveData 用于将处理后的 Bitmap 传递给 UI 层显示
     private val _outputBitmap = MutableLiveData<Bitmap?>()
@@ -88,6 +99,26 @@ class EmojiViewModel @Inject constructor(
         _currentImage.postValue(null)
         _outputBitmap.postValue(null)
         _selectedEmojis.postValue(emptyList())
+    }
+
+    fun updateEmojiList(emojis: String) {
+        Log.v("FACEMOJI", emojis)
+        if (emojis.isEmpty()) {
+            resetEmojiList()
+            return
+        }
+        viewModelScope.launch {
+            // 使用 splitEmoji 来确保正确拆分复合 emoji
+            val emojiList = splitEmoji(emojis)
+            preferenceRepository.updateEmojiOptions(emojiList)
+        }
+    }
+
+
+    private fun resetEmojiList() {
+        viewModelScope.launch {
+            preferenceRepository.updateEmojiOptions(PreferenceRepository.DEFAULT_EMOJI_LIST)
+        }
     }
 
     /**
@@ -332,6 +363,20 @@ class EmojiViewModel @Inject constructor(
         val outputStream = ByteArrayOutputStream()
         bitmap?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
         return ByteArrayInputStream(outputStream.toByteArray())
+    }
+
+    fun splitEmoji(text: String): List<String> {
+        val breaker = BreakIterator.getCharacterInstance(Locale.getDefault())
+        breaker.setText(text)
+        val result = mutableListOf<String>()
+        var start = breaker.first()
+        var end = breaker.next()
+        while (end != BreakIterator.DONE) {
+            result.add(text.substring(start, end))
+            start = end
+            end = breaker.next()
+        }
+        return result
     }
 }
 
