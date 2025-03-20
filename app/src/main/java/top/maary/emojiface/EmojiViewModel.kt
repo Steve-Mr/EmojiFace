@@ -56,11 +56,6 @@ class EmojiViewModel @Inject constructor(
     // 暂存检测结果，供后续多次调用 processDetections 使用
     private var detectionResult: DetectionResult? = null
 
-    //TODO: emoji options to emojilist
-    val emojiOptions = listOf("😂", "😎", "😆", "😋", "🫡", "😊", "😜", "🤠")
-    private val emptyEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "⏳")
-    private val addEmojiDetection = EmojiDetection(xCenter = 0f, yCenter = 0f, diameter = 0f, angle = 0f, emoji = "➕")
-
     private val _emojiList = MutableLiveData<List<String>>()
     val emojiList: MutableLiveData<List<String>> = _emojiList
 
@@ -242,6 +237,10 @@ class EmojiViewModel @Inject constructor(
         }
     }
 
+    fun getRandomEmoji(): String {
+        return _emojiList.value!!.random()
+    }
+
 
     /**
      * 对传入的 Bitmap 根据检测结果绘制 emoji，并构造 EmojiDetection 列表
@@ -255,7 +254,7 @@ class EmojiViewModel @Inject constructor(
         }
         val selectedEmojiList = mutableListOf<EmojiDetection>()
         val sortedDetections = detectionResult?.detections?.sortedBy { it[0] } ?: emptyList()
-        val remainingEmojiOptions = emojiOptions.toMutableList()
+        val remainingEmojiOptions = _emojiList.value!!.toMutableList()
 
         sortedDetections.forEach { detection ->
             // 转换坐标到原图尺寸
@@ -284,7 +283,7 @@ class EmojiViewModel @Inject constructor(
             ).toFloat()
 
             if (remainingEmojiOptions.isEmpty()) {
-                remainingEmojiOptions.addAll(emojiOptions)
+                remainingEmojiOptions.addAll(_emojiList.value)
             }
             val chosenEmoji = remainingEmojiOptions.random()
             remainingEmojiOptions.remove(chosenEmoji)
@@ -393,7 +392,7 @@ class EmojiViewModel @Inject constructor(
         return ByteArrayInputStream(outputStream.toByteArray())
     }
 
-    fun splitEmoji(text: String): List<String> {
+    private fun splitEmoji(text: String): List<String> {
         val breaker = BreakIterator.getCharacterInstance(Locale.getDefault())
         breaker.setText(text)
         val result = mutableListOf<String>()

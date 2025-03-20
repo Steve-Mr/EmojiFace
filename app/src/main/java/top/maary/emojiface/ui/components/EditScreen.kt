@@ -449,7 +449,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                                             val originalY = offset.y * scaleY
                                             tapPosition = Offset(originalX, originalY)
                                         }
-                                        newEmoji = emojiViewModel.emojiOptions.random()
+                                        newEmoji = emojiViewModel.getRandomEmoji()
                                         newDiameter = 100f
                                         showDialog = true
                                         isAddMode = false
@@ -532,7 +532,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                     )
                     // 预置 emoji 选择行
                     LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
-                        itemsIndexed(emojiViewModel.emojiOptions) { _, emoji ->
+                        itemsIndexed(emojiList!!) { _, emoji ->
                             EmojiCardSmall(emoji = emoji, onClick = { newEmoji = emoji })
                         }
                     }
