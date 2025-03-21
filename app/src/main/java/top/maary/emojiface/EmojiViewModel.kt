@@ -12,11 +12,15 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.core.content.FileProvider
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -32,15 +36,18 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import top.maary.emojiface.Constants.DEFAULT_FONT_MARKER
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.nio.file.Paths
 import java.text.BreakIterator
 import java.util.Locale
 import javax.inject.Inject
+import kotlin.random.Random
 
 @HiltViewModel
 class EmojiViewModel @Inject constructor(
@@ -62,12 +69,28 @@ class EmojiViewModel @Inject constructor(
     private val _iconHideState = MutableLiveData<Boolean>()
     val iconHideState: MutableLiveData<Boolean> = _iconHideState
 
+    private val _fontList = MutableLiveData<List<String>>()
+    val fontList: MutableLiveData<List<String>> = _fontList
+
+    private val _selectedFont = MutableLiveData<String>()
+    val selectedFont: MutableLiveData<String> = _selectedFont
+
+    private val _font = MutableLiveData<FontFamily>()
+    val font: MutableLiveData<FontFamily> = _font
+
     init {
         preferenceRepository.emojiOptionsFlow.onEach {
             _emojiList.value = it
         }.launchIn(viewModelScope)
         preferenceRepository.isIconHide.onEach {
             _iconHideState.value = it
+        }.launchIn(viewModelScope)
+        preferenceRepository.fontsList.onEach {
+            _fontList.value = it
+        }.launchIn(viewModelScope)
+        preferenceRepository.selectedFont.onEach {
+            _selectedFont.value = it
+            _font.value = this.loadFontFromPath(it)
         }.launchIn(viewModelScope)
     }
 
@@ -106,7 +129,6 @@ class EmojiViewModel @Inject constructor(
     }
 
     fun updateEmojiList(emojis: String) {
-        Log.v("FACEMOJI", emojis)
         if (emojis.isEmpty()) {
             resetEmojiList()
             return
@@ -241,6 +263,122 @@ class EmojiViewModel @Inject constructor(
         return _emojiList.value!!.random()
     }
 
+    fun copyFontToInternal(uri: Uri) {
+        viewModelScope.launch {
+            val contentResolver = application.contentResolver
+
+            // 从 URI 中获取文件名
+            val originalFileName = getFileNameFromUri(uri)
+
+            // 提取扩展名（包括点）
+            var extension = originalFileName.substringAfterLast('.', "")
+            val fileNameWithoutExtension = originalFileName.substringBeforeLast('.')
+            if (extension.isNotEmpty()) {
+                extension = ".$extension"
+            }
+
+            // 定义支持的字体扩展名
+            val supportedExtensions = listOf(".ttf", ".otf")
+            // 如果提取不到有效扩展名，则根据 MIME 类型推断；否则，若不支持则可选择默认扩展名或拒绝处理
+            if (extension.isEmpty() || extension !in supportedExtensions) {
+                extension = ".ttf"
+            }
+
+            val fileName = "${fileNameWithoutExtension}_${generateShortUniqueId()}$extension"
+            val destFile = File(application.filesDir, fileName)
+
+            contentResolver.openInputStream(uri)?.use { inputStream ->
+                FileOutputStream(destFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+
+            // 复制完成后，将新字体路径存入 Preference 或其他存储方案中
+            preferenceRepository.addFont(destFile.absolutePath)
+        }
+    }
+
+    fun removeFontFromInternal(filePath: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val file = File(filePath)
+                if (file.exists()) {
+                    if (filePath == _selectedFont.value) {
+                        preferenceRepository.setSelectedFont(DEFAULT_FONT_MARKER)
+                    }
+                    val deleted = file.delete()
+                    if (deleted) {
+                        preferenceRepository.removeFont(filePath)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun getFileNameFromUri(uri: Uri): String {
+        application.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex != -1) {
+                cursor.moveToFirst()
+                return cursor.getString(nameIndex)
+            }
+        }
+        return ""
+    }
+
+    private fun generateShortUniqueId(): String {
+        val timestamp = System.currentTimeMillis() / 1000 // 秒级时间戳
+        val random = Random.nextInt(1000) // 0-999 随机数
+        return String.format("%03d%03d", timestamp % 1000, random) // 格式化为 6 位数字
+    }
+
+    // 用户选择 Dropdown 中的字体时调用
+    fun onFontSelected(selectedIndex: Int) {
+        val font = fontList.value.getOrNull(selectedIndex) ?: DEFAULT_FONT_MARKER
+        viewModelScope.launch {
+            preferenceRepository.setSelectedFont(font)
+        }
+    }
+
+    private fun loadFontFromPath(filePath: String?): FontFamily? {
+        if (filePath.isNullOrEmpty()) return null
+        val file = File(filePath)
+        if (file.exists()) {
+            try {
+                return FontFamily(Font(file = file))
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return null
+            }
+        }
+        return null
+    }
+
+    fun getTypeFaceFromPath(filePath: String?): Typeface? {
+        if (filePath.isNullOrEmpty()) return null
+        val file = File(filePath)
+        if (file.exists()) {
+            try {
+                return Typeface.createFromFile(file)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return null
+            }
+        }
+        return null
+    }
+
+    fun getFileNameWithoutExtensionUsingPath(filePath: String): String {
+        val path = Paths.get(filePath)
+        val fileName = path.fileName.toString()
+        val dotIndex = fileName.lastIndexOf(".")
+        return if (dotIndex == -1) {
+            fileName
+        } else {
+            fileName.substring(0, dotIndex)
+        }
+    }
+
 
     /**
      * 对传入的 Bitmap 根据检测结果绘制 emoji，并构造 EmojiDetection 列表
@@ -291,7 +429,9 @@ class EmojiViewModel @Inject constructor(
             val emojiDetection = EmojiDetection(xCenter, yCenter, diameter, angle, chosenEmoji)
             selectedEmojiList.add(emojiDetection)
 
-            drawEmoji(canvas, xCenter, yCenter, diameter, angle, chosenEmoji, emojiPaint)
+            val typeface = getTypeFaceFromPath(_selectedFont.value)
+
+            drawEmoji(canvas, xCenter, yCenter, diameter, angle, chosenEmoji, emojiPaint, typeface)
         }
 
         _selectedEmojis.postValue(selectedEmojiList)
@@ -335,8 +475,10 @@ class EmojiViewModel @Inject constructor(
             color = Color.BLACK
             textAlign = Paint.Align.CENTER
         }
+        val typeface = getTypeFaceFromPath(_selectedFont.value)
+
         emojiDetections.forEach { ed ->
-            drawEmoji(canvas, ed.xCenter, ed.yCenter, ed.diameter, ed.angle, ed.emoji, emojiPaint)
+            drawEmoji(canvas, ed.xCenter, ed.yCenter, ed.diameter, ed.angle, ed.emoji, emojiPaint, typeface)
         }
         return mutableBitmap
     }
@@ -355,9 +497,11 @@ class EmojiViewModel @Inject constructor(
         diameter: Float,
         rotationAngle: Float,
         emoji: String,
-        paint: Paint
+        paint: Paint,
+        typeface: Typeface?
     ) {
         paint.textSize = diameter
+        paint.setTypeface(typeface)
         canvas.save()
         canvas.rotate(rotationAngle, centerX, centerY)
         canvas.drawText(emoji, centerX, centerY - (paint.ascent() + paint.descent()) / 2, paint)

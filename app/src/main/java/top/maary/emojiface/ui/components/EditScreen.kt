@@ -2,6 +2,7 @@ package top.maary.emojiface.ui.components
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Parcelable
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Done
+import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material3.AlertDialog
@@ -79,11 +81,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import top.maary.emojiface.Constants.DEFAULT_FONT_MARKER
 import top.maary.emojiface.EmojiDetection
 import top.maary.emojiface.EmojiViewModel
 import top.maary.emojiface.R
@@ -110,30 +115,30 @@ fun SettingsButton(onClick: () -> Unit) {
 }
 
 @Composable
-fun EmojiCard(emoji: String, onClick: () -> Unit, clickable: Boolean = true) {
+fun EmojiCard(emoji: String, onClick: () -> Unit, clickable: Boolean = true, fontFamily: FontFamily? = null) {
     Card(
         modifier = Modifier
             .wrapContentHeight()
             .padding(horizontal = 8.dp, vertical = 16.dp)
             .clickable(enabled = clickable) { onClick() }  // 添加点击事件
     ) {
-        Text(text = emoji, fontSize = 60.sp)
+        Text(text = emoji, fontSize = 60.sp, fontFamily = fontFamily)
     }
 }
 
 @Composable
-fun EmojiCardSmall(emoji: String, onClick: () -> Unit) {
+fun EmojiCardSmall(emoji: String, onClick: () -> Unit, fontFamily: FontFamily? = null) {
     Card(
         modifier = Modifier
             .wrapContentHeight()
             .padding(horizontal = 4.dp)
             .clickable { onClick() }
     ) {
-        Log.v("FACEMOJI", emoji)
         Text(
             text = emoji,
             fontSize = 20.sp,
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier.padding(8.dp),
+            fontFamily = fontFamily
         )
     }
 }
@@ -142,16 +147,17 @@ fun EmojiCardSmall(emoji: String, onClick: () -> Unit) {
 @Composable
 fun EmojiRow(
     emojiDetections: List<EmojiDetection>,
+    fontFamily: FontFamily?,
     onEmojiClick: (Int, EmojiDetection) -> Unit,
     onAddClick: () -> Unit,
     addClickable: Boolean
 ) {
     LazyRow {
         itemsIndexed(emojiDetections) { index, item ->
-            EmojiCard(emoji = item.emoji, onClick = { onEmojiClick(index, item) })
+            EmojiCard(emoji = item.emoji, onClick = { onEmojiClick(index, item) }, fontFamily = fontFamily)
         }
         item {
-            EmojiCard(emoji = "➕", onClick = { onAddClick() }, clickable = addClickable)
+            EmojiCard(emoji = "➕", onClick = { onAddClick() }, clickable = addClickable, fontFamily = fontFamily)
         }
     }
 }
@@ -165,17 +171,18 @@ fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String) {
 @Composable
 fun PredefinedEmojiSettings(
     emojiOptions: List<String>,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    fontFamily: FontFamily? = null
 ) {
     LazyRow(modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp)) {
         itemsIndexed(emojiOptions) { _, emoji ->
-            EmojiCardSmall(emoji = emoji) { onClick() }
+            EmojiCardSmall(emoji = emoji, onClick = onClick, fontFamily = fontFamily)
         }
     }
 }
 
 @Composable
-fun EditEmojiList(emojiOptions: List<String>, onClick: (String) -> Unit) {
+fun EditEmojiList(emojiOptions: List<String>, onClick: (String) -> Unit, fontFamily: FontFamily? = null) {
     var text by remember { mutableStateOf(emojiOptions.joinToString(separator = ""))}
     OutlinedTextField(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -185,7 +192,8 @@ fun EditEmojiList(emojiOptions: List<String>, onClick: (String) -> Unit) {
                 Icon(Icons.Outlined.Done, stringResource(R.string.done))
             }
         },
-        onValueChange = { text = it }
+        onValueChange = { text = it },
+        textStyle = TextStyle(fontFamily = fontFamily)
     )
 }
 
@@ -217,7 +225,8 @@ fun DropdownItem(
     modifier: Modifier,
     options: MutableList<String>,
     position: Int,
-    onItemClicked: (Int) -> Unit
+    onItemClicked: (Int) -> Unit,
+    onItemActionClicked: (Int) -> Unit
 ) {
     var expanded by remember {
         mutableStateOf(false)
@@ -228,17 +237,24 @@ fun DropdownItem(
             modifier =
             Modifier.padding(8.dp),
             expanded = expanded,
-            onExpandedChange = { expanded = it },
+            onExpandedChange = {
+                if (options.size > 1) {
+                    expanded = it
+                } },
         ) {
             OutlinedTextField(
                 modifier = Modifier
                     .wrapContentWidth()
                     .menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                value = options[position],//text,
+                value = if (options[position] == DEFAULT_FONT_MARKER) stringResource(R.string.default_font) else options[position],
                 onValueChange = {},
                 readOnly = true,
                 singleLine = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                trailingIcon = {
+                    if (options.size > 1) {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    }
+                },
             )
             ExposedDropdownMenu(
                 modifier = Modifier.wrapContentWidth(),
@@ -254,6 +270,13 @@ fun DropdownItem(
                             onItemClicked(options.indexOf(option))
                         },
                         contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                        trailingIcon = {
+                            if (options.indexOf(option) != 0) {
+                                IconButton(onClick = { onItemActionClicked(options.indexOf(option)) }) {
+                                    Icon(Icons.Outlined.RemoveCircleOutline, stringResource(R.string.remove_font))
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -266,7 +289,8 @@ fun DropdownRow(
     options: MutableList<String>,
     position: Int,
     onItemClicked: (Int) -> Unit,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onRemoveClick: (Int) -> Unit
 ) {
     Row(
         modifier =
@@ -278,7 +302,7 @@ fun DropdownRow(
     ) {
         DropdownItem(
             modifier = Modifier.weight(1f), options = options,
-            position = position, onItemClicked = onItemClicked
+            position = position, onItemClicked = onItemClicked, onItemActionClicked = onRemoveClick
         )
         OutlinedIconButton(onClick = { onAddClick() }) {
             Icon(Icons.Outlined.AttachFile, stringResource(R.string.choose_font))
@@ -359,6 +383,14 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
         }
     }
 
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            emojiViewModel.copyFontToInternal(it)
+        }
+    }
+
     // 控制弹窗显示的状态
     var showDialog by remember { mutableStateOf(false) }
     var selectedIndex by remember { mutableStateOf(-1) }
@@ -384,6 +416,14 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
 
     val hideAppIcon by emojiViewModel.iconHideState.observeAsState(false)
 
+    val fontList by emojiViewModel.fontList.observeAsState()
+    val selectedFont by emojiViewModel.selectedFont.observeAsState()
+
+    Log.v("FACEMOJI", "selected: ${selectedFont}")
+    Log.v("FACEMOJI", "selected: ${fontList}")
+
+//    val fontFamily by remember { mutableStateOf(emojiViewModel.loadFontFromPath(selectedFont)) }
+    val fontFamily by emojiViewModel.font.observeAsState()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 
@@ -496,7 +536,8 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 onAddClick = {
                     selectedIndex = -1
                     isAddMode = true
-                })
+                },
+                fontFamily = fontFamily)
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
@@ -528,12 +569,13 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                     OutlinedTextField(
                         value = newEmoji,
                         onValueChange = { newEmoji = it },
-                        label = { Text("新 Emoji") }
+                        label = { Text("新 Emoji")},
+                        textStyle = TextStyle(fontFamily = fontFamily)
                     )
                     // 预置 emoji 选择行
                     LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
                         itemsIndexed(emojiList!!) { _, emoji ->
-                            EmojiCardSmall(emoji = emoji, onClick = { newEmoji = emoji })
+                            EmojiCardSmall(emoji = emoji, onClick = { newEmoji = emoji }, fontFamily = fontFamily)
                         }
                     }
                     Slider(
@@ -569,28 +611,33 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState
         ) {
-//            SettingsConfirmationRow(onCancel = {}, onConfirm = {})
             if (!isEditingEmojiList) {
                 PredefinedEmojiSettings(
                     emojiOptions = emojiList!!,
                     onClick = {
                         isEditingEmojiList = true
-                    })
+                    },
+                    fontFamily = fontFamily)
             } else {
-                EditEmojiList(emojiList!!) {
-                    emojiViewModel.updateEmojiList(it)
-                    isEditingEmojiList = false
-                }
+                EditEmojiList(
+                    emojiOptions = emojiList!!,
+                    onClick = {
+                        emojiViewModel.updateEmojiList(it)
+                        isEditingEmojiList = false
+                    },
+                    fontFamily = fontFamily)
             }
 
             HomeSwitchRow(state = hideAppIcon, onCheckedChange = { isChecked ->
                 emojiViewModel.toggleLauncherIcon(isChecked)
             })
             DropdownRow(
-                options = mutableListOf("0", "1", "2"),
-                position = 0,
-                onItemClicked = {},
-                onAddClick = {})
+                options = (fontList!!.map { font ->
+                    emojiViewModel.getFileNameWithoutExtensionUsingPath(font) }).toMutableList(),
+                position = fontList!!.indexOf(selectedFont),
+                onItemClicked = { emojiViewModel.onFontSelected(it) },
+                onAddClick = { filePicker.launch(arrayOf("application/octet-stream", "font/*")) },
+                onRemoveClick = { emojiViewModel.removeFontFromInternal(fontList!![it])})
         }
     }
 }

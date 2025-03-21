@@ -14,4 +14,6 @@
     <string name="cancel">Cancel</string>
     <string name="ok">Ok</string>
     <string name="done">Done</string>
+    <string name="default_font">Default</string>
+    <string name="remove_font">Remove this font</string>
 </resources>
