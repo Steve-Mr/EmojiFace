@@ -14,13 +14,12 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.EmojiFace"
         tools:targetApi="31">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
-            android:launchMode="singleInstance"
             android:theme="@style/Theme.EmojiFace">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -33,11 +32,9 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.EmojiFace"
-            android:launchMode="singleInstance"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
