@@ -337,6 +337,7 @@ class EmojiViewModel @Inject constructor(
         val font = fontList.value?.getOrNull(selectedIndex) ?: DEFAULT_FONT_MARKER
         viewModelScope.launch {
             preferenceRepository.setSelectedFont(font)
+            refreshResult()
         }
     }
 
@@ -436,6 +437,22 @@ class EmojiViewModel @Inject constructor(
 
         _selectedEmojis.postValue(selectedEmojiList)
         return mutableBitmap
+    }
+
+    private fun refreshResult() {
+        val mutableBitmap = base.copy(Bitmap.Config.ARGB_8888, true)
+        val canvas = Canvas(mutableBitmap)
+        val typeface = getTypeFaceFromPath(_selectedFont.value)
+        val emojiPaint = Paint().apply {
+            color = Color.BLACK
+            textAlign = Paint.Align.CENTER
+        }
+        _selectedEmojis.value?.forEach {
+            drawEmoji(
+                canvas, it.xCenter, it.yCenter, it.diameter, it.angle, it.emoji, emojiPaint, typeface
+            )
+        }
+        _outputBitmap.value = mutableBitmap
     }
 
     /**
