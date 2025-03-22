@@ -14,3 +14,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+key.properties
+key.base64
