@@ -230,7 +230,9 @@ fun DropdownItem(
                 options.forEach { option ->
                     DropdownMenuItem(
                         modifier = Modifier.wrapContentWidth(),
-                        text = { Text(option) },
+                        text = {
+                            if (option == DEFAULT_FONT_MARKER) { Text(stringResource(R.string.default_font)) }
+                            else { Text(option) } },
                         onClick = {
                             expanded = false
                             onItemClicked(options.indexOf(option))
