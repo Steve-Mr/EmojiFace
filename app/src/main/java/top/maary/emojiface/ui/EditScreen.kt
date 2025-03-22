@@ -303,23 +303,29 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
 
                 }
             }
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ShareButton(backgroundColor = MaterialTheme.colorScheme.secondary) {
-                    // 获取当前显示的 Bitmap
-                    val bitmap = resultBitmap?.asImageBitmap()?.asAndroidBitmap()
-                    bitmap?.let { emojiViewModel.shareImage(it) }
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (resultBitmap != null) {
+                        ShareButton(backgroundColor = MaterialTheme.colorScheme.secondary) {
+                            // 获取当前显示的 Bitmap
+                            val bitmap = resultBitmap?.asImageBitmap()?.asAndroidBitmap()
+                            bitmap?.let { emojiViewModel.shareImage(it) }
+                        }
+                        SaveButton(backgroundColor = MaterialTheme.colorScheme.secondary) {
+                            val bitmap = resultBitmap?.asImageBitmap()?.asAndroidBitmap()
+                            bitmap?.let { emojiViewModel.saveImageToGallery(it) }
+                        }
+                    }
+
                 }
                 SettingsButton(backgroundColor = MaterialTheme.colorScheme.tertiary) {
                     showBottomSheet = true
                 }
-                SaveButton(backgroundColor = MaterialTheme.colorScheme.secondary) {
-                    val bitmap = resultBitmap?.asImageBitmap()?.asAndroidBitmap()
-                    bitmap?.let { emojiViewModel.saveImageToGallery(it) }
-                }
             }
+
             Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
         }
     }
