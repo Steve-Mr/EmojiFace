@@ -17,7 +17,6 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -47,6 +46,7 @@ import java.nio.file.Paths
 import java.text.BreakIterator
 import java.util.Locale
 import javax.inject.Inject
+import kotlin.math.hypot
 import kotlin.random.Random
 
 @HiltViewModel
@@ -329,12 +329,12 @@ class EmojiViewModel @Inject constructor(
     private fun generateShortUniqueId(): String {
         val timestamp = System.currentTimeMillis() / 1000 // 秒级时间戳
         val random = Random.nextInt(1000) // 0-999 随机数
-        return String.format("%03d%03d", timestamp % 1000, random) // 格式化为 6 位数字
+        return String.format(Locale.getDefault().toString(), timestamp % 1000, random) // 格式化为 6 位数字
     }
 
     // 用户选择 Dropdown 中的字体时调用
     fun onFontSelected(selectedIndex: Int) {
-        val font = fontList.value.getOrNull(selectedIndex) ?: DEFAULT_FONT_MARKER
+        val font = fontList.value?.getOrNull(selectedIndex) ?: DEFAULT_FONT_MARKER
         viewModelScope.launch {
             preferenceRepository.setSelectedFont(font)
         }
@@ -354,7 +354,7 @@ class EmojiViewModel @Inject constructor(
         return null
     }
 
-    fun getTypeFaceFromPath(filePath: String?): Typeface? {
+    private fun getTypeFaceFromPath(filePath: String?): Typeface? {
         if (filePath.isNullOrEmpty()) return null
         val file = File(filePath)
         if (file.exists()) {
@@ -400,7 +400,7 @@ class EmojiViewModel @Inject constructor(
             val yCenter = detection[1] * scaleFactorY
             val width = detection[2] * scaleFactorX
             val height = detection[3] * scaleFactorY
-            val diagonal = Math.hypot(width.toDouble(), height.toDouble()).toFloat()
+            val diagonal = hypot(width.toDouble(), height.toDouble()).toFloat()
             val diffRatio = kotlin.math.abs(width - height) / kotlin.math.max(width, height)
             val diameter = width * (1 - diffRatio) + diagonal * diffRatio
 
@@ -421,7 +421,7 @@ class EmojiViewModel @Inject constructor(
             ).toFloat()
 
             if (remainingEmojiOptions.isEmpty()) {
-                remainingEmojiOptions.addAll(_emojiList.value)
+                _emojiList.value?.let { remainingEmojiOptions.addAll(it) }
             }
             val chosenEmoji = remainingEmojiOptions.random()
             remainingEmojiOptions.remove(chosenEmoji)
@@ -442,10 +442,15 @@ class EmojiViewModel @Inject constructor(
      * 当用户修改某个 emoji 时调用：
      * 更新对应的 EmojiDetection 对象，并重新绘制图片
      */
-    fun updateEmoji(index: Int, newEmoji: String, newDiameter: Float) {
+    fun updateEmoji(index: Int, newEmoji: String, newDiameter: Float, newAngle: Float) {
         val currentList = _selectedEmojis.value?.toMutableList() ?: return
-        val updated = currentList[index].copy(emoji = newEmoji, diameter = newDiameter)
-        currentList[index] = updated
+        if (newEmoji == "") {
+            currentList.removeAt(index)
+        } else {
+            val updated =
+                currentList[index].copy(emoji = newEmoji, diameter = newDiameter, angle = newAngle)
+            currentList[index] = updated
+        }
         _selectedEmojis.postValue(currentList)
         // 根据更新后的 emoji 列表，重新绘制图片
         // 这里假设你保留了原始输入图像 inputBitmap 作为基础（可以在 ViewModel 中存储）
@@ -454,10 +459,10 @@ class EmojiViewModel @Inject constructor(
         _outputBitmap.postValue(newBitmap)
     }
 
-    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float) {
+    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float) {
         val currentList = _selectedEmojis.value?.toMutableList() ?: mutableListOf()
         // 默认角度设置为 0
-        val newDetection = EmojiDetection(xCenter = x, yCenter = y, diameter = diameter, angle = 0f, emoji = emoji)
+        val newDetection = EmojiDetection(xCenter = x, yCenter = y, diameter = diameter, angle = angle, emoji = emoji)
         currentList.add(newDetection)
         _selectedEmojis.postValue(currentList)
         val newBitmap = redrawBitmapWithEmojis(base, currentList)

@@ -16,4 +16,9 @@
     <string name="done">Done</string>
     <string name="default_font">Default</string>
     <string name="remove_font">Remove this font</string>
+    <string name="process_result">Precess result</string>
+    <string name="change_emoji">Change emoji</string>
+    <string name="new_emoji">New emoji</string>
+    <string name="emoji_size">Emoji size</string>
+    <string name="emoji_angle">Emoji angle</string>
 </resources>
