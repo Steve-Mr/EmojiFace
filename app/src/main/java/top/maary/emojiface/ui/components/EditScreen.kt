@@ -2,7 +2,6 @@ package top.maary.emojiface.ui.components
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Parcelable
@@ -28,6 +27,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
@@ -72,7 +72,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -87,6 +89,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.lifecycle.viewmodel.compose.viewModel
 import top.maary.emojiface.Constants.DEFAULT_FONT_MARKER
 import top.maary.emojiface.EmojiDetection
@@ -163,9 +166,24 @@ fun EmojiRow(
 }
 
 
+//@Composable
+//fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String) {
+//    Image(bitmap = bitmap, contentDescription = description, modifier = modifier.padding(8.dp))
+//}
+//todo 点击位置
 @Composable
-fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String) {
-    Image(bitmap = bitmap, contentDescription = description, modifier = modifier.padding(8.dp))
+fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String, ratio: Float, animate: Boolean) {
+    GlowingCard (
+        modifier = modifier,
+        ratio = ratio,
+        animate = animate,
+        cornersRadius = 16.dp,
+        content = {
+            Image(bitmap = bitmap,
+                contentDescription = description,
+                modifier = Modifier.fillMaxSize().padding(horizontal = ratio*8.dp, vertical = 8.dp).clip(RoundedCornerShape(16.dp)))
+        }
+    )
 }
 
 @Composable
@@ -374,6 +392,12 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
         }
     }
 
+    var animationState by remember { mutableStateOf(false) }
+
+    LaunchedEffect(resultBitmap) {
+        animationState = resultBitmap == null
+    }
+
     // Photo Picker 相关
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -497,14 +521,11 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                                 } else Modifier
                             ),
                         bitmap = (resultBitmap ?: currentImage!!).asImageBitmap(),
-                        description = "处理结果"
+                        description = "处理结果",
+                        animate = animationState,
+                        ratio = currentImage!!.width.toFloat() / currentImage!!.height.toFloat()
                     )
                 } else {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
                         ExtendedFloatingActionButton(
                             onClick = {
                                 photoPicker.launch(
@@ -522,7 +543,6 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                             text = { Text(text = stringResource(R.string.choose_image)) },
                         )
                     }
-                }
             }
             EmojiRow(emojiDetections = emojiDetections,
                 onEmojiClick = { index, detection ->
@@ -536,6 +556,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 onAddClick = {
                     selectedIndex = -1
                     isAddMode = true
+                    animationState = true
                 },
                 fontFamily = fontFamily)
             Row(
@@ -595,12 +616,16 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                     }
                     showDialog = false
                     selectedIndex = -1
+                    animationState = false
                 }) {
                     Text("确定")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(onClick = {
+                    showDialog = false
+                    animationState = false
+                }) {
                     Text("取消")
                 }
             }
