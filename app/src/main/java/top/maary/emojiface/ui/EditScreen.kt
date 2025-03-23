@@ -410,7 +410,9 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     }
     if (showBottomSheet) {
         ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
+            onDismissRequest = {
+                isEditingEmojiList = false
+                showBottomSheet = false },
             sheetState = sheetState
         ) {
             if (!isEditingEmojiList) {
