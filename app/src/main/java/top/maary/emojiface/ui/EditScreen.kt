@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Parcelable
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,11 +15,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -166,6 +165,11 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
     // 新增状态：是否处于添加模式，以及记录点击坐标
     var isAddMode by remember { mutableStateOf(false) }
     var tapPosition by remember { mutableStateOf(Offset.Zero) }
+
+    BackHandler(isAddMode) {
+        isAddMode = false
+        animationState = false
+    }
 
     // 记住 Bottom Sheet 状态
     val sheetState = rememberModalBottomSheetState()
@@ -325,8 +329,6 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                     showBottomSheet = true
                 }
             }
-
-            Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
         }
     }
 
