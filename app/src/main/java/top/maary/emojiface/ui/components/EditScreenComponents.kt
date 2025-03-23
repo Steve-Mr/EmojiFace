@@ -210,7 +210,7 @@ fun DropdownItem(
         ) {
             OutlinedTextField(
                 modifier = Modifier
-                    .wrapContentWidth()
+                    .fillMaxWidth()
                     .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                 value = if (options[position] == DEFAULT_FONT_MARKER) stringResource(R.string.default_font) else options[position],
                 onValueChange = {},
@@ -229,7 +229,7 @@ fun DropdownItem(
             ) {
                 options.forEach { option ->
                     DropdownMenuItem(
-                        modifier = Modifier.wrapContentWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                         text = {
                             if (option == DEFAULT_FONT_MARKER) { Text(stringResource(R.string.default_font)) }
                             else { Text(option) } },
