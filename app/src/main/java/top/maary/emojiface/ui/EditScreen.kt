@@ -66,6 +66,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import top.maary.emojiface.EmojiViewModel
 import top.maary.emojiface.R
@@ -341,7 +342,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                 // Calculate dynamic range for the slider based on imageSize
                 val maxDiameter = remember(imageSize) {
                     if (imageSize.width > 0 && imageSize.height > 0) {
-                        minOf(resultBitmap!!.width, resultBitmap!!.height) / 5f // Adjust the divisor as needed
+                        minOf(resultBitmap!!.width, resultBitmap!!.height) / 3f // Adjust the divisor as needed
                     } else {
                         500f // Default max value if image size is not yet available
                     }
@@ -351,7 +352,7 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel()) {
                         value = newEmoji,
                         onValueChange = { newEmoji = it },
                         label = { Text(stringResource(R.string.new_emoji))},
-                        textStyle = TextStyle(fontFamily = fontFamily)
+                        textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
                     )
                     // 预置 emoji 选择行
                     LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {

@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,7 +33,7 @@ fun GlowingCard(
     content: @Composable BoxScope.() -> Unit
 ) {
     // 创建无限动画控制 SweepGradient 的旋转角度
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "Transition")
     val rotationAngle by if (animate) {
         infiniteTransition.animateFloat(
             initialValue = 0f,
@@ -41,10 +41,10 @@ fun GlowingCard(
             animationSpec = infiniteRepeatable(
                 animation = tween(durationMillis = 3000, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart
-            )
+            ), label = "animateFloat"
         )
     } else {
-        remember { mutableStateOf(0f) }
+        remember { mutableFloatStateOf(0f) }
     }
 
 
@@ -60,17 +60,9 @@ fun GlowingCard(
 
                     // 定义一组渐变颜色（最后一个颜色和第一个保持一致，使渐变闭合）
                     val gradientColors = listOf(
-//                    Color.Red,
-//                    Color.Magenta,
-//                    Color.Blue,
-//                    Color.Cyan,
-//                    Color.Green,
-//                    Color.Yellow,
-//                    Color.Red,
                         Color(parseColor("#fb9de8")),
                         Color(parseColor("#9ea4fd")),
                         Color(parseColor("#fb9de8")),
-
                         )
 
                     // 构造旋转矩阵

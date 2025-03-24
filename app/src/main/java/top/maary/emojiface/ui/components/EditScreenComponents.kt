@@ -7,9 +7,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
@@ -105,7 +109,7 @@ fun EmojiCardSmall(emoji: String, onClick: () -> Unit, fontFamily: FontFamily? =
     Card(
         modifier = Modifier
             .wrapContentHeight()
-            .padding(horizontal = 4.dp)
+            .padding(end = 8.dp)
             .clickable { onClick() }
     ) {
         Text(
@@ -140,10 +144,12 @@ fun PredefinedEmojiSettings(
     onClick: () -> Unit,
     fontFamily: FontFamily? = null
 ) {
-    LazyRow(modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp)) {
+    LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
+        item { Spacer(modifier = Modifier.height(8.dp).width(16.dp)) }
         itemsIndexed(emojiOptions) { _, emoji ->
             EmojiCardSmall(emoji = emoji, onClick = onClick, fontFamily = fontFamily)
         }
+        item { Spacer(modifier = Modifier.size(8.dp)) }
     }
 }
 
@@ -151,7 +157,7 @@ fun PredefinedEmojiSettings(
 fun EditEmojiList(emojiOptions: List<String>, onClick: (String) -> Unit, fontFamily: FontFamily? = null) {
     var text by remember { mutableStateOf(emojiOptions.joinToString(separator = "")) }
     OutlinedTextField(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         value = text,
         trailingIcon = {
             IconButton(onClick = { onClick(text) }) {
@@ -159,7 +165,7 @@ fun EditEmojiList(emojiOptions: List<String>, onClick: (String) -> Unit, fontFam
             }
         },
         onValueChange = { text = it },
-        textStyle = TextStyle(fontFamily = fontFamily)
+        textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
     )
 }
 
@@ -176,7 +182,7 @@ fun HomeSwitchRow(
                     onCheckedChange(!state) // 当点击 SwitchRow 时触发点击事件
                 }
             }
-            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -200,8 +206,7 @@ fun DropdownItem(
 
     Box(modifier = modifier) {
         ExposedDropdownMenuBox(
-            modifier =
-            Modifier.padding(8.dp),
+            modifier = Modifier.padding(8.dp),
             expanded = expanded,
             onExpandedChange = {
                 if (options.size > 1) {
@@ -264,7 +269,7 @@ fun DropdownRow(
         modifier =
         Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
+            .padding(8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -272,7 +277,7 @@ fun DropdownRow(
             modifier = Modifier.weight(1f), options = options,
             position = position, onItemClicked = onItemClicked, onItemActionClicked = onRemoveClick
         )
-        OutlinedIconButton(onClick = { onAddClick() }) {
+        OutlinedIconButton(onClick = { onAddClick() }, modifier = Modifier.padding(8.dp)) {
             Icon(Icons.Outlined.AttachFile, stringResource(R.string.choose_font))
         }
     }
@@ -292,6 +297,7 @@ fun SliderWithCaption(
         Column {
             Text(text = description, modifier = Modifier.padding(start = 8.dp))
             Slider(
+                modifier = Modifier.padding(horizontal = 8.dp),
                 value = value,
                 onValueChange = onValueChange,
                 valueRange = minRange..maxRange
