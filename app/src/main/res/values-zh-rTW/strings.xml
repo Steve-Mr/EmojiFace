@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">FaceMoji</string>
+    <string name="share">分享</string>
+    <string name="save">儲存</string>
+    <string name="clear_photo">清除目前圖片</string>
+    <string name="exit">離開</string>
+    <string name="choose_image">選擇圖片</string>
+    <string name="save_success">已儲存</string>
+    <string name="save_failed">儲存失敗：%s</string>
+    <string name="share_failed">分享失敗：%s</string>
+    <string name="settings">設定</string>
+    <string name="hide_home">隱藏應用程式圖示</string>
+    <string name="choose_font">選擇字型檔案</string>
+    <string name="cancel">取消</string>
+    <string name="ok">確定</string>
+    <string name="done">完成</string>
+    <string name="default_font">預設</string>
+    <string name="remove_font">移除此字型</string>
+    <string name="process_result">處理結果</string>
+    <string name="change_emoji">變更表情</string>
+    <string name="new_emoji">新增表情</string>
+    <string name="emoji_size">表情大小</string>
+    <string name="emoji_angle">旋轉角度</string>
+</resources>

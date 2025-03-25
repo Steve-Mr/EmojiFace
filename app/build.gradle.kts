@@ -29,8 +29,8 @@ android {
         applicationId = "top.maary.emojiface"
         minSdk = 30
         targetSdk = 35
-        versionCode = 1
-        versionName = "2025.03.24-02"
+        versionCode = 2
+        versionName = "2025.03.25-01"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
