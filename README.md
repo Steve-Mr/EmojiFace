@@ -5,6 +5,12 @@
 |![alt text](assets/README/Screenshot_20250322-151002_FaceMoji.png)|![alt text](assets/README/Screenshot_20250322-150958_FaceMoji.png)|
 |:-:|:-:|
 
+[<img src="assets/README/get-it-on-github.png"
+    alt="Get it on GitHub"
+    height="80">](https://github.com/Steve-Mr/EmojiFace/releases/latest)
+[<img src="assets/README/get-it-on-obtainium.png"
+    alt="Get it on Obtainium"
+    height="80">](http://obtainium-redirect.maary.top/?r=obtainium://add/https://github.com/Steve-Mr/EmojiFace)
 
 ## 功能
 
