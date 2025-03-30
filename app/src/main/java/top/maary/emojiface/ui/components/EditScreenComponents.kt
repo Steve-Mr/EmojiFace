@@ -56,6 +56,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -81,6 +82,23 @@ fun SaveButton(backgroundColor: Color, onClick: () -> Unit) {
 }
 
 @Composable
+fun ShareButtonCompact(backgroundColor: Color, onClick: () -> Unit) {
+    FloatingActionButton(onClick = onClick,
+        containerColor = backgroundColor,
+        modifier = Modifier.padding(8.dp)) {
+        Icon(Icons.Default.Share, stringResource(R.string.share)) }
+}
+
+@Composable
+fun SaveButtonCompact(backgroundColor: Color, onClick: () -> Unit) {
+    FloatingActionButton(onClick = onClick,
+        containerColor = backgroundColor,
+        modifier = Modifier.padding(8.dp)){
+         Icon(Icons.Rounded.SaveAlt, stringResource(R.string.save))
+    }
+}
+
+@Composable
 fun SettingsButton(backgroundColor: Color, onClick: () -> Unit) {
     FloatingActionButton(onClick = onClick,
         containerColor = backgroundColor,
@@ -90,11 +108,11 @@ fun SettingsButton(backgroundColor: Color, onClick: () -> Unit) {
 }
 
 @Composable
-fun EmojiCard(emoji: String, onClick: () -> Unit, clickable: Boolean = true, fontFamily: FontFamily? = null, containerColor: Color) {
+fun EmojiCard(emoji: String, onClick: () -> Unit, clickable: Boolean = true, fontFamily: FontFamily? = null, containerColor: Color, hPadding: Dp = 8.dp, vPadding: Dp = 16.dp) {
     Card(
         modifier = Modifier
             .wrapContentHeight()
-            .padding(horizontal = 8.dp, vertical = 16.dp)
+            .padding(horizontal = hPadding, vertical = vPadding)
             .clickable(enabled = clickable) { onClick() },  // 添加点击事件
         colors = CardDefaults.cardColors(
             containerColor = containerColor
