@@ -1,4 +1,4 @@
-package top.maary.emojiface.app
+package top.maary.emojiface
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp

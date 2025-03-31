@@ -179,7 +179,7 @@ fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions) {
                     modifier = Modifier
                         .weight(1f) // Takes 1/3 of the width
                         .fillMaxHeight()
-                        .padding(start = 4.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), // Padding around card
+                        .padding(end = 8.dp), // Padding around card
                     colors = CardDefaults.cardColors( // Consistent card color
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     )
@@ -191,8 +191,7 @@ fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions) {
                         // --- Emoji Grid ---
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
-                            modifier = Modifier.weight(1f), // Grid takes available space
-                            contentPadding = PaddingValues(8.dp) // Padding inside the grid
+                            modifier = Modifier.weight(1f) // Grid takes available space
                         ) {
                             itemsIndexed(state.emojiDetections) { index, detection ->
                                 EmojiCard(

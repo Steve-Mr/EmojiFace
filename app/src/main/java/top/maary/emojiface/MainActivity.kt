@@ -1,4 +1,4 @@
-package top.maary.emojiface.app
+package top.maary.emojiface
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

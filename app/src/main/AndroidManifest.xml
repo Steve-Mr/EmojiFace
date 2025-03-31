@@ -6,7 +6,7 @@
         tools:ignore="SelectedPhotoAccess" />
 
     <application
-        android:name=".app.EmojiFaceApplication"
+        android:name=".EmojiFaceApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -18,7 +18,7 @@
         android:theme="@style/Theme.EmojiFace"
         tools:targetApi="31">
         <activity
-            android:name=".app.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.EmojiFace">
             <intent-filter>
@@ -32,7 +32,7 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.EmojiFace"
-            android:targetActivity=".app.MainActivity">
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
