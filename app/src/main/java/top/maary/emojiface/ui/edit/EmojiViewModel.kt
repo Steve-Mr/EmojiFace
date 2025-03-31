@@ -1,10 +1,9 @@
-package top.maary.emojiface
+package top.maary.emojiface.ui.edit
 
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import ai.onnxruntime.extensions.OrtxPackage
 import android.content.ComponentName
-import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -14,13 +13,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.net.Uri
-import android.os.Environment
-import android.provider.MediaStore
-import android.provider.OpenableColumns
 import android.widget.Toast
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.core.content.FileProvider
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -35,19 +29,24 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import top.maary.emojiface.Constants.DEFAULT_FONT_MARKER
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import top.maary.emojiface.R
+import top.maary.emojiface.data.model.datastore.PreferenceRepository
+import top.maary.emojiface.facedetection.DetectionResult
+import top.maary.emojiface.facedetection.YoloPoseDetector
+import top.maary.emojiface.ui.edit.model.EmojiDetection
+import top.maary.emojiface.ui.edit.state.ShareEvent
+import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
+import top.maary.emojiface.util.bitmapToInputStream
+import top.maary.emojiface.util.copyUriToInternal
+import top.maary.emojiface.util.generateBitmapUri
+import top.maary.emojiface.util.getTypeFaceFromPath
+import top.maary.emojiface.util.loadFontFromPath
+import top.maary.emojiface.util.saveImageToFile
+import top.maary.emojiface.util.scaleBitmapIfNeeded
+import top.maary.emojiface.util.splitEmoji
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.InputStream
-import java.nio.file.Paths
-import java.text.BreakIterator
-import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.hypot
-import kotlin.random.Random
 
 @HiltViewModel
 class EmojiViewModel @Inject constructor(
@@ -60,6 +59,7 @@ class EmojiViewModel @Inject constructor(
     private lateinit var model: ByteArray
     private val modelId = R.raw.face
     private val faceDetector = YoloPoseDetector()
+
     // 暂存检测结果，供后续多次调用 processDetections 使用
     private var detectionResult: DetectionResult? = null
 
@@ -75,8 +75,8 @@ class EmojiViewModel @Inject constructor(
     private val _selectedFont = MutableLiveData<String>()
     val selectedFont: MutableLiveData<String> = _selectedFont
 
-    private val _font = MutableLiveData<FontFamily>()
-    val font: MutableLiveData<FontFamily> = _font
+    private val _font = MutableLiveData<FontFamily?>()
+    val font: MutableLiveData<FontFamily?> = _font
 
     init {
         preferenceRepository.emojiOptionsFlow.onEach {
@@ -90,7 +90,7 @@ class EmojiViewModel @Inject constructor(
         }.launchIn(viewModelScope)
         preferenceRepository.selectedFont.onEach {
             _selectedFont.value = it
-            _font.value = this.loadFontFromPath(it)
+            _font.value = loadFontFromPath(it)
         }.launchIn(viewModelScope)
     }
 
@@ -111,12 +111,6 @@ class EmojiViewModel @Inject constructor(
     // 在 EmojiViewModel 中添加以下变量
     private var scaleFactorX: Float = 1.0f
     private var scaleFactorY: Float = 1.0f
-
-    // 在 EmojiViewModel.kt 中添加
-    sealed class ShareEvent {
-        data class ShareImage(val uri: Uri) : ShareEvent()
-        data class Error(val message: String) : ShareEvent()
-    }
 
     private val _shareEvent = MutableSharedFlow<ShareEvent>()
     val shareEvent: SharedFlow<ShareEvent> = _shareEvent.asSharedFlow()
@@ -143,7 +137,8 @@ class EmojiViewModel @Inject constructor(
     fun toggleLauncherIcon(hideIcon: Boolean) {
         viewModelScope.launch {
             val packageManager = application.packageManager
-            val componentName = ComponentName(application, "${application.packageName}.MainActivityAlias")
+            val componentName =
+                ComponentName(application, "${application.packageName}.MainActivityAlias")
             val newState = if (hideIcon) {
                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED
             } else {
@@ -157,7 +152,6 @@ class EmojiViewModel @Inject constructor(
             preferenceRepository.updateIconState(hideIcon)
         }
     }
-
 
 
     private fun resetEmojiList() {
@@ -188,7 +182,8 @@ class EmojiViewModel @Inject constructor(
                 ortSession = ortEnv.createSession(model, sessionOptions)
 
                 // 使用缩放后的图片进行检测
-                detectionResult = faceDetector.detect(bitmapToInputStream(scaledBitmap), ortEnv, ortSession)
+                detectionResult =
+                    faceDetector.detect(bitmapToInputStream(scaledBitmap), ortEnv, ortSession)
                 // 处理检测结果，传入原图
                 val processedBitmap = processDetections()
                 _outputBitmap.postValue(processedBitmap)
@@ -200,21 +195,7 @@ class EmojiViewModel @Inject constructor(
     fun shareImage(bitmap: Bitmap) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // 保存到缓存文件
-                val cachePath = File(application.cacheDir, "images").apply { mkdirs() }
-                val file = File(cachePath, "shared_${System.currentTimeMillis()}.png").apply {
-                    FileOutputStream(this).use { stream ->
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
-                    }
-                }
-
-                // 生成安全 Uri
-                val uri = FileProvider.getUriForFile(
-                    application,
-                    "${application.packageName}.fileprovider",
-                    file
-                )
-
+                val uri = generateBitmapUri(bitmap = bitmap, application = application)
                 // 发送分享事件
                 _shareEvent.emit(ShareEvent.ShareImage(uri))
             } catch (e: Exception) {
@@ -226,34 +207,20 @@ class EmojiViewModel @Inject constructor(
     // 工具函数：保存图片到相册
     fun saveImageToGallery(bitmap: Bitmap) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                // 使用 MediaStore API 保存到公共目录
-                val folderName = "FaceMoji"
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Images.Media.DISPLAY_NAME, "facemoji_${System.currentTimeMillis()}.png")
-                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                    put(MediaStore.Images.Media.RELATIVE_PATH,  "${Environment.DIRECTORY_PICTURES}/$folderName")
+            val result = saveImageToFile(bitmap, application)
+
+            if (result != null) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        application,
+                        application.getString(R.string.save_failed, result),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
-
-                // 插入 MediaStore 并获取 Uri
-                val resolver = application.contentResolver
-                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-                    ?: throw IOException("cannot create file")
-
-                // 写入图片数据
-                resolver.openOutputStream(uri)?.use { stream ->
-                    if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
-                        throw IOException("failed")
-                    }
-                }
-
+            } else {
                 // 提示成功
                 withContext(Dispatchers.Main) {
                     Toast.makeText(application, R.string.save_success, Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(application, application.getString(R.string.save_failed, e.message), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -265,34 +232,7 @@ class EmojiViewModel @Inject constructor(
 
     fun copyFontToInternal(uri: Uri) {
         viewModelScope.launch {
-            val contentResolver = application.contentResolver
-
-            // 从 URI 中获取文件名
-            val originalFileName = getFileNameFromUri(uri)
-
-            // 提取扩展名（包括点）
-            var extension = originalFileName.substringAfterLast('.', "")
-            val fileNameWithoutExtension = originalFileName.substringBeforeLast('.')
-            if (extension.isNotEmpty()) {
-                extension = ".$extension"
-            }
-
-            // 定义支持的字体扩展名
-            val supportedExtensions = listOf(".ttf", ".otf")
-            // 如果提取不到有效扩展名，则根据 MIME 类型推断；否则，若不支持则可选择默认扩展名或拒绝处理
-            if (extension.isEmpty() || extension !in supportedExtensions) {
-                extension = ".ttf"
-            }
-
-            val fileName = "${fileNameWithoutExtension}_${generateShortUniqueId()}$extension"
-            val destFile = File(application.filesDir, fileName)
-
-            contentResolver.openInputStream(uri)?.use { inputStream ->
-                FileOutputStream(destFile).use { outputStream ->
-                    inputStream.copyTo(outputStream)
-                }
-            }
-
+            val destFile = copyUriToInternal(uri = uri, application = application)
             // 复制完成后，将新字体路径存入 Preference 或其他存储方案中
             preferenceRepository.addFont(destFile.absolutePath)
         }
@@ -309,28 +249,13 @@ class EmojiViewModel @Inject constructor(
                     val deleted = file.delete()
                     if (deleted) {
                         preferenceRepository.removeFont(filePath)
+                        refreshResult()
                     }
                 }
             }
         }
     }
 
-    private fun getFileNameFromUri(uri: Uri): String {
-        application.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (nameIndex != -1) {
-                cursor.moveToFirst()
-                return cursor.getString(nameIndex)
-            }
-        }
-        return ""
-    }
-
-    private fun generateShortUniqueId(): String {
-        val timestamp = System.currentTimeMillis() / 1000 // 秒级时间戳
-        val random = Random.nextInt(1000) // 0-999 随机数
-        return String.format(Locale.getDefault().toString(), timestamp % 1000, random) // 格式化为 6 位数字
-    }
 
     // 用户选择 Dropdown 中的字体时调用
     fun onFontSelected(selectedIndex: Int) {
@@ -338,45 +263,6 @@ class EmojiViewModel @Inject constructor(
         viewModelScope.launch {
             preferenceRepository.setSelectedFont(font)
             refreshResult()
-        }
-    }
-
-    private fun loadFontFromPath(filePath: String?): FontFamily? {
-        if (filePath.isNullOrEmpty()) return null
-        val file = File(filePath)
-        if (file.exists()) {
-            try {
-                return FontFamily(Font(file = file))
-            } catch (e: Exception) {
-                e.printStackTrace()
-                return null
-            }
-        }
-        return null
-    }
-
-    private fun getTypeFaceFromPath(filePath: String?): Typeface? {
-        if (filePath.isNullOrEmpty()) return null
-        val file = File(filePath)
-        if (file.exists()) {
-            try {
-                return Typeface.createFromFile(file)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                return null
-            }
-        }
-        return null
-    }
-
-    fun getFileNameWithoutExtensionUsingPath(filePath: String): String {
-        val path = Paths.get(filePath)
-        val fileName = path.fileName.toString()
-        val dotIndex = fileName.lastIndexOf(".")
-        return if (dotIndex == -1) {
-            fileName
-        } else {
-            fileName.substring(0, dotIndex)
         }
     }
 
@@ -449,7 +335,14 @@ class EmojiViewModel @Inject constructor(
         }
         _selectedEmojis.value?.forEach {
             drawEmoji(
-                canvas, it.xCenter, it.yCenter, it.diameter, it.angle, it.emoji, emojiPaint, typeface
+                canvas,
+                it.xCenter,
+                it.yCenter,
+                it.diameter,
+                it.angle,
+                it.emoji,
+                emojiPaint,
+                typeface
             )
         }
         _outputBitmap.value = mutableBitmap
@@ -479,7 +372,13 @@ class EmojiViewModel @Inject constructor(
     fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float) {
         val currentList = _selectedEmojis.value?.toMutableList() ?: mutableListOf()
         // 默认角度设置为 0
-        val newDetection = EmojiDetection(xCenter = x, yCenter = y, diameter = diameter, angle = angle, emoji = emoji)
+        val newDetection = EmojiDetection(
+            xCenter = x,
+            yCenter = y,
+            diameter = diameter,
+            angle = angle,
+            emoji = emoji
+        )
         currentList.add(newDetection)
         _selectedEmojis.postValue(currentList)
         val newBitmap = redrawBitmapWithEmojis(base, currentList)
@@ -490,7 +389,10 @@ class EmojiViewModel @Inject constructor(
     /**
      * 根据传入的 baseBitmap 与当前 EmojiDetection 列表重绘图片
      */
-    private fun redrawBitmapWithEmojis(baseBitmap: Bitmap, emojiDetections: List<EmojiDetection>): Bitmap {
+    private fun redrawBitmapWithEmojis(
+        baseBitmap: Bitmap,
+        emojiDetections: List<EmojiDetection>
+    ): Bitmap {
         val mutableBitmap = baseBitmap.copy(Bitmap.Config.ARGB_8888, true)
         val canvas = Canvas(mutableBitmap)
         val emojiPaint = Paint().apply {
@@ -500,7 +402,16 @@ class EmojiViewModel @Inject constructor(
         val typeface = getTypeFaceFromPath(_selectedFont.value)
 
         emojiDetections.forEach { ed ->
-            drawEmoji(canvas, ed.xCenter, ed.yCenter, ed.diameter, ed.angle, ed.emoji, emojiPaint, typeface)
+            drawEmoji(
+                canvas,
+                ed.xCenter,
+                ed.yCenter,
+                ed.diameter,
+                ed.angle,
+                ed.emoji,
+                emojiPaint,
+                typeface
+            )
         }
         return mutableBitmap
     }
@@ -530,54 +441,9 @@ class EmojiViewModel @Inject constructor(
         canvas.restore()
     }
 
-    // 添加缩放函数
-    private fun scaleBitmapIfNeeded(bitmap: Bitmap): Bitmap {
-        val maxSize = 1024 // 设置最大边长阈值
-        val width = bitmap.width
-        val height = bitmap.height
-
-        if (width <= maxSize && height <= maxSize) {
-            return bitmap
-        }
-
-        val scaleFactor = if (width > height) {
-            maxSize.toFloat() / width
-        } else {
-            maxSize.toFloat() / height
-        }
-
-        val scaledWidth = (width * scaleFactor).toInt()
-        val scaledHeight = (height * scaleFactor).toInt()
-
-        return Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
-    }
-
-    private fun bitmapToInputStream(bitmap: Bitmap?): InputStream {
-        val outputStream = ByteArrayOutputStream()
-        bitmap?.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-        return ByteArrayInputStream(outputStream.toByteArray())
-    }
-
-    private fun splitEmoji(text: String): List<String> {
-        val breaker = BreakIterator.getCharacterInstance(Locale.getDefault())
-        breaker.setText(text)
-        val result = mutableListOf<String>()
-        var start = breaker.first()
-        var end = breaker.next()
-        while (end != BreakIterator.DONE) {
-            result.add(text.substring(start, end))
-            start = end
-            end = breaker.next()
-        }
-        return result
+    override fun onCleared() {
+        super.onCleared()
+        ortSession.close()
     }
 }
-
-data class EmojiDetection(
-    val xCenter: Float,
-    val yCenter: Float,
-    val diameter: Float,
-    val angle: Float,
-    var emoji: String
-)
 

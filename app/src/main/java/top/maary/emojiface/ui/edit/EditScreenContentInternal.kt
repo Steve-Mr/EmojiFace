@@ -1,8 +1,7 @@
-package top.maary.emojiface.ui
+package top.maary.emojiface.ui.edit
 
 import android.app.Activity
 import android.content.Intent
-import android.os.Build
 import android.os.Parcelable
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -28,11 +27,15 @@ import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.flow.collectLatest
-import top.maary.emojiface.Constants
-import top.maary.emojiface.EmojiViewModel
 import top.maary.emojiface.R
 import top.maary.emojiface.ui.components.EditEmojiDialog
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
+import top.maary.emojiface.ui.edit.state.EditScreenActions
+import top.maary.emojiface.ui.edit.state.EditScreenState
+import top.maary.emojiface.ui.edit.state.ShareEvent
+import top.maary.emojiface.util.Constants
+import top.maary.emojiface.util.getFileNameWithoutExtensionUsingPath
+import top.maary.emojiface.util.getParcelableExtraCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,7 +102,7 @@ fun EditScreenContentInternal(
     LaunchedEffect(Unit) {
         viewModel.shareEvent.collectLatest { event -> // Use collectLatest or handle lifecycle correctly
             when (event) {
-                is EmojiViewModel.ShareEvent.ShareImage -> {
+                is ShareEvent.ShareImage -> {
                     val shareIntent = Intent.createChooser(
                         Intent(Intent.ACTION_SEND).apply {
                             type = "image/*"
@@ -110,7 +113,7 @@ fun EditScreenContentInternal(
                     )
                     context.startActivity(shareIntent)
                 }
-                is EmojiViewModel.ShareEvent.Error -> {
+                is ShareEvent.Error -> {
                     Toast.makeText(
                         context,
                         context.getString(R.string.share_failed, event.message),
@@ -144,7 +147,7 @@ fun EditScreenContentInternal(
     val fontNames = availableFontPaths?.map { path ->
         when (path) {
             Constants.DEFAULT_FONT_MARKER -> context.getString(R.string.default_font)
-            else -> viewModel.getFileNameWithoutExtensionUsingPath(path)
+            else -> getFileNameWithoutExtensionUsingPath(path)
         }
     }
 
@@ -239,8 +242,6 @@ fun EditScreenContentInternal(
             availableFontPaths?.getOrNull(index)?.let { fontPathToRemove ->
                 if (fontPathToRemove != Constants.DEFAULT_FONT_MARKER) {
                     viewModel.removeFontFromInternal(fontPathToRemove)
-                } else {
-                    // Optional: Show a message that default font cannot be removed
                 }
             }
         }
@@ -305,11 +306,4 @@ fun EditScreenContentInternal(
     }
 }
 
-@Suppress("DEPRECATION")
-inline fun <reified T : Parcelable> Intent.getParcelableExtraCompat(name: String): T? {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        getParcelableExtra(name, T::class.java)
-    } else {
-        getParcelableExtra(name) as? T
-    }
-}
+

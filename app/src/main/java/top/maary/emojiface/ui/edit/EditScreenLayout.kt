@@ -1,4 +1,4 @@
-package top.maary.emojiface.ui // 或者你選擇的包名
+package top.maary.emojiface.ui.edit // 或者你選擇的包名
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,6 +40,8 @@ import top.maary.emojiface.R
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
 import top.maary.emojiface.ui.components.EmojiCard
+import top.maary.emojiface.ui.edit.state.EditScreenActions
+import top.maary.emojiface.ui.edit.state.EditScreenState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,4 +1,4 @@
-package top.maary.emojiface
+package top.maary.emojiface.ui.edit.model
 
 import kotlinx.serialization.Serializable
 

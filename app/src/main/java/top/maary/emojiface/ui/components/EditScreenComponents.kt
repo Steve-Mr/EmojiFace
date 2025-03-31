@@ -70,10 +70,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
-import top.maary.emojiface.Constants.DEFAULT_FONT_MARKER
 import top.maary.emojiface.R
-import top.maary.emojiface.ui.EditScreenActions
-import top.maary.emojiface.ui.EditScreenState
+import top.maary.emojiface.ui.edit.state.EditScreenActions
+import top.maary.emojiface.ui.edit.state.EditScreenState
+import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
 
 @Composable
 fun ShareButton(backgroundColor: Color, onClick: () -> Unit) {

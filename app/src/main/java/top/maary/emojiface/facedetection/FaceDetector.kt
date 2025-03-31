@@ -1,19 +1,13 @@
-package top.maary.emojiface
+package top.maary.emojiface.facedetection
 
 import ai.onnxruntime.OnnxJavaType
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import java.io.InputStream
 import java.nio.ByteBuffer
-import java.util.Collections
 
-// 用于存放检测结果的 data class， detections 中的每个 FloatArray 表示一个检测结果，包含边界框、置信度和关键点信息
-data class DetectionResult( val detections: Array<FloatArray> )
-
-internal class YoloPoseDetector {
+class YoloPoseDetector {
     /**
      * 使用传入的 InputStream（例如来自文件或资源）加载图片，
      * 并调用 ONNX 模型进行推理，返回原始的检测数据。
