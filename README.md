@@ -2,6 +2,13 @@
 
 通过在应用选取或从其他应用分享的方式读取图片，识别图片中的人脸并以 Emoji 表情覆盖。  
 
+[<img src="assets/README/get-it-on-github.png"
+    alt="Get it on GitHub"
+    height="80">](https://github.com/Steve-Mr/EmojiFace/releases/latest)
+[<img src="assets/README/get-it-on-obtainium.png"
+    alt="Get it on Obtainium"
+    height="80">](http://obtainium-redirect.maary.top/?r=obtainium://add/https://github.com/Steve-Mr/EmojiFace)
+
 |![alt text](assets/README/Screenshot_20250322-151002_FaceMoji.png)|![alt text](assets/README/Screenshot_20250322-150958_FaceMoji.png)|
 |:-:|:-:|
 
@@ -15,8 +22,9 @@
 
 ## 注意
 
-1. 本应用「按原样提供」，不附带任何形式的担保。
+1. 本应用「**按原样提供**」，不附带任何形式的担保。
 2. 本应用所使用的人脸识别模型存在其性能限制，某些情况下可能存在误识别/未识别的情况。
+3. 本应用所有处理均**离线**进行。
 
 ## 鸣谢
 
