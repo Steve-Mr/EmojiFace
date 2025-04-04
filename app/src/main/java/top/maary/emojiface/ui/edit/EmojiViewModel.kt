@@ -102,7 +102,6 @@ class EmojiViewModel @Inject constructor(
                         availableFontPaths = paths,
                         selectedFontPath = selectedPath,
                         loadedFontFamily = fontFamily
-                        // Clear error message when font loads successfully? Maybe not here.
                     )
                 }
                 // If font changed and image exists, trigger re-render
@@ -148,8 +147,6 @@ class EmojiViewModel @Inject constructor(
                     _uiState.update { it.copy( originalBitmap = bitmap)}
                     detectFacesUseCase(bitmap).fold(
                         onSuccess = { detectionOutput ->
-                            // Store original bitmap right away
-//                            _uiState.update { it.copy(originalBitmap = detectionOutput.originalBitmap) }
                             calculateEmojiPositions(detectionOutput) // Proceed to next step
                         },
                         onFailure = { exception ->
@@ -206,11 +203,8 @@ class EmojiViewModel @Inject constructor(
      * Shares the processed image.
      * (Signature matches original, but bitmap parameter is ignored)
      */
-    fun shareImage(bitmap: Bitmap?) { // Keep signature, but use state's bitmap
-        val processedBitmap = _uiState.value.processedBitmap
-        if (processedBitmap == null) {
-            return
-        }
+    fun shareImage() { // Keep signature, but use state's bitmap
+        val processedBitmap = _uiState.value.processedBitmap ?: return
         viewModelScope.launch {
             generateShareableUriUseCase(processedBitmap).fold(
                 onSuccess = { uri ->
@@ -228,7 +222,7 @@ class EmojiViewModel @Inject constructor(
      * Saves the processed image to the gallery.
      * (Signature matches original, but bitmap parameter is ignored)
      */
-    fun saveImageToGallery(bitmap: Bitmap?) { // Keep signature, but use state's bitmap
+    fun saveImageToGallery() { // Keep signature, but use state's bitmap
         val processedBitmap = _uiState.value.processedBitmap ?: return
         viewModelScope.launch {
             saveImageUseCase(processedBitmap).fold(
@@ -306,13 +300,6 @@ class EmojiViewModel @Inject constructor(
                 onSuccess = { /* Preferences flow will update state */ },
                 onFailure = { exception -> _uiState.update { it.copy(errorMessage = "Failed to update emoji list: ${exception.localizedMessage}") } }
             )
-            // Alternative: Direct call (less ideal)
-            // try {
-            //     val emojiList = if (emojis.isEmpty()) PreferenceRepository.DEFAULT_EMOJI_LIST else splitEmoji(emojis)
-            //     preferenceRepository.updateEmojiOptions(emojiList)
-            // } catch (e: Exception) {
-            //     _uiState.update { it.copy(errorMessage = "Failed to update emoji list: ${e.localizedMessage}") }
-            // }
         }
     }
 
@@ -396,11 +383,9 @@ class EmojiViewModel @Inject constructor(
      */
     private fun rerenderBitmap() {
         val base = _uiState.value.originalBitmap
-        if (base == null) {
-            // Cannot rerender without original image
+            ?: // Cannot rerender without original image
             // Log.w("EditViewModel", "Cannot rerender: Original bitmap is null.")
             return
-        }
         val emojis = _uiState.value.selectedEmojis
         val font = _uiState.value.selectedFontPath
 

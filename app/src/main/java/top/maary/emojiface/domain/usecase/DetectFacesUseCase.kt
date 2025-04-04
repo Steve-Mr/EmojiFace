@@ -30,9 +30,7 @@ class DetectFacesUseCase @Inject constructor(
                 val scaleFactorX = originalBitmap.width.toFloat() / scaledBitmap.width.toFloat()
                 val scaleFactorY = originalBitmap.height.toFloat() / scaledBitmap.height.toFloat()
 
-                // 3. 执行人脸检测 (假设 detect 方法需要 InputStream)
-                // 注意：YoloPoseDetector 现在需要能接受 Bitmap 或 InputStream，并管理 OrtSession
-                // 这里的实现需要根据 YoloPoseDetector 的具体情况调整
+                // 3. 执行人脸检测
                 val detectionResult = faceDetector.detect(bitmapToInputStream(scaledBitmap)) // 假设 detect 接受 InputStream
 
                 DetectionOutput(

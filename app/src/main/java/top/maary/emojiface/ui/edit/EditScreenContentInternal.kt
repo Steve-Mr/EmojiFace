@@ -218,8 +218,8 @@ fun EditScreenContentInternal(
             onAddEmojiCardClick = { isAddMode = true }, // Enter Add Mode
             onCloseClick = { activity?.finish() },
             // Share/Save now ignore the bitmap param internally in VM
-            onShareClick = { viewModel.shareImage(null) },
-            onSaveClick = { viewModel.saveImageToGallery(null) },
+            onShareClick = { viewModel.shareImage() },
+            onSaveClick = { viewModel.saveImageToGallery() },
             onSettingsClick = { showBottomSheet = true },
 
             // Dialog Actions

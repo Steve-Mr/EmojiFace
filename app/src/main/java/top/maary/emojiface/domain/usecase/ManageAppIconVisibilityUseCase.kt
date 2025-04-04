@@ -23,7 +23,7 @@ class ManageAppIconVisibilityUseCase @Inject constructor(
     suspend operator fun invoke(hide: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val packageManager = context.packageManager
-            // 重要：确保 AndroidManifest.xml 中定义了 <activity-alias> 并且其 name 与这里匹配
+            // 确保 AndroidManifest.xml 中定义了 <activity-alias> 并且其 name 与这里匹配
             val componentName = ComponentName(context, "${context.packageName}.MainActivityAlias")
 
             val newState = if (hide) {
