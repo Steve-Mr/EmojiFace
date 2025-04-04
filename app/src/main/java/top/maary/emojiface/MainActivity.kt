@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
-import top.maary.emojiface.ui.EditScreen
+import top.maary.emojiface.ui.edit.EditScreen
 import top.maary.emojiface.ui.theme.EmojiFaceTheme
 
 @AndroidEntryPoint

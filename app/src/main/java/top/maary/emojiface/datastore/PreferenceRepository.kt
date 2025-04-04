@@ -1,4 +1,4 @@
-package top.maary.emojiface
+package top.maary.emojiface.data.model.datastore
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -8,7 +8,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
-import top.maary.emojiface.Constants.DEFAULT_FONT_MARKER
+import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
+import top.maary.emojiface.ui.edit.model.EmojiList
 import javax.inject.Inject
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(

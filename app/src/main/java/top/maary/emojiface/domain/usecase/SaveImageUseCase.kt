@@ -1,0 +1,41 @@
+package top.maary.emojiface.domain.usecase
+
+import android.content.ContentValues
+import android.content.Context
+import android.graphics.Bitmap
+import android.os.Environment
+import android.provider.MediaStore
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.IOException
+import javax.inject.Inject
+
+class SaveImageUseCase @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+    suspend operator fun invoke(bitmap: Bitmap): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+                // 使用 MediaStore API 保存到公共目录
+                val folderName = "FaceMoji"
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, "facemoji_${System.currentTimeMillis()}.png")
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    put(MediaStore.Images.Media.RELATIVE_PATH,  "${Environment.DIRECTORY_PICTURES}/$folderName")
+                }
+
+                // 插入 MediaStore 并获取 Uri
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                    ?: throw IOException("cannot create file")
+
+                // 写入图片数据
+                resolver.openOutputStream(uri)?.use { stream ->
+                    if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                        throw IOException("failed")
+                    }
+                }?:throw RuntimeException("Failed to save image")
+
+        }
+    }
+}
