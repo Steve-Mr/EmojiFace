@@ -21,4 +21,5 @@
     <string name="new_emoji">新增表情</string>
     <string name="emoji_size">表情大小</string>
     <string name="emoji_angle">旋轉角度</string>
+    <string name="created_by">此照片經過 FaceMoji 編輯。</string>
 </resources>

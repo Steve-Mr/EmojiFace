@@ -2,6 +2,12 @@
 
 通过在应用选取或从其他应用分享的方式读取图片，识别图片中的人脸并以 Emoji 表情覆盖。  
 
+[<img src="assets/README/rec1_.png"
+    alt="派评推荐"
+    height="70">](https://sspai.com/post/97708)
+
+## 获取
+
 [<img src="assets/README/get-it-on-github.png"
     alt="Get it on GitHub"
     height="80">](https://github.com/Steve-Mr/EmojiFace/releases/latest)

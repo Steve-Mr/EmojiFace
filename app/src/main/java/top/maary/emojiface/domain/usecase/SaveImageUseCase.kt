@@ -5,9 +5,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.exifinterface.media.ExifInterface
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import top.maary.emojiface.R
 import java.io.IOException
 import javax.inject.Inject
 
@@ -36,6 +38,12 @@ class SaveImageUseCase @Inject constructor(
                     }
                 }?:throw RuntimeException("Failed to save image")
 
+                resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                    val exifInterface = ExifInterface(pfd.fileDescriptor)
+                    exifInterface.setAttribute(ExifInterface.TAG_SOFTWARE, context.getString(R.string.app_name))
+                    exifInterface.setAttribute(ExifInterface.TAG_USER_COMMENT, context.getString(R.string.created_by))
+                    exifInterface.saveAttributes()
+                }?: throw IOException("Failed to open ParcelFileDescriptor for EXIF writing.")
         }
     }
 }

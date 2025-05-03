@@ -117,7 +117,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.material)
 
-    implementation(libs.androidx.window)}
+    implementation(libs.androidx.window)
+
+    implementation(libs.androidx.exifinterface)
+}
 
 kapt {
     correctErrorTypes = true
