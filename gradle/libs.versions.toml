@@ -1,6 +1,6 @@
 [versions]
 agp = "8.9.2"
-datastorePreferences = "1.1.5"
+datastorePreferences = "1.2.0-alpha01"
 exifinterface = "1.4.1"
 hiltAndroidCompiler = "2.55"
 kotlin = "2.0.0"

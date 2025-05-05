@@ -6,7 +6,7 @@ import android.content.pm.PackageManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import top.maary.emojiface.data.model.datastore.PreferenceRepository
+import top.maary.emojiface.datastore.PreferenceRepository
 import javax.inject.Inject
 
 class ManageAppIconVisibilityUseCase @Inject constructor(

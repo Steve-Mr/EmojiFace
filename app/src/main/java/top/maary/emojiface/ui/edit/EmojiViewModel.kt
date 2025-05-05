@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import top.maary.emojiface.data.model.datastore.PreferenceRepository
+import top.maary.emojiface.datastore.PreferenceRepository
 import top.maary.emojiface.domain.usecase.CalculateEmojiPositionsUseCase
 import top.maary.emojiface.domain.usecase.DetectFacesUseCase
 import top.maary.emojiface.domain.usecase.DetectionOutput
