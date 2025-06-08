@@ -35,12 +35,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedIconButton
@@ -49,6 +51,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -110,27 +113,37 @@ fun SaveButtonCompact(backgroundColor: Color, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsButton(backgroundColor: Color, onClick: () -> Unit) {
     FloatingActionButton(onClick = onClick,
         containerColor = backgroundColor,
-        modifier = Modifier.padding(8.dp)) {
+        modifier = Modifier.padding(8.dp),
+        shape = MaterialShapes.Cookie7Sided.toShape()) {
         Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun EmojiCard(emoji: String, onClick: () -> Unit, clickable: Boolean = true, fontFamily: FontFamily? = null, containerColor: Color, hPadding: Dp = 8.dp, vPadding: Dp = 16.dp) {
+fun EmojiCard(emoji: String,
+              onClick: () -> Unit,
+              clickable: Boolean = true,
+              fontFamily: FontFamily? = null,
+              containerColor: Color,
+              hPadding: Dp = 0.dp, vPadding: Dp = 16.dp) {
     Card(
         modifier = Modifier
             .wrapContentHeight()
+            .wrapContentWidth()
             .padding(horizontal = hPadding, vertical = vPadding)
             .clickable(enabled = clickable) { onClick() },  // 添加点击事件
         colors = CardDefaults.cardColors(
             containerColor = containerColor
-        )
+        ),
+        shape = MaterialShapes.Cookie4Sided.toShape()
     ) {
-        Text(text = emoji, fontSize = 60.sp, fontFamily = fontFamily)
+        Text(text = emoji, fontSize = 40.sp, fontFamily = fontFamily, modifier = Modifier.padding(8.dp).align(Alignment.CenterHorizontally))
     }
 }
 

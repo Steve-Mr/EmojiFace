@@ -4,10 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -83,46 +86,63 @@ fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions) {
                 scrollBehavior = scrollBehavior,
             )
         },
-        containerColor = MaterialTheme.colorScheme.surfaceContainer // 背景色
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest // 背景色
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(innerPadding) // 應用 Scaffold 的內邊距
+                .padding(top = innerPadding.calculateTopPadding()) // 應用 Scaffold 的內邊距
         ) {
             // --- 圖片顯示區域 ---
-            DisplayPane(modifier = Modifier.weight(1f).fillMaxWidth(), state = state, actions = actions)
+            DisplayPane(modifier = Modifier.weight(1f).fillMaxWidth().padding(8.dp), state = state, actions = actions)
 
-            // --- 偵測到的表情符號行 ---
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp) // 增加垂直 padding
-            ) {
-                itemsIndexed(state.emojiDetections) { index, detection ->
-                    EmojiCard(
-                        emoji = detection.emoji,
-                        onClick = { actions.onEmojiCardClick(index) }, // 使用 action
-                        fontFamily = state.fontFamily,
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                        // hPadding 和 vPadding 使用 EmojiCard 的默認值或按需調整
+            if (state.displayedBitmap != null) {
+                Card(
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
                     )
-                }
-                // 只有在有圖片時才顯示新增按鈕
-                if (state.displayedBitmap != null) {
-                    item {
-                        EmojiCard(
-                            emoji = "➕", // 或使用 Icons.Outlined.AddReaction
-                            onClick = actions.onAddEmojiCardClick, // 使用 action
-                            clickable = true,
-                            fontFamily = state.fontFamily,
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                        )
+                ) {
+                    // --- 偵測到的表情符號行 ---
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(
+                            horizontal = 0.dp,
+                            vertical = 8.dp
+                        ) // 增加垂直 padding
+                    ) {
+                        itemsIndexed(state.emojiDetections) { index, detection ->
+                            Spacer(modifier = Modifier.width(8.dp))
+                            EmojiCard(
+                                emoji = detection.emoji,
+                                onClick = { actions.onEmojiCardClick(index) }, // 使用 action
+                                fontFamily = state.fontFamily,
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                // hPadding 和 vPadding 使用 EmojiCard 的默認值或按需調整
+                            )
+                        }
+                        item {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            EmojiCard(
+                                emoji = "➕", // 或使用 Icons.Outlined.AddReaction
+                                onClick = actions.onAddEmojiCardClick, // 使用 action
+                                clickable = true,
+                                fontFamily = state.fontFamily,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+
                     }
                 }
             }
 
-            // --- 底部操作按鈕區域 ---
-            ActionRow(state = state, actions = actions)
+                // --- 底部操作按鈕區域 ---
+                ActionRow(state = state, actions = actions)
+
+                Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
+//            }
+
         }
     }
 }
@@ -199,6 +219,7 @@ fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions) {
                                     onClick = { actions.onEmojiCardClick(index) }, // Use action
                                     fontFamily = state.fontFamily,
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    hPadding = 8.dp,
                                     vPadding = 8.dp
                                 )
                             }
@@ -211,6 +232,7 @@ fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions) {
                                         clickable = true,
                                         fontFamily = state.fontFamily,
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        hPadding = 8.dp,
                                         vPadding = 8.dp
                                     )
                                 }

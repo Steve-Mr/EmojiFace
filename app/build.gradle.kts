@@ -92,7 +92,6 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
     implementation(libs.androidx.material3.window.size)
     implementation(libs.androidx.adaptive.android)
     implementation(libs.androidx.material3.adaptive.navigation.suite.android)
@@ -120,6 +119,8 @@ dependencies {
     implementation(libs.androidx.window)
 
     implementation(libs.androidx.exifinterface)
+
+    implementation(libs.material3)
 }
 
 kapt {
