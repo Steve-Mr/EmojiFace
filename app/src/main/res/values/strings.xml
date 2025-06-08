@@ -21,4 +21,5 @@
     <string name="new_emoji">New emoji</string>
     <string name="emoji_size">Emoji size</string>
     <string name="emoji_angle">Emoji angle</string>
+    <string name="created_by">Modified by FaceMoji.</string>
 </resources>

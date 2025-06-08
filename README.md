@@ -1,6 +1,14 @@
 # FaceMoji
 
+简体中文 / [English](./README-EN.md)
+
 通过在应用选取或从其他应用分享的方式读取图片，识别图片中的人脸并以 Emoji 表情覆盖。  
+
+[<img src="assets/README/rec1_.png"
+    alt="派评推荐"
+    height="70">](https://sspai.com/post/97708)
+
+## 获取
 
 [<img src="assets/README/get-it-on-github.png"
     alt="Get it on GitHub"
@@ -17,7 +25,7 @@
 
 1. 自动识别图片人脸并以 Emoji 表情覆盖
 2. 在图片上添加、修改、删除 Emoji
-3. 隐藏应用图标（此状态下只能从其他应用将图片分享到本应用）
+3. 隐藏应用图标（此状态下只能通过从其他应用将图片分享到本应用的方式来启动本应用）
 4. 导入自定义 Emoji 字体文件
 
 ## 注意

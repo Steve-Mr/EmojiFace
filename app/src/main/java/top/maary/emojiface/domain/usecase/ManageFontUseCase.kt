@@ -7,7 +7,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import top.maary.emojiface.data.model.datastore.PreferenceRepository
+import top.maary.emojiface.datastore.PreferenceRepository
 import top.maary.emojiface.util.Constants
 import top.maary.emojiface.util.generateShortUniqueId
 import java.io.File

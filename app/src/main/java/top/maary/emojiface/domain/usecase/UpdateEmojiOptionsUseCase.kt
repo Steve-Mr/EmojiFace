@@ -2,7 +2,7 @@ package top.maary.emojiface.domain.usecase
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import top.maary.emojiface.data.model.datastore.PreferenceRepository
+import top.maary.emojiface.datastore.PreferenceRepository
 import top.maary.emojiface.util.splitEmoji // 确认 splitEmoji 的路径
 import javax.inject.Inject
 

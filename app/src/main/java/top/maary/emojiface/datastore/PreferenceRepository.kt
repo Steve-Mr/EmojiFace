@@ -1,15 +1,18 @@
-package top.maary.emojiface.data.model.datastore
+package top.maary.emojiface.datastore
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
-import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
 import top.maary.emojiface.ui.edit.model.EmojiList
+import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
 import javax.inject.Inject
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(

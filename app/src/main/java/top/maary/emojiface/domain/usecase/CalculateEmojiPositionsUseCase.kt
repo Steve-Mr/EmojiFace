@@ -3,7 +3,7 @@ package top.maary.emojiface.domain.usecase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import top.maary.emojiface.data.model.datastore.PreferenceRepository
+import top.maary.emojiface.datastore.PreferenceRepository
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import javax.inject.Inject
 import kotlin.math.abs

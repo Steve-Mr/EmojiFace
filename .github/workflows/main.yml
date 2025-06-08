@@ -67,15 +67,20 @@ jobs:
           name: app-x86-release
           path: ${{ env.APK_FILE_X86 }}
 
+      # 新增步骤：获取当前日期
+      - name: Get current date
+        id: date
+        run: echo "today=$(date +'%Y.%m.%d')" >> $GITHUB_OUTPUT
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ github.run_number }}
-          # prerelease: true
-          release_name: Release v${{ github.run_number }}
+          # 修改后的 tag_name 和 release_name
+          tag_name: v${{ steps.date.outputs.today }}.${{ github.run_number }}
+          release_name: Release v${{ steps.date.outputs.today }}.${{ github.run_number }}
           body: |
             ## Changes
             ${{ github.event.pull_request.body }}
