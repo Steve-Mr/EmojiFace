@@ -2,7 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "dev", "hide-icon-fix" ]
 
 jobs:
   build:
