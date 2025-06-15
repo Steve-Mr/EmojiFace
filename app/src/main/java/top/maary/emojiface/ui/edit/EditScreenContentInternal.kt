@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -309,7 +310,8 @@ fun EditScreenContentInternal(
     if (showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = actions.onSettingsSheetDismiss,
-            sheetState = bottomSheetState
+            sheetState = bottomSheetState,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
         ) {
             // Embed the content composable, passing necessary data from uiState and local state
             SettingsBottomSheetContent(

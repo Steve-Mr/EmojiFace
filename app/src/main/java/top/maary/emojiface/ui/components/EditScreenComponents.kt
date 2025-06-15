@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -158,7 +159,8 @@ fun EmojiCardSmall(emoji: String, onClick: () -> Unit, fontFamily: FontFamily? =
         modifier = Modifier
             .wrapContentHeight()
             .padding(end = 8.dp)
-            .clickable { onClick() }
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)
     ) {
         Text(
             text = emoji,
@@ -303,6 +305,7 @@ fun DropdownItem(
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                     }
                 },
+                label = { Text(stringResource(R.string.emoji_font))}
             )
             ExposedDropdownMenu(
                 modifier = Modifier.wrapContentWidth(),
@@ -468,24 +471,43 @@ fun SettingsBottomSheetContent(
     onAddFontClick: () -> Unit,
     onRemoveFontClick: (index: Int) -> Unit,
 ) {
-    if (!isEditingEmojiList) {
-        PredefinedEmojiSettings(
-            emojiOptions = emojiOptions,
-            onClick = onEditClick,
-            fontFamily = fontFamily)
-    } else {
-        EditEmojiList(
-            emojiOptions = emojiOptions,
-            onClick = onEditConfirm,
-            fontFamily = fontFamily)
+    Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
+        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+        Column {
+            Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
+                text = stringResource(R.string.emoji_list))
+            if (!isEditingEmojiList) {
+                PredefinedEmojiSettings(
+                    emojiOptions = emojiOptions,
+                    onClick = onEditClick,
+                    fontFamily = fontFamily)
+            } else {
+                EditEmojiList(
+                    emojiOptions = emojiOptions,
+                    onClick = onEditConfirm,
+                    fontFamily = fontFamily)
+            }
+        }
     }
-    HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
-    DropdownRow(
-        options = availableFontNames.toMutableList(),
-        position = selectedFontIndex,
-        onItemClicked = onFontSelected,
-        onAddClick = onAddFontClick,
-        onRemoveClick = { onRemoveFontClick(it) })
+    Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
+        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+        HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
+
+    }
+
+    Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 24.dp, bottomEnd = 24.dp))
+        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+        DropdownRow(
+            options = availableFontNames.toMutableList(),
+            position = selectedFontIndex,
+            onItemClicked = onFontSelected,
+            onAddClick = onAddFontClick,
+            onRemoveClick = { onRemoveFontClick(it) })
+    }
+
 }
 
 @Composable
