@@ -10,6 +10,7 @@
     <string name="share_failed">分享失敗：%s</string>
     <string name="settings">設定</string>
     <string name="hide_home">隱藏應用程式圖示</string>
+    <string name="hide_home_bug">由於系統限制，部分設備上可能不會徹底隱藏圖標。</string>
     <string name="choose_font">選擇字型檔案</string>
     <string name="cancel">取消</string>
     <string name="ok">確定</string>

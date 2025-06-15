@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.AttachFile
@@ -47,16 +48,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,6 +79,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
+import kotlinx.coroutines.launch
 import top.maary.emojiface.R
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -219,18 +226,47 @@ fun HomeSwitchRow(
 ) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .pointerInput(Unit) {
-                detectTapGestures {
-                    onCheckedChange(!state) // 当点击 SwitchRow 时触发点击事件
-                }
-            }
+            .fillMaxWidth().clickable { onCheckedChange(!state) }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(modifier = Modifier.weight(1f), text = stringResource(R.string.hide_home))
+        Tooltip(tooltipText = stringResource(R.string.hide_home_bug))
         Switch(checked = state, onCheckedChange = onCheckedChange)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Tooltip(
+    modifier: Modifier = Modifier,
+    tooltipText: String
+) {
+    val tooltipState = rememberTooltipState()
+    val scope = rememberCoroutineScope()
+    TooltipBox(
+        modifier = modifier,
+        positionProvider = rememberTooltipPositionProvider(),
+        tooltip = {
+            RichTooltip {
+                Text(tooltipText)
+            }
+        },
+        state = tooltipState
+    ) {
+        IconButton(onClick = { scope.launch {
+            if (tooltipState.isVisible) {
+                tooltipState.dismiss()
+            } else {
+                tooltipState.show()
+            }
+        } }) {
+            Icon(
+                imageVector = Icons.Filled.Info,
+                contentDescription = "Show more information"
+            )
+        }
     }
 }
 

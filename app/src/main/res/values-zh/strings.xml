@@ -11,6 +11,7 @@
     <string name="share_failed">分享失败: %s</string>
     <string name="settings">设置</string>
     <string name="hide_home">隐藏应用图标</string>
+    <string name="hide_home_bug">"由于系统限制，部分设备上可能不会彻底隐藏图标。 "</string>
     <string name="choose_font">选择字体文件</string>
     <string name="cancel">取消</string>
     <string name="ok">确定</string>
