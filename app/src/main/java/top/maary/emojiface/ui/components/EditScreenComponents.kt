@@ -1,6 +1,7 @@
 package top.maary.emojiface.ui.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -33,7 +34,6 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -139,18 +139,16 @@ fun EmojiCard(emoji: String,
               fontFamily: FontFamily? = null,
               containerColor: Color,
               hPadding: Dp = 0.dp, vPadding: Dp = 16.dp) {
-    Card(
+    Box(
         modifier = Modifier
             .wrapContentHeight()
             .wrapContentWidth()
             .padding(horizontal = hPadding, vertical = vPadding)
+            .clip(MaterialShapes.Cookie4Sided.toShape())
+            .background(containerColor)
             .clickable(enabled = clickable) { onClick() },  // 添加点击事件
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor
-        ),
-        shape = MaterialShapes.Cookie4Sided.toShape()
     ) {
-        Text(text = emoji, fontSize = 40.sp, fontFamily = fontFamily, modifier = Modifier.padding(8.dp).align(Alignment.CenterHorizontally))
+        Text(text = emoji, fontSize = 40.sp, fontFamily = fontFamily, modifier = Modifier.padding(8.dp).align(Alignment.Center))
     }
 }
 
