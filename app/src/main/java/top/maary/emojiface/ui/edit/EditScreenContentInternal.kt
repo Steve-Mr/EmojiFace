@@ -2,6 +2,7 @@ package top.maary.emojiface.ui.edit
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Parcelable
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -25,10 +26,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.flow.collectLatest
 import top.maary.emojiface.R
-import top.maary.emojiface.ui.components.EditEmojiDialog
+import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -41,7 +43,7 @@ import top.maary.emojiface.util.getParcelableExtraCompat
 @Composable
 fun EditScreenContentInternal(
     // Assuming Hilt provides the ViewModel with UseCases injected
-    viewModel: EmojiViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    viewModel: EmojiViewModel = viewModel(),
     windowSizeClass: WindowSizeClass
 ) {
     val context = LocalContext.current
@@ -82,7 +84,7 @@ fun EditScreenContentInternal(
         val intent = activity?.intent
         if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
             val sharedUri: Parcelable? = intent.getParcelableExtraCompat(Intent.EXTRA_STREAM)
-            (sharedUri as? android.net.Uri)?.let {
+            (sharedUri as? Uri)?.let {
                 // Check if already processed (using uiState.originalBitmap as indicator)
                 if (uiState.originalBitmap == null) {
                     viewModel.detect(it)
@@ -295,16 +297,23 @@ fun EditScreenContentInternal(
             uiState.originalBitmap?.let { minOf(it.width, it.height) / 3f } ?: 500f
         }
 
-        EditEmojiDialog(
-            initialEmoji = initialEmoji ?: "?",
-            initialDiameter = initialDiameter ?: 100f,
-            initialRotation = initialRotation ?: 0f,
-            maxDiameter = maxDiameter, // Use calculated max size
-            availableEmojis = uiState.predefinedEmojiOptions, // From uiState
-            fontFamily = uiState.loadedFontFamily, // From uiState
-            onConfirm = actions.onEditDialogConfirm, // Use action
-            onDismiss = actions.onEditDialogDismiss // Use action
-        )
+        ModalBottomSheet(
+            onDismissRequest = actions.onEditDialogDismiss,
+            sheetState = bottomSheetState,
+            dragHandle = {  },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+        ) {
+            EditEmojiBottomSheetContent(
+                initialEmoji = initialEmoji ?: "?",
+                initialDiameter = initialDiameter ?: 100f,
+                initialRotation = initialRotation ?: 0f,
+                availableEmojis = uiState.predefinedEmojiOptions, // From uiState
+                fontFamily = uiState.loadedFontFamily, // From uiState
+                onConfirm = actions.onEditDialogConfirm, // Action
+                onDismiss = actions.onEditDialogDismiss,
+                maxDiameter = maxDiameter // Action
+            )
+        }
     }
 
     if (showBottomSheet) {

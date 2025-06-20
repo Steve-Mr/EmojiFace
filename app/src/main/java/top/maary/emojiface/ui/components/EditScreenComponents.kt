@@ -32,7 +32,6 @@ import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Rotate90DegreesCw
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.SaveAlt
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -149,7 +148,9 @@ fun EmojiCard(emoji: String,
             .background(containerColor)
             .clickable(enabled = clickable) { onClick() },  // 添加点击事件
     ) {
-        Text(text = emoji, fontSize = 40.sp, fontFamily = fontFamily, modifier = Modifier.padding(8.dp).align(Alignment.Center))
+        Text(text = emoji, fontSize = 40.sp, fontFamily = fontFamily, modifier = Modifier
+            .padding(8.dp)
+            .align(Alignment.Center))
     }
 }
 
@@ -181,9 +182,12 @@ fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String, rati
         content = {
             Image(bitmap = bitmap,
                 contentDescription = description,
-                modifier = Modifier.fillMaxSize().padding(horizontal = ratio*8.dp, vertical = 8.dp).clip(
-                    RoundedCornerShape(16.dp)
-                ))
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = ratio * 8.dp, vertical = 8.dp)
+                    .clip(
+                        RoundedCornerShape(16.dp)
+                    ))
         }
     )
 }
@@ -195,7 +199,9 @@ fun PredefinedEmojiSettings(
     fontFamily: FontFamily? = null
 ) {
     LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
-        item { Spacer(modifier = Modifier.height(8.dp).width(16.dp)) }
+        item { Spacer(modifier = Modifier
+            .height(8.dp)
+            .width(16.dp)) }
         itemsIndexed(emojiOptions) { _, emoji ->
             EmojiCardSmall(emoji = emoji, onClick = onClick, fontFamily = fontFamily)
         }
@@ -207,7 +213,9 @@ fun PredefinedEmojiSettings(
 fun EditEmojiList(emojiOptions: List<String>, onClick: (String) -> Unit, fontFamily: FontFamily? = null) {
     var text by remember { mutableStateOf(emojiOptions.joinToString(separator = "")) }
     OutlinedTextField(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
         value = text,
         trailingIcon = {
             IconButton(onClick = { onClick(text) }) {
@@ -226,7 +234,8 @@ fun HomeSwitchRow(
 ) {
     Row(
         modifier = Modifier
-            .fillMaxWidth().clickable { onCheckedChange(!state) }
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!state) }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -365,95 +374,31 @@ fun DropdownRow(
 
 @Composable
 fun SliderWithCaption(
+    modifier: Modifier = Modifier,
     leadingIcon: @Composable (() -> Unit),
     description: String,
     value: Float,
     onValueChange: (Float) -> Unit,
     minRange: Float,
-    maxRange: Float) {
-    Row (modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically){
-        leadingIcon()
-        Column {
-            Text(text = description, modifier = Modifier.padding(start = 8.dp))
-            Slider(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                value = value,
-                onValueChange = onValueChange,
-                valueRange = minRange..maxRange
-            )
-        }
-    }
-}
+    maxRange: Float
+) {
 
-@Composable
-fun EditEmojiDialog(
-    initialEmoji: String,
-    initialDiameter: Float,
-    initialRotation: Float,
-    maxDiameter: Float,
-    availableEmojis: List<String>,
-    fontFamily: FontFamily?,
-    onConfirm: (String, Float, Float) -> Unit,
-    onDismiss: () -> Unit
-){
-    var newEmoji by remember { mutableStateOf(initialEmoji) }
-    var newDiameter by remember { mutableFloatStateOf(initialDiameter) }
-    var newRotation by remember { mutableFloatStateOf(initialRotation) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.change_emoji)) },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = newEmoji,
-                    onValueChange = { newEmoji = it },
-                    label = { Text(stringResource(R.string.new_emoji))},
-                    textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
-                )
-                // 预置 emoji 选择行
-                LazyRow(modifier = Modifier.padding(vertical = 8.dp)) {
-                    itemsIndexed(availableEmojis) { _, emoji ->
-                        EmojiCardSmall(emoji = emoji, onClick = { newEmoji = emoji }, fontFamily = fontFamily)
-                    }
-                }
-                SliderWithCaption(
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Outlined.FormatSize,
-                            contentDescription = stringResource(R.string.emoji_size),
-                            modifier = Modifier.padding(8.dp).size(24.dp))
-                    },
-                    description = stringResource(R.string.emoji_size),
-                    value = newDiameter,
-                    onValueChange = { newDiameter = it },
-                    minRange = 20f,
-                    maxRange = maxDiameter
-                )
-                SliderWithCaption(
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Outlined.Rotate90DegreesCw,
-                            contentDescription = stringResource(R.string.emoji_angle),
-                            modifier = Modifier.padding(8.dp).size(24.dp))
-                    },
-                    description = stringResource(R.string.emoji_angle),
-                    value = newRotation,
-                    onValueChange = { newRotation = it },
-                    minRange = -90f,
-                    maxRange = 90f
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(newEmoji, newDiameter, newRotation) }) {
-                Text(stringResource(R.string.ok))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
+    Column(
+        modifier = modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            leadingIcon()
+            Text(text = description, fontSize = 14.sp)
         }
-    )
+
+        Slider(
+            modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = minRange..maxRange
+        )
+
+    }
 }
 
 @Composable
@@ -471,8 +416,16 @@ fun SettingsBottomSheetContent(
     onAddFontClick: () -> Unit,
     onRemoveFontClick: (index: Int) -> Unit,
 ) {
-    Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
+    Box(modifier = Modifier
+        .padding(horizontal = 8.dp, vertical = 2.dp)
+        .clip(
+            RoundedCornerShape(
+                topStart = 24.dp,
+                topEnd = 24.dp,
+                bottomStart = 4.dp,
+                bottomEnd = 4.dp
+            )
+        )
         .background(MaterialTheme.colorScheme.surfaceContainerLow)){
         Column {
             Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
@@ -490,15 +443,31 @@ fun SettingsBottomSheetContent(
             }
         }
     }
-    Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
+    Box(modifier = Modifier
+        .padding(horizontal = 8.dp, vertical = 2.dp)
+        .clip(
+            RoundedCornerShape(
+                topStart = 4.dp,
+                topEnd = 4.dp,
+                bottomStart = 4.dp,
+                bottomEnd = 4.dp
+            )
+        )
         .background(MaterialTheme.colorScheme.surfaceContainerLow)){
         HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
 
     }
 
-    Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 24.dp, bottomEnd = 24.dp))
+    Box(modifier = Modifier
+        .padding(horizontal = 8.dp, vertical = 2.dp)
+        .clip(
+            RoundedCornerShape(
+                topStart = 4.dp,
+                topEnd = 4.dp,
+                bottomStart = 24.dp,
+                bottomEnd = 24.dp
+            )
+        )
         .background(MaterialTheme.colorScheme.surfaceContainerLow)){
         DropdownRow(
             options = availableFontNames.toMutableList(),
@@ -508,6 +477,96 @@ fun SettingsBottomSheetContent(
             onRemoveClick = { onRemoveFontClick(it) })
     }
 
+}
+
+@Composable
+fun EditEmojiBottomSheetContent(
+    initialEmoji: String,
+    initialDiameter: Float,
+    initialRotation: Float,
+    maxDiameter: Float,
+    availableEmojis: List<String>,
+    fontFamily: FontFamily?,
+    onConfirm: (String, Float, Float) -> Unit,
+    onDismiss: () -> Unit
+){
+    var newEmoji by remember { mutableStateOf(initialEmoji) }
+    var newDiameter by remember { mutableFloatStateOf(initialDiameter) }
+    var newRotation by remember { mutableFloatStateOf(initialRotation) }
+
+    Column (modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row (verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                modifier = Modifier.width(96.dp),
+                value = newEmoji,
+                onValueChange = { newEmoji = it },
+                label = { Text(stringResource(R.string.new_emoji))},
+                textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            // 预置 emoji 选择行
+            LazyRow(modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(vertical = 8.dp)) {
+                item {
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                itemsIndexed(availableEmojis) { _, emoji ->
+                    EmojiCardSmall(emoji = emoji, onClick = { newEmoji = emoji }, fontFamily = fontFamily)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            SliderWithCaption(
+                modifier = Modifier.weight(1f),
+                leadingIcon = {
+                    Icon(imageVector = Icons.Outlined.FormatSize,
+                        contentDescription = stringResource(R.string.emoji_size),
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(16.dp))
+                },
+                description = stringResource(R.string.emoji_size),
+                value = newDiameter,
+                onValueChange = { newDiameter = it },
+                minRange = 20f,
+                maxRange = maxDiameter
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            SliderWithCaption(
+                modifier = Modifier.weight(1f),
+                leadingIcon = {
+                    Icon(imageVector = Icons.Outlined.Rotate90DegreesCw,
+                        contentDescription = stringResource(R.string.emoji_angle),
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(16.dp))
+                },
+                description = stringResource(R.string.emoji_angle),
+                value = newRotation,
+                onValueChange = { newRotation = it },
+                minRange = -90f,
+                maxRange = 90f
+            )
+        }
+
+        Row (modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End) {
+            TextButton(
+                onClick = { onConfirm(newEmoji, newDiameter, newRotation) }) {
+                Text(stringResource(R.string.ok))
+            }
+        }
+    }
 }
 
 @Composable
@@ -535,12 +594,15 @@ fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenA
                                     val containerWidth = state.imageContainerSize.width
                                     val containerHeight = state.imageContainerSize.height
                                     // 使用 currentImage (原始 Bitmap) 的尺寸來計算比例
-                                    val originalBitmapWidth = state.currentImage?.width ?: state.displayedBitmap.width
-                                    val originalBitmapHeight = state.currentImage?.height ?: state.displayedBitmap.height
+                                    val originalBitmapWidth =
+                                        state.currentImage?.width ?: state.displayedBitmap.width
+                                    val originalBitmapHeight =
+                                        state.currentImage?.height ?: state.displayedBitmap.height
 
                                     if (containerWidth > 0 && containerHeight > 0) {
                                         val scaleX = originalBitmapWidth.toFloat() / containerWidth
-                                        val scaleY = originalBitmapHeight.toFloat() / containerHeight
+                                        val scaleY =
+                                            originalBitmapHeight.toFloat() / containerHeight
                                         val originalX = offset.x * scaleX
                                         val originalY = offset.y * scaleY
                                         // 傳遞轉換後的座標
