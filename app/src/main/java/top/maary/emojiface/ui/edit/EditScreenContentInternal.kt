@@ -54,7 +54,7 @@ fun EditScreenContentInternal(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // --- 2. Hoist Remembered UI State (Local state managed within Composable) ---
-    var showDialog by remember { mutableStateOf(false) }
+//    var showDialog by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true) // Often better for settings
     var isAddMode by remember { mutableStateOf(false) }
@@ -205,7 +205,8 @@ fun EditScreenContentInternal(
                 tapPositionForAdd = offset
                 selectedIndexForEdit = -1 // Mark as Add
                 isAddMode = false // Exit add mode state after tap
-                showDialog = true
+                viewModel.addEmoji(offset.x, offset.y, viewModel.getRandomEmoji(), 100f, 0f, startEditing = true)
+//                showDialog = true
             },
             onImageContainerMeasured = { size -> imageContainerSize = size },
             onPickImageClick = {
@@ -215,8 +216,9 @@ fun EditScreenContentInternal(
             },
             onClearImageClick = { viewModel.clearImage() },
             onEmojiCardClick = { index ->
-                selectedIndexForEdit = index // Mark as Edit
-                showDialog = true
+//                selectedIndexForEdit = index // Mark as Edit
+//                showDialog = true
+                viewModel.startEditing(index)
             },
             onAddEmojiCardClick = { isAddMode = true }, // Enter Add Mode
             onCloseClick = { activity?.finish() },
@@ -225,23 +227,29 @@ fun EditScreenContentInternal(
             onSaveClick = { viewModel.saveImageToGallery() },
             onSettingsClick = { showBottomSheet = true },
 
-            // Dialog Actions
-            onEditDialogConfirm = { newEmoji, newDiameter, newRotation ->
-                if (selectedIndexForEdit >= 0) { // Editing
-                    viewModel.updateEmoji(selectedIndexForEdit, newEmoji, newDiameter, newRotation)
-                } else { // Adding
-                    viewModel.addEmoji(tapPositionForAdd.x, tapPositionForAdd.y, newEmoji, newDiameter, newRotation)
-                }
-                showDialog = false
-                selectedIndexForEdit = -1 // Reset index
-            },
-            onEditDialogDismiss = {
-                showDialog = false
-                selectedIndexForEdit = -1 // Reset index
-                if (isAddMode) { // If dialog was dismissed during add mode tap, exit add mode
-                    isAddMode = false
-                }
-            },
+//            // Dialog Actions
+//            onEditDialogConfirm = { newEmoji, newDiameter, newRotation ->
+//                if (selectedIndexForEdit >= 0) { // Editing
+//                    viewModel.updateEmoji(selectedIndexForEdit, newEmoji, newDiameter, newRotation)
+//                } else { // Adding
+//                    viewModel.addEmoji(
+//                        tapPositionForAdd.x,
+//                        tapPositionForAdd.y,
+//                        newEmoji,
+//                        newDiameter,
+//                        newRotation
+//                    )
+//                }
+//                showDialog = false
+//                selectedIndexForEdit = -1 // Reset index
+//            },
+//            onEditDialogDismiss = {
+//                showDialog = false
+//                selectedIndexForEdit = -1 // Reset index
+//                if (isAddMode) { // If dialog was dismissed during add mode tap, exit add mode
+//                    isAddMode = false
+//                }
+//            },
 
             // Bottom Sheet Actions
             onSettingsSheetDismiss = {
@@ -265,7 +273,17 @@ fun EditScreenContentInternal(
                         viewModel.removeFontFromInternal(fontPathToRemove)
                     }
                 }
-            }
+            },
+            // --- 实时编辑 Actions ---
+            onEditingValueChanged = { emoji, diameter, rotation ->
+                viewModel.updateEditingEmoji(emoji, diameter, rotation)
+            },
+            onConfirmEditing = {
+                viewModel.confirmEditing()
+            },
+            onCancelEditing = {
+                viewModel.cancelEditing()
+            },
         )
     }
 
@@ -287,31 +305,33 @@ fun EditScreenContentInternal(
     }
 
     // --- 9. Render Common UI (Dialogs, Bottom Sheets) ---
-    if (showDialog) {
+    if (uiState.editingEmoji != null) {
+        val editingStatus = uiState.editingEmoji!!
         // Get initial values for dialog from uiState or defaults
-        val initialEmoji = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.emoji else viewModel.getRandomEmoji()
-        val initialDiameter = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.diameter else 100f
-        val initialRotation = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.angle else 0f
+//        val initialEmoji = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.emoji else viewModel.getRandomEmoji()
+//        val initialDiameter = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.diameter else 100f
+//        val initialRotation = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.angle else 0f
         // Calculate max diameter based on *original* bitmap dimensions from uiState
         val maxDiameter = remember(uiState.originalBitmap) {
             uiState.originalBitmap?.let { minOf(it.width, it.height) / 3f } ?: 500f
         }
 
         ModalBottomSheet(
-            onDismissRequest = actions.onEditDialogDismiss,
+            onDismissRequest = actions.onCancelEditing,
             sheetState = bottomSheetState,
             dragHandle = {  },
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
         ) {
             EditEmojiBottomSheetContent(
-                initialEmoji = initialEmoji ?: "?",
-                initialDiameter = initialDiameter ?: 100f,
-                initialRotation = initialRotation ?: 0f,
+                initialEmoji = editingStatus.emoji,
+                initialDiameter = editingStatus.diameter,
+                initialRotation = editingStatus.angle,
                 availableEmojis = uiState.predefinedEmojiOptions, // From uiState
                 fontFamily = uiState.loadedFontFamily, // From uiState
-                onConfirm = actions.onEditDialogConfirm, // Action
-                onDismiss = actions.onEditDialogDismiss,
-                maxDiameter = maxDiameter // Action
+                onConfirm = actions.onConfirmEditing, // Action
+                onDismiss = actions.onCancelEditing,
+                maxDiameter = maxDiameter,
+                onValueChange = actions.onEditingValueChanged
             )
         }
     }

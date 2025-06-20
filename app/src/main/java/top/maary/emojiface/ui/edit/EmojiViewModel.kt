@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import top.maary.emojiface.datastore.PreferenceRepository
@@ -46,9 +48,12 @@ data class EditUiState(
     val isProcessing: Boolean = false, // For background tasks like detection/initial render
     val isRendering: Boolean = false, // Specific for re-rendering after updates
     val errorMessage: String? = null,
-    val successMessage: String? = null // Optional for short success feedback
+    val successMessage: String? = null, // Optional for short success feedback
+    val editingEmojiIndex: Int? = null, // 正在编辑的 emoji 的索引
+    val editingEmoji: EmojiDetection? = null, // 正在编辑的 emoji 的瞬时数据
 )
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class EmojiViewModel @Inject constructor(
     private val preferenceRepository: PreferenceRepository, // Keep for observing flows
@@ -72,9 +77,21 @@ class EmojiViewModel @Inject constructor(
     private val _shareEvent = MutableSharedFlow<ShareEvent>()
     val shareEvent: SharedFlow<ShareEvent> = _shareEvent.asSharedFlow()
 
+    private val editingStateFlow = MutableStateFlow<EmojiDetection?>(null)
+
     init {
         // Observe preferences and update state
         observePreferences()
+        viewModelScope.launch {
+            editingStateFlow
+                .debounce(50L) // 防抖，用户停止滑动50毫秒后再触发
+                .collect { emoji ->
+                    if (emoji != null) {
+                        // 当有稳定的编辑中状态时，触发重绘
+                        rerenderWithTransientEdit()
+                    }
+                }
+        }
     }
 
     private fun observePreferences() {
@@ -274,7 +291,7 @@ class EmojiViewModel @Inject constructor(
      * Adds a new emoji at the specified coordinates.
      * (Signature matches original)
      */
-    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float) {
+    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float, startEditing: Boolean = false) {
         if (_uiState.value.originalBitmap == null) {
             _uiState.update { it.copy(errorMessage = "Cannot add emoji without an image.") }
             return
@@ -283,8 +300,101 @@ class EmojiViewModel @Inject constructor(
         val newDetection = EmojiDetection(xCenter = x, yCenter = y, diameter = diameter, angle = angle, emoji = emoji)
         currentList.add(newDetection)
 
+        // 先更新状态，将新的 emoji 加入列表
         _uiState.update { it.copy(selectedEmojis = currentList) }
-        rerenderBitmap() // Re-render after adding
+
+        // 如果需要立即编辑
+        if (startEditing) {
+            // 新添加的 emoji 位于列表的末尾
+            val newIndex = currentList.lastIndex
+            // 调用 startEditing，UI 将自动弹出底部编辑窗口
+            startEditing(newIndex)
+        } else {
+            // 如果不需要立即编辑（保留旧逻辑路径），则直接重绘
+            rerenderBitmap()
+        }
+    }
+
+    /**
+     * 开始编辑一个 Emoji
+     */
+    fun startEditing(index: Int) {
+        val emojiToEdit = _uiState.value.selectedEmojis.getOrNull(index)?.copy() ?: return
+        _uiState.update {
+            it.copy(
+                editingEmojiIndex = index,
+                editingEmoji = emojiToEdit
+            )
+        }
+        editingStateFlow.value = emojiToEdit // 触发 flow
+    }
+
+    /**
+     * 当滑块或输入框变化时，实时更新瞬时状态
+     */
+    fun updateEditingEmoji(emoji: String? = null, diameter: Float? = null, angle: Float? = null) {
+        val currentEditing = _uiState.value.editingEmoji ?: return
+        val updatedEmoji = currentEditing.copy(
+            emoji = emoji ?: currentEditing.emoji,
+            diameter = diameter ?: currentEditing.diameter,
+            angle = angle ?: currentEditing.angle
+        )
+        _uiState.update { it.copy(editingEmoji = updatedEmoji) }
+        editingStateFlow.value = updatedEmoji // 触发 flow
+    }
+
+    /**
+     * 用户点击"确定"，确认修改
+     */
+    fun confirmEditing() {
+        val status = _uiState.value.editingEmoji ?: return
+        val index = _uiState.value.editingEmojiIndex ?: return
+        val currentList = _uiState.value.selectedEmojis.toMutableList()
+        currentList[index] = status
+        _uiState.update { it.copy(selectedEmojis = currentList, editingEmoji = null, editingEmojiIndex = null) }
+        editingStateFlow.value = null
+        rerenderBitmap() // 使用最终确认的值进行一次最终的重绘
+    }
+
+    /**
+     * 用户取消编辑
+     */
+    fun cancelEditing() {
+        _uiState.update { it.copy(editingEmoji = null, editingEmojiIndex = null) }
+        editingStateFlow.value = null
+        rerenderBitmap() // 恢复到编辑前的状态
+    }
+
+    /**
+     * 私有的重绘方法，用于实时预览
+     */
+    private fun rerenderWithTransientEdit() {
+        val base = _uiState.value.originalBitmap ?: return
+        val emojis = _uiState.value.selectedEmojis.toMutableList()
+        val editingEmoji = _uiState.value.editingEmoji
+        val editingIndex = _uiState.value.editingEmojiIndex
+
+        if (editingEmoji != null && editingIndex != null && editingIndex in emojis.indices) {
+            emojis[editingIndex] = editingEmoji // 将正在编辑的 emoji 替换到列表中用于预览
+        } else {
+            return // 如果没有正在编辑的对象，则不重绘
+        }
+
+        val font = _uiState.value.selectedFontPath
+
+        // ... 接续 rerenderBitmap 的原有逻辑，但使用上面构造的临时 emojis 列表
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRendering = true) }
+            renderEmojiOnBitmapUseCase(base, emojis, font).fold(
+                onSuccess = { newBitmap ->
+                    _uiState.update { it.copy(processedBitmap = newBitmap, isRendering = false, errorMessage = null) }
+                },
+                onFailure = { exception ->
+                    _uiState.update { it.copy(isRendering = false, errorMessage = "Re-rendering failed: ${exception.localizedMessage}") }
+                }
+                // ... success/failure handling
+            )
+        }
     }
 
     // --- Settings Related ---

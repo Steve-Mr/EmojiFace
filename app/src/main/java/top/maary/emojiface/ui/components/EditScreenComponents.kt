@@ -59,7 +59,6 @@ import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -487,12 +486,10 @@ fun EditEmojiBottomSheetContent(
     maxDiameter: Float,
     availableEmojis: List<String>,
     fontFamily: FontFamily?,
-    onConfirm: (String, Float, Float) -> Unit,
+    onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
+    onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ){
-    var newEmoji by remember { mutableStateOf(initialEmoji) }
-    var newDiameter by remember { mutableFloatStateOf(initialDiameter) }
-    var newRotation by remember { mutableFloatStateOf(initialRotation) }
 
     Column (modifier = Modifier
         .fillMaxWidth()
@@ -504,8 +501,8 @@ fun EditEmojiBottomSheetContent(
         Row (verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 modifier = Modifier.width(96.dp),
-                value = newEmoji,
-                onValueChange = { newEmoji = it },
+                value = initialEmoji,
+                onValueChange = { onValueChange(it, null, null) },
                 label = { Text(stringResource(R.string.new_emoji))},
                 textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
             )
@@ -516,7 +513,7 @@ fun EditEmojiBottomSheetContent(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
                 itemsIndexed(availableEmojis) { _, emoji ->
-                    EmojiCardSmall(emoji = emoji, onClick = { newEmoji = emoji }, fontFamily = fontFamily)
+                    EmojiCardSmall(emoji = emoji, onClick = { onValueChange(emoji, null, null) }, fontFamily = fontFamily)
                 }
             }
         }
@@ -534,8 +531,8 @@ fun EditEmojiBottomSheetContent(
                             .size(16.dp))
                 },
                 description = stringResource(R.string.emoji_size),
-                value = newDiameter,
-                onValueChange = { newDiameter = it },
+                value = initialDiameter,
+                onValueChange = { onValueChange(null, it, null) },
                 minRange = 20f,
                 maxRange = maxDiameter
             )
@@ -552,8 +549,8 @@ fun EditEmojiBottomSheetContent(
                             .size(16.dp))
                 },
                 description = stringResource(R.string.emoji_angle),
-                value = newRotation,
-                onValueChange = { newRotation = it },
+                value = initialRotation,
+                onValueChange = { onValueChange(null, null, it) },
                 minRange = -90f,
                 maxRange = 90f
             )
@@ -562,7 +559,7 @@ fun EditEmojiBottomSheetContent(
         Row (modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End) {
             TextButton(
-                onClick = { onConfirm(newEmoji, newDiameter, newRotation) }) {
+                onClick = { onConfirm() }) {
                 Text(stringResource(R.string.ok))
             }
         }
