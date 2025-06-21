@@ -579,7 +579,7 @@ fun EmojiOverlay(
     editingEmoji: EmojiDetection?,
     padding: PaddingValues,
     cornerRadius: Dp,
-    ) {
+) {
     // 获取原始图片尺寸和屏幕上容器的尺寸，用于坐标和大小的缩放
     val originalWidth = state.currentImage?.width?.toFloat() ?: return
     val originalHeight = state.currentImage.height.toFloat()
@@ -595,11 +595,17 @@ fun EmojiOverlay(
     val emojisToRender = remember(state.emojiDetections, editingEmoji) {
         val list = state.emojiDetections.toMutableList()
         val editingEmoji = editingEmoji
-        val editingIndex = list.indexOfFirst { it.xCenter == editingEmoji?.xCenter && it.yCenter == editingEmoji.yCenter }.takeIf { it != -1 }
 
-        if (editingEmoji != null && editingIndex != null) {
-            // 如果正在编辑，用临时状态替换列表中的对应项
-            list[editingIndex] = editingEmoji
+        if (editingEmoji != null) {
+            val editingIndex = list.indexOfFirst { it.xCenter == editingEmoji.xCenter && it.yCenter == editingEmoji.yCenter }.takeIf { it != -1 }
+
+            if (editingIndex != null) {
+                // 原有逻辑：如果找到了（编辑模式），就替换它
+                list[editingIndex] = editingEmoji
+            } else {
+                // 新增逻辑：如果没找到（新增模式），就把它添加到列表末尾
+                list.add(editingEmoji)
+            }
         }
         list
     }
@@ -614,7 +620,7 @@ fun EmojiOverlay(
     }
 
     // 使用 Canvas Composable 进行绘制
-    Canvas(modifier = Modifier.fillMaxSize().padding(padding).clip(RoundedCornerShape(cornerRadius)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))) {
+    Canvas(modifier = Modifier.fillMaxSize().padding(padding).clip(RoundedCornerShape(cornerRadius))) {
         emojisToRender.forEach { detection ->
             // 从 state 获取加载好的原生 Typeface
             paint.typeface = state.typeface ?: Typeface.DEFAULT

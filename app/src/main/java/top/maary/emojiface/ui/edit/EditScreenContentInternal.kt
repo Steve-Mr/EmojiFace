@@ -151,8 +151,8 @@ fun EditScreenContentInternal(
 
     // --- 5. Derive UI-Specific Values from uiState ---
     // Use remember to avoid recalculating on every recomposition unless inputs change
-    val displayedBitmapForUi = remember(uiState.processedBitmap, uiState.originalBitmap) {
-        (uiState.processedBitmap ?: uiState.originalBitmap)?.asImageBitmap()
+    val displayedBitmapForUi = remember(uiState.originalBitmap) {
+        uiState.originalBitmap?.asImageBitmap()
     }
     val currentImageForUi = remember(uiState.originalBitmap) { // Needed? Only if layout explicitly needs original
         uiState.originalBitmap?.asImageBitmap()
@@ -175,7 +175,7 @@ fun EditScreenContentInternal(
     }
     // Combine ViewModel's processing state with UI's add mode for animation trigger
     val isProcessingForAnimation = remember(uiState.isProcessing, uiState.isRendering, isAddMode) {
-        derivedStateOf { uiState.isProcessing || isAddMode }
+        derivedStateOf { uiState.isProcessing || uiState.isRendering || isAddMode }
     }.value
 
 
@@ -195,7 +195,8 @@ fun EditScreenContentInternal(
         availableFontNames = fontNames, // Derived value
         selectedFontIndex = selectedFontIndex, // Derived value
         isMediumLayout = isMediumLayout, // Pass local state if needed by ActionRow etc.
-        typeface = uiState.loadedTypeface // Direct from uiState
+        typeface = uiState.loadedTypeface, // Direct from uiState
+        editingEmojiIndex = uiState.editingEmoji?.let { uiState.selectedEmojis.indexOf(it) } // Get index of currently editing emoji
     )
 
     // --- 7. Create EditScreenActions Instance (Largely unchanged) ---

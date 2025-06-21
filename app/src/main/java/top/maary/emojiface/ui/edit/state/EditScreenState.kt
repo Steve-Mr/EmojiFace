@@ -36,5 +36,6 @@ data class EditScreenState(
     val isAppIconHidden: Boolean,
     val availableFontNames: List<String>?, // 從 fontList (路徑) 映射過來的顯示名稱
     val selectedFontIndex: Int, // 當前選中字體在列表中的索引，方便 Dropdown 使用
-    val isMediumLayout: Boolean
+    val isMediumLayout: Boolean,
+    val editingEmojiIndex: Int?
 )
