@@ -26,14 +26,21 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -42,13 +49,24 @@ import androidx.compose.ui.unit.dp
 import top.maary.emojiface.R
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
+import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
 import top.maary.emojiface.ui.components.EmojiCard
+import top.maary.emojiface.ui.components.SettingsBottomSheetContent
+import top.maary.emojiface.ui.components.SideSheet
+import top.maary.emojiface.ui.components.SideSheetContent
+import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions) {
+fun CompactScreenLayout(
+    state: EditScreenState,
+    actions: EditScreenActions,
+    editingEmoji: EmojiDetection?,
+    showSettingsSheet: Boolean,
+    onDismissSettingsSheet: () -> Unit
+) {
     // TopAppBar 滾動行為
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -94,7 +112,15 @@ fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions) {
                 .padding(top = innerPadding.calculateTopPadding()) // 應用 Scaffold 的內邊距
         ) {
             // --- 圖片顯示區域 ---
-            DisplayPane(modifier = Modifier.weight(1f).fillMaxWidth().padding(8.dp), state = state, actions = actions)
+            DisplayPane(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                state = state,
+                actions = actions,
+                editingEmoji = editingEmoji
+            )
 
             if (state.displayedBitmap != null) {
                 Card(
@@ -137,110 +163,210 @@ fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions) {
                 }
             }
 
-                // --- 底部操作按鈕區域 ---
-                ActionRow(state = state, actions = actions)
+            // --- 底部操作按鈕區域 ---
+            ActionRow(state = state, actions = actions)
 
-                Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
-//            }
+            Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
 
+        }
+    }
+    if (editingEmoji != null) {
+        val bottomSheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            // 只阻止用户将其关闭 (变为 Hidden)
+            confirmValueChange = { it != SheetValue.Hidden }
+        )
+
+        val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
+
+        ModalBottomSheet(
+            onDismissRequest = actions.onCancelEditing,
+            sheetState = bottomSheetState,
+            dragHandle = { },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+        ) {
+            // 完全复用现有的 Composable
+            EditEmojiBottomSheetContent(
+                initialEmoji = editingEmoji.emoji,
+                initialDiameter = editingEmoji.diameter,
+                initialRotation = editingEmoji.angle,
+                availableEmojis = state.predefinedEmojiList ?: emptyList(),
+                fontFamily = state.fontFamily,
+                onConfirm = actions.onConfirmEditing,
+                onDismiss = actions.onCancelEditing,
+                maxDiameter = maxDiameter,
+                onValueChange = actions.onEditingValueChanged
+            )
+        }
+    }
+    if (showSettingsSheet) {
+        val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        // 将这个状态管理移到这里，使其生命周期与 Sheet 绑定
+        var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
+
+        ModalBottomSheet(
+            onDismissRequest = onDismissSettingsSheet, // 使用传递进来的 dismiss 函数
+            sheetState = bottomSheetState,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+        ) {
+            SettingsBottomSheetContent(
+                emojiOptions = state.predefinedEmojiList ?: emptyList(),
+                isEditingEmojiList = isEditingEmojiListInSheet,
+                fontFamily = state.fontFamily,
+                isAppIconHidden = state.isAppIconHidden,
+                availableFontNames = state.availableFontNames ?: emptyList(),
+                selectedFontIndex = state.selectedFontIndex,
+                onEditClick = { isEditingEmojiListInSheet = true },
+                onEditConfirm = { newEmojiList ->
+                    actions.onPredefinedEmojisEdited(newEmojiList)
+                    isEditingEmojiListInSheet = false
+                },
+                onHideIconToggle = actions.onHideIconToggle,
+                onFontSelected = actions.onFontSelected,
+                onAddFontClick = actions.onAddFontClick,
+                onRemoveFontClick = actions.onRemoveFontClick
+            )
         }
     }
 }
 
 @Composable
-fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions) {
-    Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer // Consistent background
-    ) { innerPadding -> // Scaffold provides padding, respect it if needed, though NavSuite might handle it
-        NavigationSuiteScaffold(
-            navigationSuiteItems = {
-                // --- Navigation Rail Items ---
-                item(
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Close,
-                            contentDescription = stringResource(R.string.exit)
-                        )
-                    },
-                    label = { Text(stringResource(R.string.exit)) }, // Show label in NavRail
-                    selected = false, // Never selected state
-                    onClick = actions.onCloseClick // Use action
-                )
-                // Show clear button only if an image is loaded
-                if (state.displayedBitmap != null) {
+fun LargeScreenLayout(
+    state: EditScreenState,
+    actions: EditScreenActions,
+    editingEmoji: EmojiDetection?,
+    showSettingsSheet: Boolean,
+    onDismissSettingsSheet: () -> Unit
+) {
+    // 1. 逻辑更清晰：判断是否需要显示 SideSheet
+    val showSideSheet = editingEmoji != null || showSettingsSheet
+
+    // 2. 决定关闭时应该执行哪个动作
+    val onDismiss = {
+        if (editingEmoji != null) {
+            actions.onCancelEditing()
+        } else {
+            onDismissSettingsSheet()
+        }
+    }
+
+    // 3. 使用 AppSideSheet 容器，传入状态和内容
+    SideSheet(
+        showSheet = showSideSheet,
+        onDismissSheet = onDismiss,
+        isModal = (editingEmoji == null), // 编辑 emoji 时为 false，其他情况(设置)为 true
+        sheetContent = {
+            SideSheetContent(
+                state = state,
+                actions = actions,
+                editingEmoji = editingEmoji,
+                showSettingsSheet = showSettingsSheet
+            )
+        }
+    ) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer // Consistent background
+        ) { innerPadding -> // Scaffold provides padding, respect it if needed, though NavSuite might handle it
+            NavigationSuiteScaffold(
+                navigationSuiteItems = {
+                    // --- Navigation Rail Items ---
                     item(
                         icon = {
                             Icon(
-                                imageVector = Icons.Outlined.DeleteSweep,
-                                contentDescription = stringResource(R.string.clear_photo)
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = stringResource(R.string.exit)
                             )
                         },
-                        // label = { Text("Clear") }, // Optional label
-                        selected = false,
-                        onClick = actions.onClearImageClick // Use action
+                        label = { Text(stringResource(R.string.exit)) }, // Show label in NavRail
+                        selected = false, // Never selected state
+                        onClick = actions.onCloseClick // Use action
                     )
-                }
-            },
-            layoutType = NavigationSuiteType.NavigationRail, // Explicitly set type
-            navigationSuiteColors = NavigationSuiteDefaults.colors( // Consistent colors
-                navigationRailContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                navigationRailContentColor = MaterialTheme.colorScheme.tertiary,
-            )
-        ) {
-            // --- Main Content Area (beside NavRail) ---
-            Row(
-                modifier = Modifier
-                    .fillMaxSize().padding(innerPadding) // Check if needed depending on NavSuiteScaffold behavior
-            ) {
-                // --- Image Display Area (Larger Portion) ---
-                DisplayPane(modifier = Modifier.weight(2f).fillMaxHeight(), state = state, actions = actions)
-
-                // --- Side Panel (Smaller Portion) ---
-                Card(
-                    modifier = Modifier
-                        .weight(1f) // Takes 1/3 of the width
-                        .fillMaxHeight()
-                        .padding(end = 8.dp), // Padding around card
-                    colors = CardDefaults.cardColors( // Consistent card color
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxHeight(), // Column fills the card height
-                        verticalArrangement = Arrangement.SpaceBetween // Pushes grid up and buttons down
-                    ) {
-                        // --- Emoji Grid ---
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
-                            modifier = Modifier.weight(1f) // Grid takes available space
-                        ) {
-                            itemsIndexed(state.emojiDetections) { index, detection ->
-                                EmojiCard(
-                                    emoji = detection.emoji,
-                                    onClick = { actions.onEmojiCardClick(index) }, // Use action
-                                    fontFamily = state.fontFamily,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    hPadding = 8.dp,
-                                    vPadding = 8.dp
+                    // Show clear button only if an image is loaded
+                    if (state.displayedBitmap != null) {
+                        item(
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.DeleteSweep,
+                                    contentDescription = stringResource(R.string.clear_photo)
                                 )
-                            }
-                            // Show Add button only if an image is present
-                            if (state.displayedBitmap != null) {
-                                item {
+                            },
+                            // label = { Text("Clear") }, // Optional label
+                            selected = false,
+                            onClick = actions.onClearImageClick // Use action
+                        )
+                    }
+                },
+                layoutType = NavigationSuiteType.NavigationRail, // Explicitly set type
+                navigationSuiteColors = NavigationSuiteDefaults.colors(
+                    // Consistent colors
+                    navigationRailContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    navigationRailContentColor = MaterialTheme.colorScheme.tertiary,
+                )
+            ) {
+                // --- Main Content Area (beside NavRail) ---
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding) // Check if needed depending on NavSuiteScaffold behavior
+                ) {
+                    // --- Image Display Area (Larger Portion) ---
+                    DisplayPane(
+                        modifier = Modifier
+                            .weight(2f)
+                            .fillMaxHeight(),
+                        state = state,
+                        actions = actions,
+                        editingEmoji = editingEmoji
+                    )
+
+                    // --- Side Panel (Smaller Portion) ---
+                    Card(
+                        modifier = Modifier
+                            .weight(1f) // Takes 1/3 of the width
+                            .fillMaxHeight()
+                            .padding(end = 8.dp), // Padding around card
+                        colors = CardDefaults.cardColors( // Consistent card color
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxHeight(), // Column fills the card height
+                            verticalArrangement = Arrangement.SpaceBetween // Pushes grid up and buttons down
+                        ) {
+                            // --- Emoji Grid ---
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
+                                modifier = Modifier.weight(1f) // Grid takes available space
+                            ) {
+                                itemsIndexed(state.emojiDetections) { index, detection ->
                                     EmojiCard(
-                                        emoji = "➕",
-                                        onClick = actions.onAddEmojiCardClick, // Use action
-                                        clickable = true,
+                                        emoji = detection.emoji,
+                                        onClick = { actions.onEmojiCardClick(index) }, // Use action
                                         fontFamily = state.fontFamily,
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                         hPadding = 8.dp,
                                         vPadding = 8.dp
                                     )
                                 }
+                                // Show Add button only if an image is present
+                                if (state.displayedBitmap != null) {
+                                    item {
+                                        EmojiCard(
+                                            emoji = "➕",
+                                            onClick = actions.onAddEmojiCardClick, // Use action
+                                            clickable = true,
+                                            fontFamily = state.fontFamily,
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            hPadding = 8.dp,
+                                            vPadding = 8.dp
+                                        )
+                                    }
+                                }
                             }
-                        }
 
-                        // --- Action Buttons Area (at the bottom of the card) ---
-                        ActionRow(state = state, actions = actions)
+                            // --- Action Buttons Area (at the bottom of the card) ---
+                            ActionRow(state = state, actions = actions)
+                        }
                     }
                 }
             }

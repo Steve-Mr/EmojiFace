@@ -33,12 +33,13 @@ data class EditScreenActions(
     /** 當使用者點擊「設定」按鈕時呼叫 (通常用於打開底部工作表)。 */
     val onSettingsClick: () -> Unit,
 
-    // --- 編輯/新增表情符號對話框操作 ---
-    /** 當編輯/新增對話框確認時呼叫，傳遞使用者輸入的值。*/
-    // 注意：內部邏輯會根據之前是點擊了現有卡片還是點擊了圖片來決定是更新還是新增。
-    val onEditDialogConfirm: (newEmoji: String, newDiameter: Float, newRotation: Float) -> Unit,
-    /** 當編輯/新增對話框被關閉時呼叫。 */
-    val onEditDialogDismiss: () -> Unit,
+    // --- 实时编辑表情符號操作 (替换原有 Dialog 操作) ---
+    /** 当用户在实时编辑时，参数发生了变化 */
+    val onEditingValueChanged: (emoji: String? , diameter: Float?, rotation: Float?) -> Unit,
+    /** 当用户确认实时编辑的结果时调用 */
+    val onConfirmEditing: () -> Unit,
+    /** 当用户取消实时编辑时调用 */
+    val onCancelEditing: () -> Unit,
 
     // --- 設定底部工作表操作 ---
     /** 當設定底部工作表被關閉時呼叫。 */

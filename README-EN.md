@@ -15,9 +15,13 @@ Reads images selected within the app or shared from other apps, detects faces in
     alt="Get it on Obtainium"
     height="80">](http://obtainium-redirect.maary.top/?r=obtainium://add/https://github.com/Steve-Mr/EmojiFace)
 
+We offer two APK variants. Please choose the one that best fits your usage style:  
+
+- `default`: The app icon is visible by default after installation. You can hide the icon from the in-app settings, but this might not work perfectly on all Android systems.  
+- `icon-disabled`: The app icon is hidden by default after installation. This is the recommended choice if you primarily plan to use the app via the share menu from other applications. You can always unhide the icon later in the app's settings.  
+
 |![Screenshot 1](assets/README/Screenshot_20250322-151002_FaceMoji.png)|![Screenshot 2](assets/README/Screenshot_20250322-150958_FaceMoji.png)|
 |:-:|:-:|
-
 
 ## Features
 

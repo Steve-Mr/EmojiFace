@@ -30,7 +30,7 @@ android {
         minSdk = 30
         targetSdk = 35
         versionCode = 2
-        versionName = "2025.06.15"
+        versionName = "2025.06.21"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -67,7 +67,24 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+
+    flavorDimensions("icon")
+
+    productFlavors {
+        create("default") {
+            dimension = "icon"
+            manifestPlaceholders["mainActivityEnabled"] = "true"
+            buildConfigField("boolean", "ICON_ENABLED", "true")
+        }
+        create("icon-disabled") {
+            dimension = "icon"
+            manifestPlaceholders["mainActivityEnabled"] = "false"
+            buildConfigField("boolean", "ICON_ENABLED", "false")
+        }
+    }
+
     splits {
         // Configures multiple APKs based on ABI.
         abi {
@@ -76,9 +93,10 @@ android {
             // Resets the list of ABIs for Gradle to create APKs for to none.
             reset()
             // Specifies a list of ABIs for Gradle to create APKs for.
-            include("x86", "x86_64", "armeabi-v7a", "arm64-v8a")
+            //noinspection ChromeOsAbiSupport
+            include("arm64-v8a")
             // Specifies that you don't want to also generate a universal APK that includes all ABIs.
-            isUniversalApk = false
+            isUniversalApk = true
         }
     }
 }
