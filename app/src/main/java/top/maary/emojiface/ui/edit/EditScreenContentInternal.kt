@@ -10,7 +10,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -50,9 +49,7 @@ fun EditScreenContentInternal(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     // --- 2. Hoist Remembered UI State (Local state managed within Composable) ---
-//    var showDialog by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
-    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true) // Often better for settings
     var isAddMode by remember { mutableStateOf(false) }
     var imageContainerSize by remember { mutableStateOf(IntSize.Zero) }
     var selectedIndexForEdit by remember { mutableIntStateOf(-1) } // -1 for Add, >=0 for Edit index
@@ -204,7 +201,6 @@ fun EditScreenContentInternal(
                 selectedIndexForEdit = -1 // Mark as Add
                 isAddMode = false // Exit add mode state after tap
                 viewModel.addEmoji(offset.x, offset.y, viewModel.getRandomEmoji(), 100f, 0f, startEditing = true)
-//                showDialog = true
             },
             onImageContainerMeasured = { size -> imageContainerSize = size },
             onPickImageClick = {
@@ -214,8 +210,6 @@ fun EditScreenContentInternal(
             },
             onClearImageClick = { viewModel.clearImage() },
             onEmojiCardClick = { index ->
-//                selectedIndexForEdit = index // Mark as Edit
-//                showDialog = true
                 viewModel.startEditing(index)
             },
             onAddEmojiCardClick = { isAddMode = true }, // Enter Add Mode
@@ -224,30 +218,6 @@ fun EditScreenContentInternal(
             onShareClick = { viewModel.shareImage() },
             onSaveClick = { viewModel.saveImageToGallery() },
             onSettingsClick = { showBottomSheet = true },
-
-//            // Dialog Actions
-//            onEditDialogConfirm = { newEmoji, newDiameter, newRotation ->
-//                if (selectedIndexForEdit >= 0) { // Editing
-//                    viewModel.updateEmoji(selectedIndexForEdit, newEmoji, newDiameter, newRotation)
-//                } else { // Adding
-//                    viewModel.addEmoji(
-//                        tapPositionForAdd.x,
-//                        tapPositionForAdd.y,
-//                        newEmoji,
-//                        newDiameter,
-//                        newRotation
-//                    )
-//                }
-//                showDialog = false
-//                selectedIndexForEdit = -1 // Reset index
-//            },
-//            onEditDialogDismiss = {
-//                showDialog = false
-//                selectedIndexForEdit = -1 // Reset index
-//                if (isAddMode) { // If dialog was dismissed during add mode tap, exit add mode
-//                    isAddMode = false
-//                }
-//            },
 
             // Bottom Sheet Actions
             onSettingsSheetDismiss = {
@@ -316,60 +286,4 @@ fun EditScreenContentInternal(
                 onDismissSettingsSheet = actions.onSettingsSheetDismiss)
         }
     }
-
-//    // --- 9. Render Common UI (Dialogs, Bottom Sheets) ---
-//    if (uiState.editingEmoji != null) {
-//        val editingStatus = uiState.editingEmoji!!
-//        // Get initial values for dialog from uiState or defaults
-////        val initialEmoji = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.emoji else viewModel.getRandomEmoji()
-////        val initialDiameter = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.diameter else 100f
-////        val initialRotation = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.angle else 0f
-//        // Calculate max diameter based on *original* bitmap dimensions from uiState
-//        val maxDiameter = remember(uiState.originalBitmap) {
-//            uiState.originalBitmap?.let { minOf(it.width, it.height) / 3f } ?: 500f
-//        }
-//
-//        ModalBottomSheet(
-//            onDismissRequest = actions.onCancelEditing,
-//            sheetState = bottomSheetState,
-//            dragHandle = {  },
-//            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
-//        ) {
-//            EditEmojiBottomSheetContent(
-//                initialEmoji = editingStatus.emoji,
-//                initialDiameter = editingStatus.diameter,
-//                initialRotation = editingStatus.angle,
-//                availableEmojis = uiState.predefinedEmojiOptions, // From uiState
-//                fontFamily = uiState.loadedFontFamily, // From uiState
-//                onConfirm = actions.onConfirmEditing, // Action
-//                onDismiss = actions.onCancelEditing,
-//                maxDiameter = maxDiameter,
-//                onValueChange = actions.onEditingValueChanged
-//            )
-//        }
-//    }
-
-//    if (showBottomSheet) {
-//        ModalBottomSheet(
-//            onDismissRequest = actions.onSettingsSheetDismiss,
-//            sheetState = bottomSheetState,
-//            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-//        ) {
-//            // Embed the content composable, passing necessary data from uiState and local state
-//            SettingsBottomSheetContent(
-//                emojiOptions = uiState.predefinedEmojiOptions, // From uiState
-//                isEditingEmojiList = isEditingEmojiListInSheet, // Local state
-//                fontFamily = uiState.loadedFontFamily, // From uiState
-//                isAppIconHidden = uiState.isAppIconHidden, // From uiState
-//                availableFontNames = fontNames, // Derived value
-//                selectedFontIndex = selectedFontIndex, // Derived value
-//                onEditClick = actions.onEditPredefinedEmojisClick, // Action
-//                onEditConfirm = actions.onPredefinedEmojisEdited, // Action
-//                onHideIconToggle = actions.onHideIconToggle, // Action
-//                onFontSelected = actions.onFontSelected, // Action
-//                onAddFontClick = actions.onAddFontClick, // Action
-//                onRemoveFontClick = actions.onRemoveFontClick // Action
-//            )
-//        }
-//    }
 }

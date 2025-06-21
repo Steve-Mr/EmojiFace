@@ -22,26 +22,20 @@ import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,18 +43,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import top.maary.emojiface.R
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
 import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
-import top.maary.emojiface.ui.components.EditEmojiSideSheetContent
 import top.maary.emojiface.ui.components.EmojiCard
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
-import top.maary.emojiface.ui.components.SettingsSideSheetContent
+import top.maary.emojiface.ui.components.SideSheet
+import top.maary.emojiface.ui.components.SideSheetContent
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -120,7 +112,10 @@ fun CompactScreenLayout(
         ) {
             // --- 圖片顯示區域 ---
             DisplayPane(
-                modifier = Modifier.weight(1f).fillMaxWidth().padding(8.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(8.dp),
                 state = state,
                 actions = actions,
                 editingEmoji = editingEmoji
@@ -171,7 +166,6 @@ fun CompactScreenLayout(
             ActionRow(state = state, actions = actions)
 
             Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
-//            }
 
         }
     }
@@ -238,274 +232,134 @@ fun LargeScreenLayout(
     showSettingsSheet: Boolean,
     onDismissSettingsSheet: () -> Unit
 ) {
-//    Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer // Consistent background
-//    ) { innerPadding -> // Scaffold provides padding, respect it if needed, though NavSuite might handle it
-//        NavigationSuiteScaffold(
-//            navigationSuiteItems = {
-//                // --- Navigation Rail Items ---
-//                item(
-//                    icon = {
-//                        Icon(
-//                            imageVector = Icons.Outlined.Close,
-//                            contentDescription = stringResource(R.string.exit)
-//                        )
-//                    },
-//                    label = { Text(stringResource(R.string.exit)) }, // Show label in NavRail
-//                    selected = false, // Never selected state
-//                    onClick = actions.onCloseClick // Use action
-//                )
-//                // Show clear button only if an image is loaded
-//                if (state.displayedBitmap != null) {
-//                    item(
-//                        icon = {
-//                            Icon(
-//                                imageVector = Icons.Outlined.DeleteSweep,
-//                                contentDescription = stringResource(R.string.clear_photo)
-//                            )
-//                        },
-//                        // label = { Text("Clear") }, // Optional label
-//                        selected = false,
-//                        onClick = actions.onClearImageClick // Use action
-//                    )
-//                }
-//            },
-//            layoutType = NavigationSuiteType.NavigationRail, // Explicitly set type
-//            navigationSuiteColors = NavigationSuiteDefaults.colors( // Consistent colors
-//                navigationRailContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-//                navigationRailContentColor = MaterialTheme.colorScheme.tertiary,
-//            )
-//        ) {
-//            // --- Main Content Area (beside NavRail) ---
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxSize().padding(innerPadding) // Check if needed depending on NavSuiteScaffold behavior
-//            ) {
-//                // --- Image Display Area (Larger Portion) ---
-//                DisplayPane(modifier = Modifier.weight(2f).fillMaxHeight(), state = state, actions = actions, editingEmoji = editingEmoji)
-//
-//                // --- Side Panel (Smaller Portion) ---
-//                Card(
-//                    modifier = Modifier
-//                        .weight(1f) // Takes 1/3 of the width
-//                        .fillMaxHeight()
-//                        .padding(end = 8.dp), // Padding around card
-//                    colors = CardDefaults.cardColors( // Consistent card color
-//                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-//                    )
-//                ) {
-//                    Column(
-//                        modifier = Modifier.fillMaxHeight(), // Column fills the card height
-//                        verticalArrangement = Arrangement.SpaceBetween // Pushes grid up and buttons down
-//                    ) {
-//                        // --- Emoji Grid ---
-//                        LazyVerticalGrid(
-//                            columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
-//                            modifier = Modifier.weight(1f) // Grid takes available space
-//                        ) {
-//                            itemsIndexed(state.emojiDetections) { index, detection ->
-//                                EmojiCard(
-//                                    emoji = detection.emoji,
-//                                    onClick = { actions.onEmojiCardClick(index) }, // Use action
-//                                    fontFamily = state.fontFamily,
-//                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-//                                    hPadding = 8.dp,
-//                                    vPadding = 8.dp
-//                                )
-//                            }
-//                            // Show Add button only if an image is present
-//                            if (state.displayedBitmap != null) {
-//                                item {
-//                                    EmojiCard(
-//                                        emoji = "➕",
-//                                        onClick = actions.onAddEmojiCardClick, // Use action
-//                                        clickable = true,
-//                                        fontFamily = state.fontFamily,
-//                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-//                                        hPadding = 8.dp,
-//                                        vPadding = 8.dp
-//                                    )
-//                                }
-//                            }
-//                        }
-//
-//                        // --- Action Buttons Area (at the bottom of the card) ---
-//                        ActionRow(state = state, actions = actions)
-//                    }
-//                }
-//            }
-//        }
-//    }
-    val isDrawerOpenRequest = editingEmoji != null || showSettingsSheet
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    // 1. 逻辑更清晰：判断是否需要显示 SideSheet
+    val showSideSheet = editingEmoji != null || showSettingsSheet
 
-    // 2. 使用 LaunchedEffect 同步 ViewModel 状态 和 SideSheet 状态
-    LaunchedEffect(isDrawerOpenRequest) {
-        if (isDrawerOpenRequest) {
-            drawerState.open()
+    // 2. 决定关闭时应该执行哪个动作
+    val onDismiss = {
+        if (editingEmoji != null) {
+            actions.onCancelEditing()
         } else {
-            drawerState.close()
+            onDismissSettingsSheet()
         }
     }
 
-    // 3. 监听 SideSheet 的关闭事件 (比如点击外部)，并通知 ViewModel
-    LaunchedEffect(drawerState.currentValue) {
-        if (drawerState.currentValue == DrawerValue.Closed && isDrawerOpenRequest) {
-            if (editingEmoji != null) {
-                actions.onCancelEditing()
-            } else {
-                onDismissSettingsSheet()
-            }
+    // 3. 使用 AppSideSheet 容器，传入状态和内容
+    SideSheet(
+        showSheet = showSideSheet,
+        onDismissSheet = onDismiss,
+        sheetContent = {
+            // 调用新的内容 Composable
+            SideSheetContent(
+                state = state,
+                actions = actions,
+                editingEmoji = editingEmoji,
+                showSettingsSheet = showSettingsSheet
+            )
         }
-    }
-
-    // 4. 使用 CompositionLocalProvider 将抽屉强制设置为从右向左 (RTL) 弹出
-    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            gesturesEnabled = isDrawerOpenRequest, // 抽屉打开时才允许手势
-            drawerContent = {
-                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    ModalDrawerSheet (
-                        drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                    ) {
-                            // 动态切换抽屉内容
-                            if (editingEmoji != null) {
-                                // --- 显示 Emoji 编辑器 ---
-                                val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
-                                EditEmojiSideSheetContent (
-                                    initialEmoji = editingEmoji.emoji,
-                                    initialDiameter = editingEmoji.diameter,
-                                    initialRotation = editingEmoji.angle,
-                                    availableEmojis = state.predefinedEmojiList ?: emptyList(),
-                                    fontFamily = state.fontFamily,
-                                    onConfirm = actions.onConfirmEditing,
-                                    onDismiss = actions.onCancelEditing,
-                                    maxDiameter = maxDiameter,
-                                    onValueChange = actions.onEditingValueChanged
-                                )
-                            } else if (showSettingsSheet) {
-                                // --- 显示设置面板 ---
-                                var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
-                                SettingsSideSheetContent (
-                                    emojiOptions = state.predefinedEmojiList ?: emptyList(),
-                                    isEditingEmojiList = isEditingEmojiListInSheet,
-                                    fontFamily = state.fontFamily,
-                                    isAppIconHidden = state.isAppIconHidden,
-                                    availableFontNames = state.availableFontNames ?: emptyList(),
-                                    selectedFontIndex = state.selectedFontIndex,
-                                    onEditClick = { isEditingEmojiListInSheet = true },
-                                    onEditConfirm = { newEmojiList ->
-                                        actions.onPredefinedEmojisEdited(newEmojiList)
-                                        isEditingEmojiListInSheet = false
-                                    },
-                                    onHideIconToggle = actions.onHideIconToggle,
-                                    onFontSelected = actions.onFontSelected,
-                                    onAddFontClick = actions.onAddFontClick,
-                                    onRemoveFontClick = actions.onRemoveFontClick
-                                )
-                            }
-
-                    }
-                }
-            }
-        ) {
-            // 5. 将原有的 Scaffold 和 NavigationSuiteScaffold 作为主内容
-            // 同样，恢复 LTR 方向以确保主屏幕布局正常
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer // Consistent background
-                ) { innerPadding -> // Scaffold provides padding, respect it if needed, though NavSuite might handle it
-                    NavigationSuiteScaffold(
-                        navigationSuiteItems = {
-                            // --- Navigation Rail Items ---
-                            item(
-                                icon = {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Close,
-                                        contentDescription = stringResource(R.string.exit)
-                                    )
-                                },
-                                label = { Text(stringResource(R.string.exit)) }, // Show label in NavRail
-                                selected = false, // Never selected state
-                                onClick = actions.onCloseClick // Use action
+    ) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer // Consistent background
+        ) { innerPadding -> // Scaffold provides padding, respect it if needed, though NavSuite might handle it
+            NavigationSuiteScaffold(
+                navigationSuiteItems = {
+                    // --- Navigation Rail Items ---
+                    item(
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = stringResource(R.string.exit)
                             )
-                            // Show clear button only if an image is loaded
-                            if (state.displayedBitmap != null) {
-                                item(
-                                    icon = {
-                                        Icon(
-                                            imageVector = Icons.Outlined.DeleteSweep,
-                                            contentDescription = stringResource(R.string.clear_photo)
-                                        )
-                                    },
-                                    // label = { Text("Clear") }, // Optional label
-                                    selected = false,
-                                    onClick = actions.onClearImageClick // Use action
-                                )
-                            }
                         },
-                        layoutType = NavigationSuiteType.NavigationRail, // Explicitly set type
-                        navigationSuiteColors = NavigationSuiteDefaults.colors( // Consistent colors
-                            navigationRailContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                            navigationRailContentColor = MaterialTheme.colorScheme.tertiary,
+                        label = { Text(stringResource(R.string.exit)) }, // Show label in NavRail
+                        selected = false, // Never selected state
+                        onClick = actions.onCloseClick // Use action
+                    )
+                    // Show clear button only if an image is loaded
+                    if (state.displayedBitmap != null) {
+                        item(
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.DeleteSweep,
+                                    contentDescription = stringResource(R.string.clear_photo)
+                                )
+                            },
+                            // label = { Text("Clear") }, // Optional label
+                            selected = false,
+                            onClick = actions.onClearImageClick // Use action
+                        )
+                    }
+                },
+                layoutType = NavigationSuiteType.NavigationRail, // Explicitly set type
+                navigationSuiteColors = NavigationSuiteDefaults.colors(
+                    // Consistent colors
+                    navigationRailContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    navigationRailContentColor = MaterialTheme.colorScheme.tertiary,
+                )
+            ) {
+                // --- Main Content Area (beside NavRail) ---
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding) // Check if needed depending on NavSuiteScaffold behavior
+                ) {
+                    // --- Image Display Area (Larger Portion) ---
+                    DisplayPane(
+                        modifier = Modifier
+                            .weight(2f)
+                            .fillMaxHeight(),
+                        state = state,
+                        actions = actions,
+                        editingEmoji = editingEmoji
+                    )
+
+                    // --- Side Panel (Smaller Portion) ---
+                    Card(
+                        modifier = Modifier
+                            .weight(1f) // Takes 1/3 of the width
+                            .fillMaxHeight()
+                            .padding(end = 8.dp), // Padding around card
+                        colors = CardDefaults.cardColors( // Consistent card color
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         )
                     ) {
-                        // --- Main Content Area (beside NavRail) ---
-                        Row(
-                            modifier = Modifier
-                                .fillMaxSize().padding(innerPadding) // Check if needed depending on NavSuiteScaffold behavior
+                        Column(
+                            modifier = Modifier.fillMaxHeight(), // Column fills the card height
+                            verticalArrangement = Arrangement.SpaceBetween // Pushes grid up and buttons down
                         ) {
-                            // --- Image Display Area (Larger Portion) ---
-                            DisplayPane(modifier = Modifier.weight(2f).fillMaxHeight(), state = state, actions = actions, editingEmoji = editingEmoji)
-
-                            // --- Side Panel (Smaller Portion) ---
-                            Card(
-                                modifier = Modifier
-                                    .weight(1f) // Takes 1/3 of the width
-                                    .fillMaxHeight()
-                                    .padding(end = 8.dp), // Padding around card
-                                colors = CardDefaults.cardColors( // Consistent card color
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                                )
+                            // --- Emoji Grid ---
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
+                                modifier = Modifier.weight(1f) // Grid takes available space
                             ) {
-                                Column(
-                                    modifier = Modifier.fillMaxHeight(), // Column fills the card height
-                                    verticalArrangement = Arrangement.SpaceBetween // Pushes grid up and buttons down
-                                ) {
-                                    // --- Emoji Grid ---
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
-                                        modifier = Modifier.weight(1f) // Grid takes available space
-                                    ) {
-                                        itemsIndexed(state.emojiDetections) { index, detection ->
-                                            EmojiCard(
-                                                emoji = detection.emoji,
-                                                onClick = { actions.onEmojiCardClick(index) }, // Use action
-                                                fontFamily = state.fontFamily,
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                hPadding = 8.dp,
-                                                vPadding = 8.dp
-                                            )
-                                        }
-                                        // Show Add button only if an image is present
-                                        if (state.displayedBitmap != null) {
-                                            item {
-                                                EmojiCard(
-                                                    emoji = "➕",
-                                                    onClick = actions.onAddEmojiCardClick, // Use action
-                                                    clickable = true,
-                                                    fontFamily = state.fontFamily,
-                                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                    hPadding = 8.dp,
-                                                    vPadding = 8.dp
-                                                )
-                                            }
-                                        }
+                                itemsIndexed(state.emojiDetections) { index, detection ->
+                                    EmojiCard(
+                                        emoji = detection.emoji,
+                                        onClick = { actions.onEmojiCardClick(index) }, // Use action
+                                        fontFamily = state.fontFamily,
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        hPadding = 8.dp,
+                                        vPadding = 8.dp
+                                    )
+                                }
+                                // Show Add button only if an image is present
+                                if (state.displayedBitmap != null) {
+                                    item {
+                                        EmojiCard(
+                                            emoji = "➕",
+                                            onClick = actions.onAddEmojiCardClick, // Use action
+                                            clickable = true,
+                                            fontFamily = state.fontFamily,
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            hPadding = 8.dp,
+                                            vPadding = 8.dp
+                                        )
                                     }
-
-                                    // --- Action Buttons Area (at the bottom of the card) ---
-                                    ActionRow(state = state, actions = actions)
                                 }
                             }
+
+                            // --- Action Buttons Area (at the bottom of the card) ---
+                            ActionRow(state = state, actions = actions)
                         }
                     }
                 }
