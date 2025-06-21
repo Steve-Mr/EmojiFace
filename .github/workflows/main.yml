@@ -166,7 +166,7 @@ jobs:
         id: apk
         uses: JantHsueh/get-apk-info-action@master
         with:
-          apkPath: ${{ env.APK_FILE_UPLOAD }}
+          apkPath: ${{ env.APK_FILE_UPLOAD1 }}
 
       - name: Release
         run: |
