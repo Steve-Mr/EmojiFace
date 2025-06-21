@@ -10,8 +10,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,7 +28,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.flow.collectLatest
 import top.maary.emojiface.R
-import top.maary.emojiface.ui.components.SettingsBottomSheetContent
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 import top.maary.emojiface.ui.edit.state.ShareEvent
@@ -293,15 +290,30 @@ fun EditScreenContentInternal(
     when {
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND) -> {
             isMediumLayout = false // Update layout flag
-            LargeScreenLayout(state = stateForUiLayout, actions = actions, editingEmoji = uiState.editingEmoji)
+            LargeScreenLayout(
+                state = stateForUiLayout,
+                actions = actions,
+                editingEmoji = uiState.editingEmoji,
+                showSettingsSheet = showBottomSheet,
+                onDismissSettingsSheet = actions.onSettingsSheetDismiss)
         }
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) -> {
             isMediumLayout = true // Update layout flag
-            LargeScreenLayout(state = stateForUiLayout, actions = actions, editingEmoji = uiState.editingEmoji) // Assuming Large handles Medium too
+            LargeScreenLayout(
+                state = stateForUiLayout,
+                actions = actions,
+                editingEmoji = uiState.editingEmoji,
+                showSettingsSheet = showBottomSheet,
+                onDismissSettingsSheet = actions.onSettingsSheetDismiss)
         }
         else -> {
             isMediumLayout = false // Update layout flag
-            CompactScreenLayout(state = stateForUiLayout, actions = actions, editingEmoji = uiState.editingEmoji)
+            CompactScreenLayout(
+                state = stateForUiLayout,
+                actions = actions,
+                editingEmoji = uiState.editingEmoji,
+                showSettingsSheet = showBottomSheet,
+                onDismissSettingsSheet = actions.onSettingsSheetDismiss)
         }
     }
 
@@ -337,27 +349,27 @@ fun EditScreenContentInternal(
 //        }
 //    }
 
-    if (showBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = actions.onSettingsSheetDismiss,
-            sheetState = bottomSheetState,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-        ) {
-            // Embed the content composable, passing necessary data from uiState and local state
-            SettingsBottomSheetContent(
-                emojiOptions = uiState.predefinedEmojiOptions, // From uiState
-                isEditingEmojiList = isEditingEmojiListInSheet, // Local state
-                fontFamily = uiState.loadedFontFamily, // From uiState
-                isAppIconHidden = uiState.isAppIconHidden, // From uiState
-                availableFontNames = fontNames, // Derived value
-                selectedFontIndex = selectedFontIndex, // Derived value
-                onEditClick = actions.onEditPredefinedEmojisClick, // Action
-                onEditConfirm = actions.onPredefinedEmojisEdited, // Action
-                onHideIconToggle = actions.onHideIconToggle, // Action
-                onFontSelected = actions.onFontSelected, // Action
-                onAddFontClick = actions.onAddFontClick, // Action
-                onRemoveFontClick = actions.onRemoveFontClick // Action
-            )
-        }
-    }
+//    if (showBottomSheet) {
+//        ModalBottomSheet(
+//            onDismissRequest = actions.onSettingsSheetDismiss,
+//            sheetState = bottomSheetState,
+//            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+//        ) {
+//            // Embed the content composable, passing necessary data from uiState and local state
+//            SettingsBottomSheetContent(
+//                emojiOptions = uiState.predefinedEmojiOptions, // From uiState
+//                isEditingEmojiList = isEditingEmojiListInSheet, // Local state
+//                fontFamily = uiState.loadedFontFamily, // From uiState
+//                isAppIconHidden = uiState.isAppIconHidden, // From uiState
+//                availableFontNames = fontNames, // Derived value
+//                selectedFontIndex = selectedFontIndex, // Derived value
+//                onEditClick = actions.onEditPredefinedEmojisClick, // Action
+//                onEditConfirm = actions.onPredefinedEmojisEdited, // Action
+//                onHideIconToggle = actions.onHideIconToggle, // Action
+//                onFontSelected = actions.onFontSelected, // Action
+//                onAddFontClick = actions.onAddFontClick, // Action
+//                onRemoveFontClick = actions.onRemoveFontClick // Action
+//            )
+//        }
+//    }
 }

@@ -42,6 +42,10 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -55,13 +59,21 @@ import top.maary.emojiface.ui.components.DisplayPane
 import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
 import top.maary.emojiface.ui.components.EditEmojiSideSheetContent
 import top.maary.emojiface.ui.components.EmojiCard
+import top.maary.emojiface.ui.components.SettingsBottomSheetContent
+import top.maary.emojiface.ui.components.SettingsSideSheetContent
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions, editingEmoji: EmojiDetection?) {
+fun CompactScreenLayout(
+    state: EditScreenState,
+    actions: EditScreenActions,
+    editingEmoji: EmojiDetection?,
+    showSettingsSheet: Boolean,
+    onDismissSettingsSheet: () -> Unit
+) {
     // TopAppBar 滾動行為
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -187,10 +199,45 @@ fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions, edit
             )
         }
     }
+    if (showSettingsSheet) {
+        val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        // 将这个状态管理移到这里，使其生命周期与 Sheet 绑定
+        var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
+
+        ModalBottomSheet(
+            onDismissRequest = onDismissSettingsSheet, // 使用传递进来的 dismiss 函数
+            sheetState = bottomSheetState,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+        ) {
+            SettingsBottomSheetContent(
+                emojiOptions = state.predefinedEmojiList ?: emptyList(),
+                isEditingEmojiList = isEditingEmojiListInSheet,
+                fontFamily = state.fontFamily,
+                isAppIconHidden = state.isAppIconHidden,
+                availableFontNames = state.availableFontNames ?: emptyList(),
+                selectedFontIndex = state.selectedFontIndex,
+                onEditClick = { isEditingEmojiListInSheet = true },
+                onEditConfirm = { newEmojiList ->
+                    actions.onPredefinedEmojisEdited(newEmojiList)
+                    isEditingEmojiListInSheet = false
+                },
+                onHideIconToggle = actions.onHideIconToggle,
+                onFontSelected = actions.onFontSelected,
+                onAddFontClick = actions.onAddFontClick,
+                onRemoveFontClick = actions.onRemoveFontClick
+            )
+        }
+    }
 }
 
 @Composable
-fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions, editingEmoji: EmojiDetection?) {
+fun LargeScreenLayout(
+    state: EditScreenState,
+    actions: EditScreenActions,
+    editingEmoji: EmojiDetection?,
+    showSettingsSheet: Boolean,
+    onDismissSettingsSheet: () -> Unit
+) {
 //    Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer // Consistent background
 //    ) { innerPadding -> // Scaffold provides padding, respect it if needed, though NavSuite might handle it
 //        NavigationSuiteScaffold(
@@ -288,11 +335,12 @@ fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions, editin
 //            }
 //        }
 //    }
+    val isDrawerOpenRequest = editingEmoji != null || showSettingsSheet
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     // 2. 使用 LaunchedEffect 同步 ViewModel 状态 和 SideSheet 状态
-    LaunchedEffect(editingEmoji) {
-        if (editingEmoji != null) {
+    LaunchedEffect(isDrawerOpenRequest) {
+        if (isDrawerOpenRequest) {
             drawerState.open()
         } else {
             drawerState.close()
@@ -301,9 +349,12 @@ fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions, editin
 
     // 3. 监听 SideSheet 的关闭事件 (比如点击外部)，并通知 ViewModel
     LaunchedEffect(drawerState.currentValue) {
-        // 如果用户关闭了抽屉，但 ViewModel 的状态仍然是“正在编辑”，则调用取消操作
-        if (drawerState.currentValue == DrawerValue.Closed && editingEmoji != null) {
-            actions.onCancelEditing()
+        if (drawerState.currentValue == DrawerValue.Closed && isDrawerOpenRequest) {
+            if (editingEmoji != null) {
+                actions.onCancelEditing()
+            } else {
+                onDismissSettingsSheet()
+            }
         }
     }
 
@@ -311,28 +362,49 @@ fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions, editin
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         ModalNavigationDrawer(
             drawerState = drawerState,
-            gesturesEnabled = editingEmoji != null, // 仅在编辑时允许手势
+            gesturesEnabled = isDrawerOpenRequest, // 抽屉打开时才允许手势
             drawerContent = {
-                // 在抽屉内容内部，将布局方向恢复为从左到右 (LTR)，以免影响内容本身
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                    ModalDrawerSheet(
-                        modifier = Modifier.width(360.dp) // 设置 SideSheet 的宽度
+                    ModalDrawerSheet (
+                        drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                     ) {
-                        if (editingEmoji != null) {
-                            val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
-                            // 再次复用完全相同的 EditEmojiBottomSheetContent
-                            EditEmojiSideSheetContent(
-                                initialEmoji = editingEmoji.emoji,
-                                initialDiameter = editingEmoji.diameter,
-                                initialRotation = editingEmoji.angle,
-                                availableEmojis = state.predefinedEmojiList ?: emptyList(),
-                                fontFamily = state.fontFamily,
-                                onConfirm = actions.onConfirmEditing,
-                                onDismiss = actions.onCancelEditing,
-                                maxDiameter = maxDiameter,
-                                onValueChange = actions.onEditingValueChanged
-                            )
-                        }
+                            // 动态切换抽屉内容
+                            if (editingEmoji != null) {
+                                // --- 显示 Emoji 编辑器 ---
+                                val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
+                                EditEmojiSideSheetContent (
+                                    initialEmoji = editingEmoji.emoji,
+                                    initialDiameter = editingEmoji.diameter,
+                                    initialRotation = editingEmoji.angle,
+                                    availableEmojis = state.predefinedEmojiList ?: emptyList(),
+                                    fontFamily = state.fontFamily,
+                                    onConfirm = actions.onConfirmEditing,
+                                    onDismiss = actions.onCancelEditing,
+                                    maxDiameter = maxDiameter,
+                                    onValueChange = actions.onEditingValueChanged
+                                )
+                            } else if (showSettingsSheet) {
+                                // --- 显示设置面板 ---
+                                var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
+                                SettingsSideSheetContent (
+                                    emojiOptions = state.predefinedEmojiList ?: emptyList(),
+                                    isEditingEmojiList = isEditingEmojiListInSheet,
+                                    fontFamily = state.fontFamily,
+                                    isAppIconHidden = state.isAppIconHidden,
+                                    availableFontNames = state.availableFontNames ?: emptyList(),
+                                    selectedFontIndex = state.selectedFontIndex,
+                                    onEditClick = { isEditingEmojiListInSheet = true },
+                                    onEditConfirm = { newEmojiList ->
+                                        actions.onPredefinedEmojisEdited(newEmojiList)
+                                        isEditingEmojiListInSheet = false
+                                    },
+                                    onHideIconToggle = actions.onHideIconToggle,
+                                    onFontSelected = actions.onFontSelected,
+                                    onAddFontClick = actions.onAddFontClick,
+                                    onRemoveFontClick = actions.onRemoveFontClick
+                                )
+                            }
+
                     }
                 }
             }
