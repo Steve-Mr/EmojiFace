@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -390,7 +391,9 @@ fun SliderWithCaption(
 ) {
 
     Column(
-        modifier = modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             leadingIcon()
@@ -409,6 +412,84 @@ fun SliderWithCaption(
 
 @Composable
 fun SettingsBottomSheetContent(
+    emojiOptions: List<String>,
+    isEditingEmojiList: Boolean,
+    fontFamily: FontFamily?,
+    isAppIconHidden: Boolean,
+    availableFontNames: List<String>,
+    selectedFontIndex: Int,
+    onEditClick: () -> Unit,
+    onEditConfirm: (newEmojiListString: String) -> Unit,
+    onHideIconToggle: (hide: Boolean) -> Unit,
+    onFontSelected: (index: Int) -> Unit,
+    onAddFontClick: () -> Unit,
+    onRemoveFontClick: (index: Int) -> Unit,
+) {
+    Box(modifier = Modifier
+        .padding(horizontal = 8.dp, vertical = 2.dp)
+        .clip(
+            RoundedCornerShape(
+                topStart = 24.dp,
+                topEnd = 24.dp,
+                bottomStart = 4.dp,
+                bottomEnd = 4.dp
+            )
+        )
+        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+        Column {
+            Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
+                text = stringResource(R.string.emoji_list))
+            if (!isEditingEmojiList) {
+                PredefinedEmojiSettings(
+                    emojiOptions = emojiOptions,
+                    onClick = onEditClick,
+                    fontFamily = fontFamily)
+            } else {
+                EditEmojiList(
+                    emojiOptions = emojiOptions,
+                    onClick = onEditConfirm,
+                    fontFamily = fontFamily)
+            }
+        }
+    }
+    Box(modifier = Modifier
+        .padding(horizontal = 8.dp, vertical = 2.dp)
+        .clip(
+            RoundedCornerShape(
+                topStart = 4.dp,
+                topEnd = 4.dp,
+                bottomStart = 4.dp,
+                bottomEnd = 4.dp
+            )
+        )
+        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+        HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
+
+    }
+
+    Box(modifier = Modifier
+        .padding(horizontal = 8.dp, vertical = 2.dp)
+        .clip(
+            RoundedCornerShape(
+                topStart = 4.dp,
+                topEnd = 4.dp,
+                bottomStart = 24.dp,
+                bottomEnd = 24.dp
+            )
+        )
+        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+        DropdownRow(
+            options = availableFontNames.toMutableList(),
+            position = selectedFontIndex,
+            onItemClicked = onFontSelected,
+            onAddClick = onAddFontClick,
+            onRemoveClick = { onRemoveFontClick(it) })
+    }
+
+}
+
+@Composable
+fun SettingsSideSheetContent(
     emojiOptions: List<String>,
     isEditingEmojiList: Boolean,
     fontFamily: FontFamily?,
@@ -515,7 +596,10 @@ fun EditEmojiBottomSheetContent(
             )
             Spacer(modifier = Modifier.width(8.dp))
             // 预置 emoji 选择行
-            LazyRow(modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(vertical = 8.dp)) {
+            LazyRow(modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .padding(vertical = 8.dp)) {
                 item {
                     Spacer(modifier = Modifier.width(8.dp))
                 }
@@ -574,6 +658,121 @@ fun EditEmojiBottomSheetContent(
 }
 
 @Composable
+fun EditEmojiSideSheetContent(
+    initialEmoji: String,
+    initialDiameter: Float,
+    initialRotation: Float,
+    maxDiameter: Float,
+    availableEmojis: List<String>,
+    fontFamily: FontFamily?,
+    onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        item {
+            OutlinedTextField(
+            modifier = Modifier.fillMaxWidth(),
+            value = initialEmoji,
+            onValueChange = { onValueChange(it, null, null) },
+            label = { Text(stringResource(R.string.new_emoji)) },
+            textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
+        ) }
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+
+        }
+
+        item {
+            // 预置 emoji 选择行
+            LazyRow(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(vertical = 8.dp)
+            ) {
+                item {
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                itemsIndexed(availableEmojis) { _, emoji ->
+                    EmojiCardSmall(
+                        emoji = emoji,
+                        onClick = { onValueChange(emoji, null, null) },
+                        fontFamily = fontFamily
+                    )
+                }
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        item {
+            SliderWithCaption(
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.FormatSize,
+                        contentDescription = stringResource(R.string.emoji_size),
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(16.dp)
+                    )
+                },
+                description = stringResource(R.string.emoji_size),
+                value = initialDiameter,
+                onValueChange = { onValueChange(null, it, null) },
+                minRange = 20f,
+                maxRange = maxDiameter
+            )
+        }
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        item {
+            SliderWithCaption(
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Rotate90DegreesCw,
+                        contentDescription = stringResource(R.string.emoji_angle),
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(16.dp)
+                    )
+                },
+                description = stringResource(R.string.emoji_angle),
+                value = initialRotation,
+                onValueChange = { onValueChange(null, null, it) },
+                minRange = -90f,
+                maxRange = 90f
+            )
+        }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = { onConfirm() }) {
+                    Text(stringResource(R.string.ok))
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun EmojiOverlay(
     state: EditScreenState,
     editingEmoji: EmojiDetection?,
@@ -620,7 +819,10 @@ fun EmojiOverlay(
     }
 
     // 使用 Canvas Composable 进行绘制
-    Canvas(modifier = Modifier.fillMaxSize().padding(padding).clip(RoundedCornerShape(cornerRadius))) {
+    Canvas(modifier = Modifier
+        .fillMaxSize()
+        .padding(padding)
+        .clip(RoundedCornerShape(cornerRadius))) {
         emojisToRender.forEach { detection ->
             // 从 state 获取加载好的原生 Typeface
             paint.typeface = state.typeface ?: Typeface.DEFAULT
@@ -685,29 +887,43 @@ fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenA
                             contentDescription = stringResource(R.string.process_result),
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = (state.aspectRatio ?: 1f) * 8.dp, vertical = 8.dp)
+                                .padding(
+                                    horizontal = (state.aspectRatio ?: 1f) * 8.dp,
+                                    vertical = 8.dp
+                                )
                                 .clip(
                                     RoundedCornerShape(16.dp)
-                                ).onGloballyPositioned { layoutCoordinates ->
+                                )
+                                .onGloballyPositioned { layoutCoordinates ->
                                     // 回報容器尺寸
                                     actions.onImageContainerMeasured(layoutCoordinates.size)
                                 }
-                                .then( if (state.isAddMode) {
+                                .then(
+                                    if (state.isAddMode) {
                                     Modifier.pointerInput(Unit) { // 合并 pointerInput
 
                                         detectTapGestures { offset ->
                                             // ... (原有的 onImageTapToAdd 逻辑保持不变)
                                             val containerWidth = state.imageContainerSize.width
                                             val containerHeight = state.imageContainerSize.height
-                                            val originalBitmapWidth = state.currentImage?.width ?: state.displayedBitmap.width
-                                            val originalBitmapHeight = state.currentImage?.height ?: state.displayedBitmap.height
+                                            val originalBitmapWidth = state.currentImage?.width
+                                                ?: state.displayedBitmap.width
+                                            val originalBitmapHeight = state.currentImage?.height
+                                                ?: state.displayedBitmap.height
 
                                             if (containerWidth > 0 && containerHeight > 0) {
-                                                val scaleX = originalBitmapWidth.toFloat() / containerWidth
-                                                val scaleY = originalBitmapHeight.toFloat() / containerHeight
+                                                val scaleX =
+                                                    originalBitmapWidth.toFloat() / containerWidth
+                                                val scaleY =
+                                                    originalBitmapHeight.toFloat() / containerHeight
                                                 val originalX = offset.x * scaleX
                                                 val originalY = offset.y * scaleY
-                                                actions.onImageTapToAdd(Offset(originalX, originalY))
+                                                actions.onImageTapToAdd(
+                                                    Offset(
+                                                        originalX,
+                                                        originalY
+                                                    )
+                                                )
                                             } else {
                                                 actions.onImageTapToAdd(offset)
                                             }

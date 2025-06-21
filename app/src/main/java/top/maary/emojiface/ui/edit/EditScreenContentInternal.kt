@@ -30,7 +30,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.flow.collectLatest
 import top.maary.emojiface.R
-import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -306,37 +305,37 @@ fun EditScreenContentInternal(
         }
     }
 
-    // --- 9. Render Common UI (Dialogs, Bottom Sheets) ---
-    if (uiState.editingEmoji != null) {
-        val editingStatus = uiState.editingEmoji!!
-        // Get initial values for dialog from uiState or defaults
-//        val initialEmoji = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.emoji else viewModel.getRandomEmoji()
-//        val initialDiameter = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.diameter else 100f
-//        val initialRotation = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.angle else 0f
-        // Calculate max diameter based on *original* bitmap dimensions from uiState
-        val maxDiameter = remember(uiState.originalBitmap) {
-            uiState.originalBitmap?.let { minOf(it.width, it.height) / 3f } ?: 500f
-        }
-
-        ModalBottomSheet(
-            onDismissRequest = actions.onCancelEditing,
-            sheetState = bottomSheetState,
-            dragHandle = {  },
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
-        ) {
-            EditEmojiBottomSheetContent(
-                initialEmoji = editingStatus.emoji,
-                initialDiameter = editingStatus.diameter,
-                initialRotation = editingStatus.angle,
-                availableEmojis = uiState.predefinedEmojiOptions, // From uiState
-                fontFamily = uiState.loadedFontFamily, // From uiState
-                onConfirm = actions.onConfirmEditing, // Action
-                onDismiss = actions.onCancelEditing,
-                maxDiameter = maxDiameter,
-                onValueChange = actions.onEditingValueChanged
-            )
-        }
-    }
+//    // --- 9. Render Common UI (Dialogs, Bottom Sheets) ---
+//    if (uiState.editingEmoji != null) {
+//        val editingStatus = uiState.editingEmoji!!
+//        // Get initial values for dialog from uiState or defaults
+////        val initialEmoji = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.emoji else viewModel.getRandomEmoji()
+////        val initialDiameter = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.diameter else 100f
+////        val initialRotation = if (selectedIndexForEdit >= 0) uiState.selectedEmojis.getOrNull(selectedIndexForEdit)?.angle else 0f
+//        // Calculate max diameter based on *original* bitmap dimensions from uiState
+//        val maxDiameter = remember(uiState.originalBitmap) {
+//            uiState.originalBitmap?.let { minOf(it.width, it.height) / 3f } ?: 500f
+//        }
+//
+//        ModalBottomSheet(
+//            onDismissRequest = actions.onCancelEditing,
+//            sheetState = bottomSheetState,
+//            dragHandle = {  },
+//            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+//        ) {
+//            EditEmojiBottomSheetContent(
+//                initialEmoji = editingStatus.emoji,
+//                initialDiameter = editingStatus.diameter,
+//                initialRotation = editingStatus.angle,
+//                availableEmojis = uiState.predefinedEmojiOptions, // From uiState
+//                fontFamily = uiState.loadedFontFamily, // From uiState
+//                onConfirm = actions.onConfirmEditing, // Action
+//                onDismiss = actions.onCancelEditing,
+//                maxDiameter = maxDiameter,
+//                onValueChange = actions.onEditingValueChanged
+//            )
+//        }
+//    }
 
     if (showBottomSheet) {
         ModalBottomSheet(
