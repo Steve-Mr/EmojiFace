@@ -2,11 +2,13 @@ package top.maary.emojiface.ui.edit // Or your chosen package
 
 // Imports for Android, Lifecycle, Coroutines, Hilt, Flows, Graphics etc.
 import android.graphics.Bitmap
+import android.graphics.Typeface
 import android.net.Uri
 import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -30,6 +32,7 @@ import top.maary.emojiface.domain.usecase.UpdateEmojiOptionsUseCase
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.ShareEvent
 import top.maary.emojiface.util.Constants
+import top.maary.emojiface.util.getTypeFaceFromPath
 import top.maary.emojiface.util.loadFontFromPath
 import javax.inject.Inject
 
@@ -43,12 +46,16 @@ data class EditUiState(
     val availableFontPaths: List<String> = listOf(Constants.DEFAULT_FONT_MARKER),
     val selectedFontPath: String = Constants.DEFAULT_FONT_MARKER,
     val loadedFontFamily: FontFamily? = null,
+    val loadedTypeface: Typeface? = null, // <--- 新增原生 Typeface 状态
     val isProcessing: Boolean = false, // For background tasks like detection/initial render
     val isRendering: Boolean = false, // Specific for re-rendering after updates
     val errorMessage: String? = null,
-    val successMessage: String? = null // Optional for short success feedback
+    val successMessage: String? = null, // Optional for short success feedback
+    val editingEmojiIndex: Int? = null, // 正在编辑的 emoji 的索引
+    val editingEmoji: EmojiDetection? = null, // 正在编辑的 emoji 的瞬时数据
 )
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 class EmojiViewModel @Inject constructor(
     private val preferenceRepository: PreferenceRepository, // Keep for observing flows
@@ -72,9 +79,21 @@ class EmojiViewModel @Inject constructor(
     private val _shareEvent = MutableSharedFlow<ShareEvent>()
     val shareEvent: SharedFlow<ShareEvent> = _shareEvent.asSharedFlow()
 
+    private val editingStateFlow = MutableStateFlow<EmojiDetection?>(null)
+
     init {
         // Observe preferences and update state
         observePreferences()
+//        viewModelScope.launch {
+//            editingStateFlow
+//                .debounce(50L) // 防抖，用户停止滑动50毫秒后再触发
+//                .collect { emoji ->
+//                    if (emoji != null) {
+//                        // 当有稳定的编辑中状态时，触发重绘
+//                        rerenderWithTransientEdit()
+//                    }
+//                }
+//        }
     }
 
     private fun observePreferences() {
@@ -93,20 +112,25 @@ class EmojiViewModel @Inject constructor(
                 preferenceRepository.fontsList,
                 preferenceRepository.selectedFont
             ) { paths, selectedPath ->
-                val fontFamily = loadFontFromPath(selectedPath) // Load font reactively
-                Triple(paths, selectedPath, fontFamily)
-            }.collect { (paths, selectedPath, fontFamily) ->
+                // 同时加载两种字体对象
+                val fontFamily = loadFontFromPath(selectedPath)
+                val typeface = if (selectedPath == Constants.DEFAULT_FONT_MARKER) {
+                    Typeface.DEFAULT
+                } else {
+                    getTypeFaceFromPath(selectedPath)
+                }
+                // 将所有状态打包
+                Triple(paths, selectedPath, Pair(fontFamily, typeface))
+            }.collect { (paths, selectedPath, fontPair) ->
+                val (fontFamily, typeface) = fontPair
                 val needsRerender = _uiState.value.selectedFontPath != selectedPath && _uiState.value.originalBitmap != null
                 _uiState.update { currentState ->
                     currentState.copy(
                         availableFontPaths = paths,
                         selectedFontPath = selectedPath,
-                        loadedFontFamily = fontFamily
+                        loadedFontFamily = fontFamily, // 更新 Compose 字体
+                        loadedTypeface = typeface      // <--- 更新原生字体
                     )
-                }
-                // If font changed and image exists, trigger re-render
-                if (needsRerender) {
-                    rerenderBitmap()
                 }
             }
         }
@@ -123,12 +147,14 @@ class EmojiViewModel @Inject constructor(
             // Reset relevant parts of the state, keep settings
             it.copy(
                 originalBitmap = null,
-                processedBitmap = null,
+                processedBitmap = null, // 同时清除 processedBitmap
                 selectedEmojis = emptyList(),
                 isProcessing = false,
                 isRendering = false,
                 errorMessage = null,
-                successMessage = null
+                successMessage = null,
+                editingEmoji = null,
+                editingEmojiIndex = null
             )
         }
     }
@@ -178,6 +204,23 @@ class EmojiViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 关键修改：创建一个按需渲染最终 Bitmap 的挂起函数
+     */
+    private suspend fun renderFinalBitmap(): Bitmap? {
+        val base = _uiState.value.originalBitmap ?: return null
+        val emojis = _uiState.value.selectedEmojis
+        val font = _uiState.value.selectedFontPath
+
+        _uiState.update { it.copy(isRendering = true) }
+
+        val result = renderEmojiOnBitmapUseCase(base, emojis, font)
+
+        _uiState.update { it.copy(isRendering = false) }
+
+        return result.getOrNull()
+    }
+
     // Private helper for detect flow
     private fun renderInitialBitmap(baseBitmap: Bitmap, emojiDetections: List<EmojiDetection>) {
         viewModelScope.launch {
@@ -203,10 +246,15 @@ class EmojiViewModel @Inject constructor(
      * Shares the processed image.
      * (Signature matches original, but bitmap parameter is ignored)
      */
-    fun shareImage() { // Keep signature, but use state's bitmap
-        val processedBitmap = _uiState.value.processedBitmap ?: return
+    fun shareImage() {
         viewModelScope.launch {
-            generateShareableUriUseCase(processedBitmap).fold(
+            val finalBitmap = renderFinalBitmap()
+            if (finalBitmap == null) {
+                _shareEvent.emit(ShareEvent.Error("Failed to render final image for sharing.", Constants.STATUS_SHARE))
+                return@launch
+            }
+
+            generateShareableUriUseCase(finalBitmap).fold(
                 onSuccess = { uri ->
                     _shareEvent.emit(ShareEvent.ShareImage(uri))
                 },
@@ -222,12 +270,16 @@ class EmojiViewModel @Inject constructor(
      * Saves the processed image to the gallery.
      * (Signature matches original, but bitmap parameter is ignored)
      */
-    fun saveImageToGallery() { // Keep signature, but use state's bitmap
-        val processedBitmap = _uiState.value.processedBitmap ?: return
+    fun saveImageToGallery() {
         viewModelScope.launch {
-            saveImageUseCase(processedBitmap).fold(
+            val finalBitmap = renderFinalBitmap()
+            if (finalBitmap == null) {
+                _shareEvent.emit(ShareEvent.Error("Failed to render final image for saving.", Constants.STATUS_SAVE))
+                return@launch
+            }
+
+            saveImageUseCase(finalBitmap).fold(
                 onSuccess = {
-                    // Use event for Toast/Snackbar feedback in UI
                     _shareEvent.emit(ShareEvent.Success(Constants.STATUS_SAVE))
                 },
                 onFailure = { exception ->
@@ -274,17 +326,109 @@ class EmojiViewModel @Inject constructor(
      * Adds a new emoji at the specified coordinates.
      * (Signature matches original)
      */
-    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float) {
+    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float, startEditing: Boolean = false) {
         if (_uiState.value.originalBitmap == null) {
             _uiState.update { it.copy(errorMessage = "Cannot add emoji without an image.") }
             return
         }
-        val currentList = _uiState.value.selectedEmojis.toMutableList()
+        // 1. 创建新的 Emoji 检测对象
         val newDetection = EmojiDetection(xCenter = x, yCenter = y, diameter = diameter, angle = angle, emoji = emoji)
-        currentList.add(newDetection)
 
-        _uiState.update { it.copy(selectedEmojis = currentList) }
-        rerenderBitmap() // Re-render after adding
+        // 2. 不将其添加到主列表，而是直接放入瞬时编辑状态
+        _uiState.update {
+            it.copy(
+                editingEmoji = newDetection,
+                editingEmojiIndex = -1 // 使用 -1 来标记这是一个“添加”操作，而非“编辑”
+            )
+        }
+    }
+
+    /**
+     * 开始编辑一个 Emoji
+     */
+    fun startEditing(index: Int) {
+        val emojiToEdit = _uiState.value.selectedEmojis.getOrNull(index)?.copy() ?: return
+        _uiState.update {
+            it.copy(
+                editingEmojiIndex = index,
+                editingEmoji = emojiToEdit
+            )
+        }
+        editingStateFlow.value = emojiToEdit // 触发 flow
+    }
+
+    /**
+     * 当滑块或输入框变化时，实时更新瞬时状态
+     */
+    fun updateEditingEmoji(emoji: String? = null, diameter: Float? = null, angle: Float? = null) {
+        val currentEditing = _uiState.value.editingEmoji ?: return
+        val updatedEmoji = currentEditing.copy(
+            emoji = emoji ?: currentEditing.emoji,
+            diameter = diameter ?: currentEditing.diameter,
+            angle = angle ?: currentEditing.angle
+        )
+        _uiState.update { it.copy(editingEmoji = updatedEmoji) }
+    }
+
+    /**
+     * 用户点击"确定"，确认修改
+     */
+    fun confirmEditing() {
+        val transientEmoji = _uiState.value.editingEmoji ?: return
+        val transientIndex = _uiState.value.editingEmojiIndex
+        val currentList = _uiState.value.selectedEmojis.toMutableList()
+
+        if (transientIndex != null && transientIndex == -1) {
+            // 情况2：这是一个新的 Emoji，现在将它添加到主列表中
+            currentList.add(transientEmoji)
+        } else if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
+            // 情况1：这是一个已存在的 Emoji，更新它
+            currentList[transientIndex] = transientEmoji
+        }
+
+        // 清除瞬时编辑状态
+        _uiState.update { it.copy(selectedEmojis = currentList, editingEmoji = null, editingEmojiIndex = null) }
+        editingStateFlow.value = null
+    }
+
+    /**
+     * 用户取消编辑
+     */
+    fun cancelEditing() {
+        _uiState.update { it.copy(editingEmoji = null, editingEmojiIndex = null) }
+        editingStateFlow.value = null
+    }
+
+    /**
+     * 私有的重绘方法，用于实时预览
+     */
+    private fun rerenderWithTransientEdit() {
+        val base = _uiState.value.originalBitmap ?: return
+        val emojis = _uiState.value.selectedEmojis.toMutableList()
+        val editingEmoji = _uiState.value.editingEmoji
+        val editingIndex = _uiState.value.editingEmojiIndex
+
+        if (editingEmoji != null && editingIndex != null && editingIndex in emojis.indices) {
+            emojis[editingIndex] = editingEmoji // 将正在编辑的 emoji 替换到列表中用于预览
+        } else {
+            return // 如果没有正在编辑的对象，则不重绘
+        }
+
+        val font = _uiState.value.selectedFontPath
+
+        // ... 接续 rerenderBitmap 的原有逻辑，但使用上面构造的临时 emojis 列表
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRendering = true) }
+            renderEmojiOnBitmapUseCase(base, emojis, font).fold(
+                onSuccess = { newBitmap ->
+                    _uiState.update { it.copy(processedBitmap = newBitmap, isRendering = false, errorMessage = null) }
+                },
+                onFailure = { exception ->
+                    _uiState.update { it.copy(isRendering = false, errorMessage = "Re-rendering failed: ${exception.localizedMessage}") }
+                }
+                // ... success/failure handling
+            )
+        }
     }
 
     // --- Settings Related ---

@@ -28,6 +28,7 @@
             android:name=".MainActivityAlias"
             android:exported="true"
             android:label="@string/app_name"
+            android:enabled="${mainActivityEnabled}"
             android:theme="@style/Theme.EmojiFace"
             android:targetActivity=".MainActivity">
             <intent-filter>

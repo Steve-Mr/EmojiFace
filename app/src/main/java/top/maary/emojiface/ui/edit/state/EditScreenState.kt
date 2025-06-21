@@ -1,5 +1,6 @@
 package top.maary.emojiface.ui.edit.state
 
+import android.graphics.Typeface
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntSize
@@ -28,11 +29,13 @@ data class EditScreenState(
     val emojiDetections: List<EmojiDetection>,
     val predefinedEmojiList: List<String>?,
     val fontFamily: FontFamily?,
+    val typeface: Typeface?,
     val isAddMode: Boolean,
     val isProcessing: Boolean, // 或者 isAnimating，用於控制 GlowingCard 動畫
     val imageContainerSize: IntSize,
     val isAppIconHidden: Boolean,
     val availableFontNames: List<String>?, // 從 fontList (路徑) 映射過來的顯示名稱
     val selectedFontIndex: Int, // 當前選中字體在列表中的索引，方便 Dropdown 使用
-    val isMediumLayout: Boolean
+    val isMediumLayout: Boolean,
+    val editingEmojiIndex: Int?
 )

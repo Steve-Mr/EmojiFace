@@ -11,6 +11,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
+import top.maary.emojiface.BuildConfig
 import top.maary.emojiface.ui.edit.model.EmojiList
 import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
 import javax.inject.Inject
@@ -48,7 +49,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
     }
 
     val isIconHide: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[IS_ICON_HIDE] ?: false
+        preferences[IS_ICON_HIDE] ?: !BuildConfig.ICON_ENABLED
     }
 
     suspend fun updateIconState(state: Boolean) {
