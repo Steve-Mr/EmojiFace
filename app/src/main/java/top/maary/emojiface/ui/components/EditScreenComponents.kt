@@ -1,5 +1,8 @@
 package top.maary.emojiface.ui.components
 
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -7,6 +10,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -69,6 +73,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
@@ -80,6 +86,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import kotlinx.coroutines.launch
 import top.maary.emojiface.R
+import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
@@ -567,57 +574,151 @@ fun EditEmojiBottomSheetContent(
 }
 
 @Composable
-fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenActions) {
+fun EmojiOverlay(
+    state: EditScreenState,
+    editingEmoji: EmojiDetection?,
+    padding: PaddingValues,
+    cornerRadius: Dp,
+    ) {
+    // 获取原始图片尺寸和屏幕上容器的尺寸，用于坐标和大小的缩放
+    val originalWidth = state.currentImage?.width?.toFloat() ?: return
+    val originalHeight = state.currentImage.height.toFloat()
+    val containerWidth = state.imageContainerSize.width.toFloat()
+    val containerHeight = state.imageContainerSize.height.toFloat()
+
+    if (containerWidth == 0f || containerHeight == 0f) return
+
+    // 计算缩放比例
+    val scale = containerWidth / originalWidth
+
+    // 合并固定列表和正在编辑的临时状态，用于统一渲染
+    val emojisToRender = remember(state.emojiDetections, editingEmoji) {
+        val list = state.emojiDetections.toMutableList()
+        val editingEmoji = editingEmoji
+        val editingIndex = list.indexOfFirst { it.xCenter == editingEmoji?.xCenter && it.yCenter == editingEmoji.yCenter }.takeIf { it != -1 }
+
+        if (editingEmoji != null && editingIndex != null) {
+            // 如果正在编辑，用临时状态替换列表中的对应项
+            list[editingIndex] = editingEmoji
+        }
+        list
+    }
+
+    // 创建一个可以在重组间复用的 Paint 对象
+    val paint = remember {
+        Paint().apply {
+            isAntiAlias = true
+            color = android.graphics.Color.BLACK
+            textAlign = Paint.Align.CENTER
+        }
+    }
+
+    // 使用 Canvas Composable 进行绘制
+    Canvas(modifier = Modifier.fillMaxSize().padding(padding).clip(RoundedCornerShape(cornerRadius)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))) {
+        emojisToRender.forEach { detection ->
+            // 从 state 获取加载好的原生 Typeface
+            paint.typeface = state.typeface ?: Typeface.DEFAULT
+
+            // 实时计算缩放后的大小
+            paint.textSize = detection.diameter * scale
+
+            // 计算垂直方向的偏移，与 RenderEmojiOnBitmapUseCase 完全一致
+            val verticalOffset = (paint.descent() + paint.ascent()) / 2
+
+            // 缩放坐标
+            val centerX = detection.xCenter * scale
+            val centerY = detection.yCenter * scale
+
+            // 将所有绘制操作放在 rotate 的 lambda 块中
+            // Compose 会自动处理 save 和 restore
+            rotate(
+                degrees = detection.angle,
+                pivot = Offset(centerX, centerY)
+            ) {
+                // 在这个代码块中执行的所有绘制操作都会被旋转
+                drawContext.canvas.nativeCanvas.drawText(
+                    detection.emoji,
+                    centerX,
+                    centerY - verticalOffset,
+                    paint
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenActions, editingEmoji: EmojiDetection?) {
     // --- 圖片顯示區域 ---
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         if (state.displayedBitmap != null) {
-            // 顯示處理結果或原圖
-            ResultImg(
-                modifier = Modifier
-                    .aspectRatio(state.aspectRatio ?: 1f) // 使用 state 中的寬高比
-                    .fillMaxSize()
-                    .onGloballyPositioned { layoutCoordinates ->
-                        // 回報容器尺寸
-                        actions.onImageContainerMeasured(layoutCoordinates.size)
-                    }
-                    .then( // 根據 isAddMode 條件性添加 pointerInput
-                        if (state.isAddMode) {
-                            Modifier.pointerInput(Unit) { // key=Unit 表示不依賴特定狀態重啟協程
-                                detectTapGestures { offset ->
-                                    // 將點擊的 UI 座標轉換為原始圖片座標
-                                    val containerWidth = state.imageContainerSize.width
-                                    val containerHeight = state.imageContainerSize.height
-                                    // 使用 currentImage (原始 Bitmap) 的尺寸來計算比例
-                                    val originalBitmapWidth =
-                                        state.currentImage?.width ?: state.displayedBitmap.width
-                                    val originalBitmapHeight =
-                                        state.currentImage?.height ?: state.displayedBitmap.height
 
-                                    if (containerWidth > 0 && containerHeight > 0) {
-                                        val scaleX = originalBitmapWidth.toFloat() / containerWidth
-                                        val scaleY =
-                                            originalBitmapHeight.toFloat() / containerHeight
-                                        val originalX = offset.x * scaleX
-                                        val originalY = offset.y * scaleY
-                                        // 傳遞轉換後的座標
-                                        actions.onImageTapToAdd(Offset(originalX, originalY))
-                                    } else {
-                                        // 如果容器尺寸為0，作為備用方案傳遞原始 offset
-                                        // 或者可以選擇不觸發 action / 顯示錯誤
-                                        actions.onImageTapToAdd(offset)
-                                    }
+            val cornerRadius = 16.dp
+            val verticalPadding = 8.dp
+            // 水平 padding 依赖于宽高比，与 ResultImg 内部逻辑保持一致
+            val horizontalPadding = (state.aspectRatio ?: 1f) * 8f.dp
+
+            // 准备一个用于覆盖层的 Box，它的大小将和图片容器一致
+            Box(
+                modifier = Modifier
+                    .aspectRatio(state.aspectRatio ?: 1f)
+                    .fillMaxSize()
+            ) {
+                GlowingCard (
+                    modifier = Modifier
+                        .aspectRatio(state.aspectRatio ?: 1f) // 使用 state 中的寬高比
+                        .fillMaxSize(),
+                    ratio = state.aspectRatio ?: 1f,
+                    animate = state.isProcessing,
+                    cornersRadius = 16.dp,
+                    content = {
+                        Image(bitmap = state.displayedBitmap,
+                            contentDescription = stringResource(R.string.process_result),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = (state.aspectRatio ?: 1f) * 8.dp, vertical = 8.dp)
+                                .clip(
+                                    RoundedCornerShape(16.dp)
+                                ).onGloballyPositioned { layoutCoordinates ->
+                                    // 回報容器尺寸
+                                    actions.onImageContainerMeasured(layoutCoordinates.size)
                                 }
-                            }
-                        } else Modifier // 非 AddMode 時不添加 pointerInput
-                    ),
-                bitmap = state.displayedBitmap, // 使用 state 中的 bitmap
-                description = stringResource(R.string.process_result),
-                animate = state.isProcessing, // 使用 state 控制動畫
-                ratio = state.aspectRatio ?: 1f // 傳遞寬高比給 GlowingCard
-            )
+                                .then( if (state.isAddMode) {
+                                    Modifier.pointerInput(Unit) { // 合并 pointerInput
+
+                                        detectTapGestures { offset ->
+                                            // ... (原有的 onImageTapToAdd 逻辑保持不变)
+                                            val containerWidth = state.imageContainerSize.width
+                                            val containerHeight = state.imageContainerSize.height
+                                            val originalBitmapWidth = state.currentImage?.width ?: state.displayedBitmap.width
+                                            val originalBitmapHeight = state.currentImage?.height ?: state.displayedBitmap.height
+
+                                            if (containerWidth > 0 && containerHeight > 0) {
+                                                val scaleX = originalBitmapWidth.toFloat() / containerWidth
+                                                val scaleY = originalBitmapHeight.toFloat() / containerHeight
+                                                val originalX = offset.x * scaleX
+                                                val originalY = offset.y * scaleY
+                                                actions.onImageTapToAdd(Offset(originalX, originalY))
+                                            } else {
+                                                actions.onImageTapToAdd(offset)
+                                            }
+                                        }
+
+                                    }
+                                } else Modifier
+                                ))
+                    }
+                )
+
+                EmojiOverlay(state = state, editingEmoji = editingEmoji,
+                    padding = PaddingValues(horizontal = horizontalPadding, vertical = verticalPadding),
+                    cornerRadius = cornerRadius,)
+
+            }
+
         } else {
             // 沒有圖片時顯示選擇圖片按鈕
             ExtendedFloatingActionButton(

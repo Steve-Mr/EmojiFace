@@ -2,6 +2,7 @@ package top.maary.emojiface.ui.edit // Or your chosen package
 
 // Imports for Android, Lifecycle, Coroutines, Hilt, Flows, Graphics etc.
 import android.graphics.Bitmap
+import android.graphics.Typeface
 import android.net.Uri
 import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.ViewModel
@@ -15,7 +16,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import top.maary.emojiface.datastore.PreferenceRepository
@@ -32,6 +32,7 @@ import top.maary.emojiface.domain.usecase.UpdateEmojiOptionsUseCase
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.ShareEvent
 import top.maary.emojiface.util.Constants
+import top.maary.emojiface.util.getTypeFaceFromPath
 import top.maary.emojiface.util.loadFontFromPath
 import javax.inject.Inject
 
@@ -45,6 +46,7 @@ data class EditUiState(
     val availableFontPaths: List<String> = listOf(Constants.DEFAULT_FONT_MARKER),
     val selectedFontPath: String = Constants.DEFAULT_FONT_MARKER,
     val loadedFontFamily: FontFamily? = null,
+    val loadedTypeface: Typeface? = null, // <--- 新增原生 Typeface 状态
     val isProcessing: Boolean = false, // For background tasks like detection/initial render
     val isRendering: Boolean = false, // Specific for re-rendering after updates
     val errorMessage: String? = null,
@@ -82,16 +84,16 @@ class EmojiViewModel @Inject constructor(
     init {
         // Observe preferences and update state
         observePreferences()
-        viewModelScope.launch {
-            editingStateFlow
-                .debounce(50L) // 防抖，用户停止滑动50毫秒后再触发
-                .collect { emoji ->
-                    if (emoji != null) {
-                        // 当有稳定的编辑中状态时，触发重绘
-                        rerenderWithTransientEdit()
-                    }
-                }
-        }
+//        viewModelScope.launch {
+//            editingStateFlow
+//                .debounce(50L) // 防抖，用户停止滑动50毫秒后再触发
+//                .collect { emoji ->
+//                    if (emoji != null) {
+//                        // 当有稳定的编辑中状态时，触发重绘
+//                        rerenderWithTransientEdit()
+//                    }
+//                }
+//        }
     }
 
     private fun observePreferences() {
@@ -110,18 +112,26 @@ class EmojiViewModel @Inject constructor(
                 preferenceRepository.fontsList,
                 preferenceRepository.selectedFont
             ) { paths, selectedPath ->
-                val fontFamily = loadFontFromPath(selectedPath) // Load font reactively
-                Triple(paths, selectedPath, fontFamily)
-            }.collect { (paths, selectedPath, fontFamily) ->
+                // 同时加载两种字体对象
+                val fontFamily = loadFontFromPath(selectedPath)
+                val typeface = if (selectedPath == Constants.DEFAULT_FONT_MARKER) {
+                    Typeface.DEFAULT
+                } else {
+                    getTypeFaceFromPath(selectedPath)
+                }
+                // 将所有状态打包
+                Triple(paths, selectedPath, Pair(fontFamily, typeface))
+            }.collect { (paths, selectedPath, fontPair) ->
+                val (fontFamily, typeface) = fontPair
                 val needsRerender = _uiState.value.selectedFontPath != selectedPath && _uiState.value.originalBitmap != null
                 _uiState.update { currentState ->
                     currentState.copy(
                         availableFontPaths = paths,
                         selectedFontPath = selectedPath,
-                        loadedFontFamily = fontFamily
+                        loadedFontFamily = fontFamily, // 更新 Compose 字体
+                        loadedTypeface = typeface      // <--- 更新原生字体
                     )
                 }
-                // If font changed and image exists, trigger re-render
                 if (needsRerender) {
                     rerenderBitmap()
                 }
@@ -340,7 +350,7 @@ class EmojiViewModel @Inject constructor(
             angle = angle ?: currentEditing.angle
         )
         _uiState.update { it.copy(editingEmoji = updatedEmoji) }
-        editingStateFlow.value = updatedEmoji // 触发 flow
+//        editingStateFlow.value = updatedEmoji // 触发 flow
     }
 
     /**

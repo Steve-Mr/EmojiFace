@@ -43,12 +43,13 @@ import top.maary.emojiface.R
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
 import top.maary.emojiface.ui.components.EmojiCard
+import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions) {
+fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions, editingEmoji: EmojiDetection?) {
     // TopAppBar 滾動行為
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
 
@@ -94,7 +95,7 @@ fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions) {
                 .padding(top = innerPadding.calculateTopPadding()) // 應用 Scaffold 的內邊距
         ) {
             // --- 圖片顯示區域 ---
-            DisplayPane(modifier = Modifier.weight(1f).fillMaxWidth().padding(8.dp), state = state, actions = actions)
+            DisplayPane(modifier = Modifier.weight(1f).fillMaxWidth().padding(8.dp), state = state, actions = actions, editingEmoji = editingEmoji)
 
             if (state.displayedBitmap != null) {
                 Card(
@@ -148,7 +149,7 @@ fun CompactScreenLayout(state: EditScreenState, actions: EditScreenActions) {
 }
 
 @Composable
-fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions) {
+fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions, editingEmoji: EmojiDetection?) {
     Scaffold(containerColor = MaterialTheme.colorScheme.surfaceContainer // Consistent background
     ) { innerPadding -> // Scaffold provides padding, respect it if needed, though NavSuite might handle it
         NavigationSuiteScaffold(
@@ -192,7 +193,7 @@ fun LargeScreenLayout(state: EditScreenState, actions: EditScreenActions) {
                     .fillMaxSize().padding(innerPadding) // Check if needed depending on NavSuiteScaffold behavior
             ) {
                 // --- Image Display Area (Larger Portion) ---
-                DisplayPane(modifier = Modifier.weight(2f).fillMaxHeight(), state = state, actions = actions)
+                DisplayPane(modifier = Modifier.weight(2f).fillMaxHeight(), state = state, actions = actions, editingEmoji = editingEmoji)
 
                 // --- Side Panel (Smaller Portion) ---
                 Card(

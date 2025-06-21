@@ -194,7 +194,8 @@ fun EditScreenContentInternal(
         isAppIconHidden = uiState.isAppIconHidden, // Direct from uiState
         availableFontNames = fontNames, // Derived value
         selectedFontIndex = selectedFontIndex, // Derived value
-        isMediumLayout = isMediumLayout // Pass local state if needed by ActionRow etc.
+        isMediumLayout = isMediumLayout, // Pass local state if needed by ActionRow etc.
+        typeface = uiState.loadedTypeface // Direct from uiState
     )
 
     // --- 7. Create EditScreenActions Instance (Largely unchanged) ---
@@ -292,15 +293,15 @@ fun EditScreenContentInternal(
     when {
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND) -> {
             isMediumLayout = false // Update layout flag
-            LargeScreenLayout(state = stateForUiLayout, actions = actions)
+            LargeScreenLayout(state = stateForUiLayout, actions = actions, editingEmoji = uiState.editingEmoji)
         }
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) -> {
             isMediumLayout = true // Update layout flag
-            LargeScreenLayout(state = stateForUiLayout, actions = actions) // Assuming Large handles Medium too
+            LargeScreenLayout(state = stateForUiLayout, actions = actions, editingEmoji = uiState.editingEmoji) // Assuming Large handles Medium too
         }
         else -> {
             isMediumLayout = false // Update layout flag
-            CompactScreenLayout(state = stateForUiLayout, actions = actions)
+            CompactScreenLayout(state = stateForUiLayout, actions = actions, editingEmoji = uiState.editingEmoji)
         }
     }
 

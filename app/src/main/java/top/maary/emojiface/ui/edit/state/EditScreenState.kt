@@ -1,5 +1,6 @@
 package top.maary.emojiface.ui.edit.state
 
+import android.graphics.Typeface
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntSize
@@ -28,6 +29,7 @@ data class EditScreenState(
     val emojiDetections: List<EmojiDetection>,
     val predefinedEmojiList: List<String>?,
     val fontFamily: FontFamily?,
+    val typeface: Typeface?,
     val isAddMode: Boolean,
     val isProcessing: Boolean, // 或者 isAnimating，用於控制 GlowingCard 動畫
     val imageContainerSize: IntSize,
