@@ -28,7 +28,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
@@ -40,12 +39,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import top.maary.emojiface.R
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
@@ -174,15 +175,22 @@ fun CompactScreenLayout(
         val bottomSheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = true,
             // 只阻止用户将其关闭 (变为 Hidden)
-            confirmValueChange = { it != SheetValue.Hidden }
+//            confirmValueChange = { it != SheetValue.Hidden }
         )
+        val scope = rememberCoroutineScope()
 
         val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
 
         ModalBottomSheet(
-            onDismissRequest = actions.onCancelEditing,
+            onDismissRequest = {
+                scope.launch {
+                    // 重新展开，以阻止关闭
+                    bottomSheetState.show()
+                }
+            },
             sheetState = bottomSheetState,
             dragHandle = { },
+            sheetGesturesEnabled = false,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
         ) {
             // 完全复用现有的 Composable

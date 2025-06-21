@@ -397,7 +397,7 @@ fun SliderWithCaption(
         horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             leadingIcon()
-            Text(text = description, fontSize = 14.sp)
+            Text(text = description, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
         }
 
         Slider(
@@ -617,6 +617,7 @@ fun EditEmojiBottomSheetContent(
                 leadingIcon = {
                     Icon(imageVector = Icons.Outlined.FormatSize,
                         contentDescription = stringResource(R.string.emoji_size),
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .padding(8.dp)
                             .size(16.dp))
@@ -635,6 +636,7 @@ fun EditEmojiBottomSheetContent(
                 leadingIcon = {
                     Icon(imageVector = Icons.Outlined.Rotate90DegreesCw,
                         contentDescription = stringResource(R.string.emoji_angle),
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .padding(8.dp)
                             .size(16.dp))
