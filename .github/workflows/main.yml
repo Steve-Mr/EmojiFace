@@ -41,31 +41,31 @@ jobs:
         run: |
           ./gradlew :app:assembleRelease
           
-          echo "APK_FILE=$(find app/build/outputs/apk -name '*arm64*.apk')" >> $GITHUB_ENV
-          echo "APK_FILE_ARMV7=$(find app/build/outputs/apk -name '*v7a*.apk')" >> $GITHUB_ENV
-          echo "APK_FILE_X86=$(find app/build/outputs/apk -name '*x86\-*.apk')" >> $GITHUB_ENV
-          echo "APK_FILE_X64=$(find app/build/outputs/apk -name '*x86\_64*.apk')" >> $GITHUB_ENV
+          echo "APK_FILE_ARMV8_ICON_ENABLED=$(find app/build/outputs/apk -name '*default-arm64*.apk')" >> $GITHUB_ENV
+          echo "APK_FILE_UNI_ICON_ENABLED=$(find app/build/outputs/apk -name '*default-universal*.apk')" >> $GITHUB_ENV
+          echo "APK_FILE_ARMV8_ICON_DISABLED=$(find app/build/outputs/apk -name '*disabled-arm64*.apk')" >> $GITHUB_ENV
+          echo "APK_FILE_UNI_ICON_DISABLED=$(find app/build/outputs/apk -name '*disabled-universal*.apk')" >> $GITHUB_ENV
 
       - uses: actions/upload-artifact@v4
-        name: Upload apk (arm64-v8a)
+        name: Upload apk (icon-enabled-arm64-v8a)
         with:
-          name: app-arm64-v8a-release
-          path: ${{ env.APK_FILE }}
+          name: facemoji-default-arm64-v8a.apk
+          path: ${{ env.APK_FILE_ARMV8_ICON_ENABLED }}
       - uses: actions/upload-artifact@v4
-        name: Upload apk (armeabi-v7a)
+        name: Upload apk (icon-enabled-universal)
         with:
-          name: app-armeabi-v7a-release
-          path: ${{ env.APK_FILE_ARMV7 }}
+          name: facemoji-default-universal.apk
+          path: ${{ env.APK_FILE_UNI_ICON_ENABLED }}
       - uses: actions/upload-artifact@v4
-        name: Upload apk (x86_64)
+        name: Upload apk (icon-disabled-arm64-v8a)
         with:
-          name: app-x86_64-release
-          path: ${{ env.APK_FILE_X64 }}
+          name: facemoji-icon-disabled-arm64-v8a.apk
+          path: ${{ env.APK_FILE_ARMV8_ICON_DISABLED }}
       - uses: actions/upload-artifact@v4
-        name: Upload apk (x86)
+        name: Upload apk (icon-disabled-universal)
         with:
-          name: app-x86-release
-          path: ${{ env.APK_FILE_X86 }}
+          name: facemoji-icon-disabled-universal.apk
+          path: ${{ env.APK_FILE_UNI_ICON_DISABLED }}
 
       - name: Get current date
         id: date
@@ -89,51 +89,52 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           tag_name: release-${{ steps.date.outputs.date }}-${{ steps.release_count.outputs.count }}
-          release_name: Release ${{ steps.date.outputs.date }} 
+          release_name: Release ${{ steps.date.outputs.date }}
+          prerelease: true
           body: |
             ## Changes
             ${{ github.event.pull_request.body }}
             ${{ steps.show_pr_commits.outputs.commits }}
 
       - uses: actions/upload-release-asset@v1
-        name: Upload apk (arm64-v8a)
+        name: Upload Release APK (iconEnabled, arm64-v8a)
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_name: FaceMoji-arm64-v8a.apk
-          asset_path: ${{ env.APK_FILE }}
-          asset_content_type: application/zip
+          asset_path: ${{ env.APK_FILE_ARMV8_ICON_ENABLED }}
+          asset_name: facemoji-default-arm64-v8a.apk
+          asset_content_type: application/vnd.android.package-archive
 
       - uses: actions/upload-release-asset@v1
-        name: Upload apk (armeabi-v7a)
+        name: Upload Release APK (iconEnabled, universal)
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_name: FaceMoji-armeabi-v7a.apk
-          asset_path: ${{ env.APK_FILE_ARMV7 }}
-          asset_content_type: application/zip
+          asset_path: ${{ env.APK_FILE_UNI_ICON_ENABLED }}
+          asset_name: facemoji-default-universal.apk
+          asset_content_type: application/vnd.android.package-archive
 
       - uses: actions/upload-release-asset@v1
-        name: Upload apk (x86_64)
+        name: Upload Release APK (iconDisabled, arm64-v8a)
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_name: FaceMoji-x86_64.apk
-          asset_path: ${{ env.APK_FILE_X64 }}
-          asset_content_type: application/zip
+          asset_path: ${{ env.APK_FILE_ARMV8_ICON_DISABLED }}
+          asset_name: facemoji-icon-disabled-arm64-v8a.apk
+          asset_content_type: application/vnd.android.package-archive
 
       - uses: actions/upload-release-asset@v1
-        name: Upload apk (x86)
+        name: Upload Release APK (iconDisabled, universal)
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_name: FaceMoji-x86.apk
-          asset_path: ${{ env.APK_FILE_X86 }}
-          asset_content_type: application/zip
+          asset_path: ${{ env.APK_FILE_UNI_ICON_DISABLED }}
+          asset_name: facemoji-icon-disabled-universal.apk
+          asset_content_type: application/vnd.android.package-archive
 
 
   upload:
@@ -157,7 +158,8 @@ jobs:
         run: |
           mkdir apks
           find artifacts -name "*.apk" -exec cp {} apks \;
-          echo "APK_FILE_UPLOAD=$(find apks -name '*arm64*.apk')" >> $GITHUB_ENV
+          echo "APK_FILE_UPLOAD1=$(find apks -name '*default-arm64*.apk')" >> $GITHUB_ENV
+          echo "APK_FILE_UPLOAD2=$(find apks -name '*disabled-arm64*.apk')" >> $GITHUB_ENV
           ls ./apks
 
       - name: Get Apk Info
@@ -178,6 +180,8 @@ jobs:
           VERSION_CODE: ${{steps.apk.outputs.versionCode}}
           VERSION_NAME: ${{steps.apk.outputs.versionNum}}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          APK_FILE_UPLOAD1: ${{ env.APK_FILE_UPLOAD1 }}
+          APK_FILE_UPLOAD2: ${{ env.APK_FILE_UPLOAD2 }}
 
   telegram-bot-api:
     name: Telegram Bot API

@@ -6,47 +6,69 @@ apiAddress = "http://127.0.0.1:8081/"
 urlPrefix = apiAddress + "bot" + os.getenv("TELEGRAM_TOKEN")
 
 
-def findString(sourceStr, targetStr):
-    if str(sourceStr).find(str(targetStr)) == -1:
-        return False
-    else:
-        return True
+def sendMediaGroup(user_id, paths):
+    url = urlPrefix + "/sendMediaGroup"
+    files = {}
+    media = []
 
+    for i, path in enumerate(paths):
+        file_key = f'file{i}'
+        files[file_key] = open(path, 'rb')
+        media_item = {
+            'type': 'document',
+            'media': f'attach://{file_key}'
+        }
+        media.append(media_item)
 
-def genFileDirectory(path):
-    files_walk = os.walk(path)
-    target = {
+    data = {
+        'chat_id': user_id,
+        'media': json.dumps(media)
     }
-    for root, dirs, file_name_dic in files_walk:
-        for fileName in file_name_dic:
-            if findString(fileName, "v8a"):
-                target["arm64"] = (fileName, open(path + "/" + fileName, "rb"))
-            if findString(fileName, "v7a"):
-                target["armeabi"] = (fileName, open(path + "/" + fileName, "rb"))
-            if findString(fileName, "x86.apk"):
-                target["i386"] = (fileName, open(path + "/" + fileName, "rb"))
-            if findString(fileName, "x86_64"):
-                target["amd64"] = (fileName, open(path + "/" + fileName, "rb"))
 
-    return target
+    response = requests.post(url, files=files, data=data)
+    print("MediaGroup Response:", response.json())
+
+    for f in files.values():
+        f.close()
 
 
-def sendDocument(user_id, path, message = "", entities = None):
-    files = {'document': open(path, 'rb')}
-    data = {'chat_id': user_id,
-            'caption': message,
-            'parse_mode': 'Markdown',
-            'caption_entities': entities}
-    response = requests.post(urlPrefix + "/sendDocument", files=files, data=data)
-    print(response.json())
+def sendTextMessage(user_id, message, disable_preview=False):
+    url = urlPrefix + "/sendMessage"
+
+    data = {
+        'chat_id': user_id,
+        'text': message,
+        'parse_mode': 'Markdown',
+        'disable_web_page_preview': disable_preview
+    }
+    response = requests.post(url, data=data)
+
+    response_data = response.json()
 
 
-def sendAPKs(path):
-    apks = os.listdir("apks")
-    apks.sort()
-    apk = os.path.join("apks", apks[0])
-    sendDocument(user_id="@maaryIsTyping", path = apk, message="#app #apk #FaceMoji https://github.com/Steve-Mr/EmojiFace")
 
 if __name__ == '__main__':
-    sendAPKs("./apks")
+    # 从环境变量中获取两个 APK 文件的路径
+    apk_path1 = os.getenv("APK_FILE_UPLOAD1")
+    apk_path2 = os.getenv("APK_FILE_UPLOAD2")
 
+    # 检查路径是否存在
+    if not apk_path1 or not apk_path2:
+        print("错误：未能在环境变量中找到 APK 文件路径。")
+        exit(1)
+
+    # 将两个 APK 路径放入一个列表
+    apk_paths = [apk_path1, apk_path2]
+
+    # 从环境变量中获取版本信息和提交信息来构建消息内容
+    version_name = os.getenv("VERSION_NAME", "N/A")
+    commit_message = os.getenv("COMMIT_MESSAGE", "无提交信息。")
+
+    message = (
+        f"#app #apk #facemoji\n"
+        f"**版本:** `{version_name}`\n\n"
+        f"https://github.com/Steve-Mr/EmojiFace"
+    )
+
+    sendMediaGroup(user_id="@maaryIsTyping", paths=apk_paths)
+    sendTextMessage(user_id="@maaryIsTyping", message=message, disable_preview=True)

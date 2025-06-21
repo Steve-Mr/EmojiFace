@@ -17,6 +17,11 @@
     alt="Get it on Obtainium"
     height="80">](http://obtainium-redirect.maary.top/?r=obtainium://add/https://github.com/Steve-Mr/EmojiFace)
 
+应用提供两种 APK 版本，请根据您的使用习惯选择：  
+
+- `default`: 安装后默认显示应用图标。可以在设置中隐藏图标，但该功能在部分安卓系统上可能无法完美生效。   
+- `icon-disabled`: 安装后默认隐藏应用图标。如果主要通过其他应用的“分享”功能来使用此应用，推荐选择此版本。同时仍然可以进入应用设置取消隐藏图标。  
+
 |![alt text](assets/README/Screenshot_20250322-151002_FaceMoji.png)|![alt text](assets/README/Screenshot_20250322-150958_FaceMoji.png)|
 |:-:|:-:|
 
