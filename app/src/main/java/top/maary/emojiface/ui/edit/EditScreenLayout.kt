@@ -28,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
@@ -170,7 +171,12 @@ fun CompactScreenLayout(
         }
     }
     if (editingEmoji != null) {
-        val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val bottomSheetState = rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            // 只阻止用户将其关闭 (变为 Hidden)
+            confirmValueChange = { it != SheetValue.Hidden }
+        )
+
         val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
 
         ModalBottomSheet(
@@ -248,8 +254,8 @@ fun LargeScreenLayout(
     SideSheet(
         showSheet = showSideSheet,
         onDismissSheet = onDismiss,
+        isModal = (editingEmoji == null), // 编辑 emoji 时为 false，其他情况(设置)为 true
         sheetContent = {
-            // 调用新的内容 Composable
             SideSheetContent(
                 state = state,
                 actions = actions,

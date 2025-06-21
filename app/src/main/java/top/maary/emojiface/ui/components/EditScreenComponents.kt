@@ -647,8 +647,14 @@ fun EditEmojiBottomSheetContent(
             )
         }
 
-        Row (modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            TextButton(
+                onClick = { onDismiss() }) {
+                Text(stringResource(R.string.cancel))
+            }
             TextButton(
                 onClick = { onConfirm() }) {
                 Text(stringResource(R.string.ok))
@@ -676,6 +682,25 @@ fun EditEmojiSideSheetContent(
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(
+                    onClick = { onDismiss() }) {
+                    Text(stringResource(R.string.cancel))
+                }
+                TextButton(
+                    onClick = { onConfirm() }) {
+                    Text(stringResource(R.string.ok))
+                }
+            }
+        }
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
@@ -757,17 +782,6 @@ fun EditEmojiSideSheetContent(
                 minRange = -90f,
                 maxRange = 90f
             )
-        }
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(
-                    onClick = { onConfirm() }) {
-                    Text(stringResource(R.string.ok))
-                }
-            }
         }
     }
 }

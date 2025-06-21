@@ -31,6 +31,7 @@ import top.maary.emojiface.ui.edit.state.EditScreenState
 fun SideSheet(
     showSheet: Boolean,
     onDismissSheet: () -> Unit,
+    isModal: Boolean = true,
     sheetContent: @Composable () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -47,7 +48,7 @@ fun SideSheet(
 
     // 监听抽屉的物理关闭事件（手势、点击外部），并触发回调
     LaunchedEffect(drawerState.currentValue) {
-        if (drawerState.currentValue == DrawerValue.Closed && showSheet) {
+        if (isModal && drawerState.currentValue == DrawerValue.Closed && showSheet) {
             onDismissSheet()
         }
     }
@@ -55,7 +56,7 @@ fun SideSheet(
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         ModalNavigationDrawer(
             drawerState = drawerState,
-            gesturesEnabled = showSheet,
+            gesturesEnabled = isModal && showSheet,
             drawerContent = {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     ModalDrawerSheet(
