@@ -8,7 +8,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -55,7 +54,6 @@ data class EditUiState(
     val editingEmoji: EmojiDetection? = null, // 正在编辑的 emoji 的瞬时数据
 )
 
-@OptIn(FlowPreview::class)
 @HiltViewModel
 class EmojiViewModel @Inject constructor(
     private val preferenceRepository: PreferenceRepository, // Keep for observing flows
@@ -84,16 +82,6 @@ class EmojiViewModel @Inject constructor(
     init {
         // Observe preferences and update state
         observePreferences()
-//        viewModelScope.launch {
-//            editingStateFlow
-//                .debounce(50L) // 防抖，用户停止滑动50毫秒后再触发
-//                .collect { emoji ->
-//                    if (emoji != null) {
-//                        // 当有稳定的编辑中状态时，触发重绘
-//                        rerenderWithTransientEdit()
-//                    }
-//                }
-//        }
     }
 
     private fun observePreferences() {
@@ -123,7 +111,6 @@ class EmojiViewModel @Inject constructor(
                 Triple(paths, selectedPath, Pair(fontFamily, typeface))
             }.collect { (paths, selectedPath, fontPair) ->
                 val (fontFamily, typeface) = fontPair
-                val needsRerender = _uiState.value.selectedFontPath != selectedPath && _uiState.value.originalBitmap != null
                 _uiState.update { currentState ->
                     currentState.copy(
                         availableFontPaths = paths,
@@ -212,11 +199,7 @@ class EmojiViewModel @Inject constructor(
         val emojis = _uiState.value.selectedEmojis
         val font = _uiState.value.selectedFontPath
 
-        _uiState.update { it.copy(isRendering = true) }
-
         val result = renderEmojiOnBitmapUseCase(base, emojis, font)
-
-        _uiState.update { it.copy(isRendering = false) }
 
         return result.getOrNull()
     }
@@ -248,21 +231,36 @@ class EmojiViewModel @Inject constructor(
      */
     fun shareImage() {
         viewModelScope.launch {
-            val finalBitmap = renderFinalBitmap()
-            if (finalBitmap == null) {
-                _shareEvent.emit(ShareEvent.Error("Failed to render final image for sharing.", Constants.STATUS_SHARE))
-                return@launch
-            }
-
-            generateShareableUriUseCase(finalBitmap).fold(
-                onSuccess = { uri ->
-                    _shareEvent.emit(ShareEvent.ShareImage(uri))
-                },
-                onFailure = { exception ->
-                    exception.localizedMessage?.let { ShareEvent.Error(message = it, status = Constants.STATUS_SHARE) }
-                        ?.let { _shareEvent.emit(it) }
+            _uiState.update { it.copy(isRendering = true) }
+            try {
+                val finalBitmap = renderFinalBitmap()
+                if (finalBitmap == null) {
+                    _shareEvent.emit(
+                        ShareEvent.Error(
+                            "Failed to render final image for sharing.",
+                            Constants.STATUS_SHARE
+                        )
+                    )
+                    return@launch
                 }
-            )
+
+                generateShareableUriUseCase(finalBitmap).fold(
+                    onSuccess = { uri ->
+                        _shareEvent.emit(ShareEvent.ShareImage(uri))
+                    },
+                    onFailure = { exception ->
+                        exception.localizedMessage?.let {
+                            ShareEvent.Error(
+                                message = it,
+                                status = Constants.STATUS_SHARE
+                            )
+                        }
+                            ?.let { _shareEvent.emit(it) }
+                    }
+                )
+            } finally {
+                _uiState.update { it.copy(isRendering = false) }
+            }
         }
     }
 
@@ -272,21 +270,36 @@ class EmojiViewModel @Inject constructor(
      */
     fun saveImageToGallery() {
         viewModelScope.launch {
-            val finalBitmap = renderFinalBitmap()
-            if (finalBitmap == null) {
-                _shareEvent.emit(ShareEvent.Error("Failed to render final image for saving.", Constants.STATUS_SAVE))
-                return@launch
-            }
-
-            saveImageUseCase(finalBitmap).fold(
-                onSuccess = {
-                    _shareEvent.emit(ShareEvent.Success(Constants.STATUS_SAVE))
-                },
-                onFailure = { exception ->
-                    exception.localizedMessage?.let { ShareEvent.Error(message = it, status = Constants.STATUS_SAVE) }
-                        ?.let { _shareEvent.emit(it) }
+            _uiState.update { it.copy(isRendering = true) }
+            try {
+                val finalBitmap = renderFinalBitmap()
+                if (finalBitmap == null) {
+                    _shareEvent.emit(
+                        ShareEvent.Error(
+                            "Failed to render final image for saving.",
+                            Constants.STATUS_SAVE
+                        )
+                    )
+                    return@launch
                 }
-            )
+
+                saveImageUseCase(finalBitmap).fold(
+                    onSuccess = {
+                        _shareEvent.emit(ShareEvent.Success(Constants.STATUS_SAVE))
+                    },
+                    onFailure = { exception ->
+                        exception.localizedMessage?.let {
+                            ShareEvent.Error(
+                                message = it,
+                                status = Constants.STATUS_SAVE
+                            )
+                        }
+                            ?.let { _shareEvent.emit(it) }
+                    }
+                )
+            } finally {
+                _uiState.update { it.copy(isRendering = false) }
+            }
         }
     }
 
@@ -301,32 +314,10 @@ class EmojiViewModel @Inject constructor(
     // --- Emoji Manipulation ---
 
     /**
-     * Updates an existing emoji's properties or removes it if newEmoji is empty.
-     * (Signature matches original)
-     */
-    fun updateEmoji(index: Int, newEmoji: String, newDiameter: Float, newAngle: Float) {
-        val currentList = _uiState.value.selectedEmojis.toMutableList()
-        if (index < 0 || index >= currentList.size) {
-            _uiState.update { it.copy(errorMessage = "Invalid index for updating emoji.") }
-            return
-        }
-
-        if (newEmoji.isEmpty()) { // Remove emoji if empty string is passed
-            currentList.removeAt(index)
-        } else {
-            val updated = currentList[index].copy(emoji = newEmoji, diameter = newDiameter, angle = newAngle)
-            currentList[index] = updated
-        }
-
-        _uiState.update { it.copy(selectedEmojis = currentList) }
-        rerenderBitmap() // Re-render after modification
-    }
-
-    /**
      * Adds a new emoji at the specified coordinates.
      * (Signature matches original)
      */
-    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float, startEditing: Boolean = false) {
+    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float) {
         if (_uiState.value.originalBitmap == null) {
             _uiState.update { it.copy(errorMessage = "Cannot add emoji without an image.") }
             return
@@ -340,6 +331,17 @@ class EmojiViewModel @Inject constructor(
                 editingEmoji = newDetection,
                 editingEmojiIndex = -1 // 使用 -1 来标记这是一个“添加”操作，而非“编辑”
             )
+        }
+    }
+
+    /**
+     * Removes an emoji from the list by its index.
+     */
+    fun removeEmoji(index: Int) {
+        val currentList = _uiState.value.selectedEmojis.toMutableList()
+        if (index >= 0 && index < currentList.size) {
+            currentList.removeAt(index)
+            _uiState.update { it.copy(selectedEmojis = currentList) }
         }
     }
 
@@ -378,12 +380,21 @@ class EmojiViewModel @Inject constructor(
         val transientIndex = _uiState.value.editingEmojiIndex
         val currentList = _uiState.value.selectedEmojis.toMutableList()
 
-        if (transientIndex != null && transientIndex == -1) {
-            // 情况2：这是一个新的 Emoji，现在将它添加到主列表中
-            currentList.add(transientEmoji)
-        } else if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
-            // 情况1：这是一个已存在的 Emoji，更新它
-            currentList[transientIndex] = transientEmoji
+        if (transientEmoji.emoji.isEmpty()) {
+            // This is a delete operation. Only delete if it's an existing emoji.
+            if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
+                currentList.removeAt(transientIndex)
+            }
+            // If it was a new emoji, clearing text is just a cancel, so we do nothing.
+        } else {
+            // This is an add or update operation.
+            if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
+                // Update existing emoji
+                currentList[transientIndex] = transientEmoji
+            } else if (transientIndex != null && transientIndex == -1) {
+                // Add new emoji
+                currentList.add(transientEmoji)
+            }
         }
 
         // 清除瞬时编辑状态
@@ -397,38 +408,6 @@ class EmojiViewModel @Inject constructor(
     fun cancelEditing() {
         _uiState.update { it.copy(editingEmoji = null, editingEmojiIndex = null) }
         editingStateFlow.value = null
-    }
-
-    /**
-     * 私有的重绘方法，用于实时预览
-     */
-    private fun rerenderWithTransientEdit() {
-        val base = _uiState.value.originalBitmap ?: return
-        val emojis = _uiState.value.selectedEmojis.toMutableList()
-        val editingEmoji = _uiState.value.editingEmoji
-        val editingIndex = _uiState.value.editingEmojiIndex
-
-        if (editingEmoji != null && editingIndex != null && editingIndex in emojis.indices) {
-            emojis[editingIndex] = editingEmoji // 将正在编辑的 emoji 替换到列表中用于预览
-        } else {
-            return // 如果没有正在编辑的对象，则不重绘
-        }
-
-        val font = _uiState.value.selectedFontPath
-
-        // ... 接续 rerenderBitmap 的原有逻辑，但使用上面构造的临时 emojis 列表
-        viewModelScope.launch {
-            _uiState.update { it.copy(isRendering = true) }
-            renderEmojiOnBitmapUseCase(base, emojis, font).fold(
-                onSuccess = { newBitmap ->
-                    _uiState.update { it.copy(processedBitmap = newBitmap, isRendering = false, errorMessage = null) }
-                },
-                onFailure = { exception ->
-                    _uiState.update { it.copy(isRendering = false, errorMessage = "Re-rendering failed: ${exception.localizedMessage}") }
-                }
-                // ... success/failure handling
-            )
-        }
     }
 
     // --- Settings Related ---
@@ -516,34 +495,5 @@ class EmojiViewModel @Inject constructor(
     /** Clears the current success message from the state */
     fun clearSuccessMessage() {
         _uiState.update { it.copy(successMessage = null) }
-    }
-
-
-    // --- Private Helper ---
-
-    /**
-     * Re-renders the processed image based on the current original bitmap,
-     * selected emojis, and selected font. Updates the state accordingly.
-     */
-    private fun rerenderBitmap() {
-        val base = _uiState.value.originalBitmap
-            ?: // Cannot rerender without original image
-            // Log.w("EditViewModel", "Cannot rerender: Original bitmap is null.")
-            return
-        val emojis = _uiState.value.selectedEmojis
-        val font = _uiState.value.selectedFontPath
-
-        _uiState.update { it.copy(isRendering = true) } // Indicate re-rendering start
-
-        viewModelScope.launch {
-            renderEmojiOnBitmapUseCase(base, emojis, font).fold(
-                onSuccess = { newBitmap ->
-                    _uiState.update { it.copy(processedBitmap = newBitmap, isRendering = false, errorMessage = null) }
-                },
-                onFailure = { exception ->
-                    _uiState.update { it.copy(isRendering = false, errorMessage = "Re-rendering failed: ${exception.localizedMessage}") }
-                }
-            )
-        }
     }
 }

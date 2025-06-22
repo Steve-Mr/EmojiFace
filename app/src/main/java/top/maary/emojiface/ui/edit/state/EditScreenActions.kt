@@ -22,6 +22,8 @@ data class EditScreenActions(
     val onEmojiCardClick: (index: Int) -> Unit,
     /** 當使用者點擊「新增」的 EmojiCard 時呼叫。 */
     val onAddEmojiCardClick: () -> Unit,
+    /** 當使用者長按現有的 EmojiCard 時呼叫，傳遞其索引以进行删除。 */
+    val onEmojiCardLongClick: (index: Int) -> Unit,
 
     // --- 主要導覽和動作按鈕 ---
     /** 當使用者點擊「關閉/退出」按鈕時呼叫。 */
@@ -33,7 +35,7 @@ data class EditScreenActions(
     /** 當使用者點擊「設定」按鈕時呼叫 (通常用於打開底部工作表)。 */
     val onSettingsClick: () -> Unit,
 
-    // --- 实时编辑表情符號操作 (替换原有 Dialog 操作) ---
+    // --- 实时编辑表情符號操作 ---
     /** 当用户在实时编辑时，参数发生了变化 */
     val onEditingValueChanged: (emoji: String? , diameter: Float?, rotation: Float?) -> Unit,
     /** 当用户确认实时编辑的结果时调用 */
