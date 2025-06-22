@@ -138,9 +138,13 @@ fun CompactScreenLayout(
                             vertical = 8.dp
                         ) // 增加垂直 padding
                     ) {
-                        itemsIndexed(state.emojiDetections) { index, detection ->
+                        itemsIndexed(
+                            items = state.emojiDetections,
+                            key = { _, item -> item.id } // key 使用 item 的唯一 id
+                        ) { index, detection ->
                             Spacer(modifier = Modifier.width(8.dp))
                             EmojiCard(
+                                modifier = Modifier.animateItem(),
                                 emoji = detection.emoji,
                                 onClick = { actions.onEmojiCardClick(index) },
                                 onLongClick = { actions.onEmojiCardLongClick(index) },
@@ -345,8 +349,12 @@ fun LargeScreenLayout(
                                 columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
                                 modifier = Modifier.weight(1f) // Grid takes available space
                             ) {
-                                itemsIndexed(state.emojiDetections) { index, detection ->
+                                itemsIndexed(
+                                    items = state.emojiDetections,
+                                    key = { _, item -> item.id } // key 使用 item 的唯一 id
+                                ) { index, detection ->
                                     EmojiCard(
+                                        modifier = Modifier.animateItem(),
                                         emoji = detection.emoji,
                                         onClick = { actions.onEmojiCardClick(index) },
                                         onLongClick = { actions.onEmojiCardLongClick(index) },

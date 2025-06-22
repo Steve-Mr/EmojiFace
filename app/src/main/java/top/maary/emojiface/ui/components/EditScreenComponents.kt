@@ -140,15 +140,18 @@ fun SettingsButton(backgroundColor: Color, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun EmojiCard(emoji: String,
-              onClick: () -> Unit,
-              onLongClick: () -> Unit = {},
-              clickable: Boolean = true,
-              fontFamily: FontFamily? = null,
-              containerColor: Color,
-              hPadding: Dp = 0.dp, vPadding: Dp = 16.dp) {
+fun EmojiCard(
+    emoji: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier, // 新增 Modifier 参数
+    onLongClick: () -> Unit = {},
+    clickable: Boolean = true,
+    fontFamily: FontFamily? = null,
+    containerColor: Color,
+    hPadding: Dp = 0.dp, vPadding: Dp = 16.dp
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier // 应用传入的 Modifier
             .wrapContentHeight()
             .wrapContentWidth()
             .padding(horizontal = hPadding, vertical = vPadding)
