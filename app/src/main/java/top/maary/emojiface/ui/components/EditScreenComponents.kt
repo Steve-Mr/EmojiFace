@@ -142,6 +142,7 @@ fun SettingsButton(backgroundColor: Color, onClick: () -> Unit) {
 @Composable
 fun EmojiCard(emoji: String,
               onClick: () -> Unit,
+              onLongClick: () -> Unit = {},
               clickable: Boolean = true,
               fontFamily: FontFamily? = null,
               containerColor: Color,
@@ -153,7 +154,14 @@ fun EmojiCard(emoji: String,
             .padding(horizontal = hPadding, vertical = vPadding)
             .clip(MaterialShapes.Cookie4Sided.toShape())
             .background(containerColor)
-            .clickable(enabled = clickable) { onClick() },  // 添加点击事件
+            .pointerInput(clickable) {
+                if (clickable) {
+                    detectTapGestures(
+                        onTap = { onClick() },
+                        onLongPress = { onLongClick() }
+                    )
+                }
+            },
     ) {
         Text(text = emoji, fontSize = 40.sp, fontFamily = fontFamily, modifier = Modifier
             .padding(8.dp)

@@ -142,7 +142,8 @@ fun CompactScreenLayout(
                             Spacer(modifier = Modifier.width(8.dp))
                             EmojiCard(
                                 emoji = detection.emoji,
-                                onClick = { actions.onEmojiCardClick(index) }, // 使用 action
+                                onClick = { actions.onEmojiCardClick(index) },
+                                onLongClick = { actions.onEmojiCardLongClick(index) },
                                 fontFamily = state.fontFamily,
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 // hPadding 和 vPadding 使用 EmojiCard 的默認值或按需調整
@@ -347,7 +348,8 @@ fun LargeScreenLayout(
                                 itemsIndexed(state.emojiDetections) { index, detection ->
                                     EmojiCard(
                                         emoji = detection.emoji,
-                                        onClick = { actions.onEmojiCardClick(index) }, // Use action
+                                        onClick = { actions.onEmojiCardClick(index) },
+                                        onLongClick = { actions.onEmojiCardLongClick(index) },
                                         fontFamily = state.fontFamily,
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                         hPadding = 8.dp,

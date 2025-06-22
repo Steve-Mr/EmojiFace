@@ -25,4 +25,6 @@
     <string name="created_by">Modified by FaceMoji.</string>
     <string name="emoji_list">Emoji List</string>
     <string name="emoji_font">Emoji Font</string>
+    <string name="confirm_delete_title">Confirm Deletion</string>
+    <string name="confirm_delete_message">Are you sure you want to delete this emoji?</string>
 </resources>

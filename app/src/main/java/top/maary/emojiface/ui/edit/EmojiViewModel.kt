@@ -82,16 +82,6 @@ class EmojiViewModel @Inject constructor(
     init {
         // Observe preferences and update state
         observePreferences()
-//        viewModelScope.launch {
-//            editingStateFlow
-//                .debounce(50L) // 防抖，用户停止滑动50毫秒后再触发
-//                .collect { emoji ->
-//                    if (emoji != null) {
-//                        // 当有稳定的编辑中状态时，触发重绘
-//                        rerenderWithTransientEdit()
-//                    }
-//                }
-//        }
     }
 
     private fun observePreferences() {
@@ -345,6 +335,17 @@ class EmojiViewModel @Inject constructor(
     }
 
     /**
+     * Removes an emoji from the list by its index.
+     */
+    fun removeEmoji(index: Int) {
+        val currentList = _uiState.value.selectedEmojis.toMutableList()
+        if (index >= 0 && index < currentList.size) {
+            currentList.removeAt(index)
+            _uiState.update { it.copy(selectedEmojis = currentList) }
+        }
+    }
+
+    /**
      * 开始编辑一个 Emoji
      */
     fun startEditing(index: Int) {
@@ -379,12 +380,21 @@ class EmojiViewModel @Inject constructor(
         val transientIndex = _uiState.value.editingEmojiIndex
         val currentList = _uiState.value.selectedEmojis.toMutableList()
 
-        if (transientIndex != null && transientIndex == -1) {
-            // 情况2：这是一个新的 Emoji，现在将它添加到主列表中
-            currentList.add(transientEmoji)
-        } else if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
-            // 情况1：这是一个已存在的 Emoji，更新它
-            currentList[transientIndex] = transientEmoji
+        if (transientEmoji.emoji.isEmpty()) {
+            // This is a delete operation. Only delete if it's an existing emoji.
+            if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
+                currentList.removeAt(transientIndex)
+            }
+            // If it was a new emoji, clearing text is just a cancel, so we do nothing.
+        } else {
+            // This is an add or update operation.
+            if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
+                // Update existing emoji
+                currentList[transientIndex] = transientEmoji
+            } else if (transientIndex != null && transientIndex == -1) {
+                // Add new emoji
+                currentList.add(transientEmoji)
+            }
         }
 
         // 清除瞬时编辑状态
