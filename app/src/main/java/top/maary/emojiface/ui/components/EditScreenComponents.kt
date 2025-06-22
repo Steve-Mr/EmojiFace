@@ -16,13 +16,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -547,67 +550,68 @@ fun SettingsSideSheetContent(
     onAddFontClick: () -> Unit,
     onRemoveFontClick: (index: Int) -> Unit,
 ) {
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 24.dp,
-                topEnd = 24.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
+    Column (modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
+        Box(modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(
+                RoundedCornerShape(
+                    topStart = 24.dp,
+                    topEnd = 24.dp,
+                    bottomStart = 4.dp,
+                    bottomEnd = 4.dp
+                )
             )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-        Column {
-            Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
-                text = stringResource(R.string.emoji_list))
-            if (!isEditingEmojiList) {
-                PredefinedEmojiSettings(
-                    emojiOptions = emojiOptions,
-                    onClick = onEditClick,
-                    fontFamily = fontFamily)
-            } else {
-                EditEmojiList(
-                    emojiOptions = emojiOptions,
-                    onClick = onEditConfirm,
-                    fontFamily = fontFamily)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+            Column {
+                Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
+                    text = stringResource(R.string.emoji_list))
+                if (!isEditingEmojiList) {
+                    PredefinedEmojiSettings(
+                        emojiOptions = emojiOptions,
+                        onClick = onEditClick,
+                        fontFamily = fontFamily)
+                } else {
+                    EditEmojiList(
+                        emojiOptions = emojiOptions,
+                        onClick = onEditConfirm,
+                        fontFamily = fontFamily)
+                }
             }
         }
-    }
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 4.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
+        Box(modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(
+                RoundedCornerShape(
+                    topStart = 4.dp,
+                    topEnd = 4.dp,
+                    bottomStart = 4.dp,
+                    bottomEnd = 4.dp
+                )
             )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-        HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+            HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
 
-    }
+        }
 
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 4.dp,
-                bottomStart = 24.dp,
-                bottomEnd = 24.dp
+        Box(modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(
+                RoundedCornerShape(
+                    topStart = 4.dp,
+                    topEnd = 4.dp,
+                    bottomStart = 24.dp,
+                    bottomEnd = 24.dp
+                )
             )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-        DropdownRow(
-            options = availableFontNames.toMutableList(),
-            position = selectedFontIndex,
-            onItemClicked = onFontSelected,
-            onAddClick = onAddFontClick,
-            onRemoveClick = { onRemoveFontClick(it) })
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+            DropdownRow(
+                options = availableFontNames.toMutableList(),
+                position = selectedFontIndex,
+                onItemClicked = onFontSelected,
+                onAddClick = onAddFontClick,
+                onRemoveClick = { onRemoveFontClick(it) })
+        }
     }
-
 }
 
 @Composable
@@ -711,6 +715,7 @@ fun EditEmojiBottomSheetContent(
 
 @Composable
 fun EditEmojiSideSheetContent(
+    modifier: Modifier = Modifier,
     initialEmoji: String,
     initialDiameter: Float,
     initialRotation: Float,
@@ -723,9 +728,10 @@ fun EditEmojiSideSheetContent(
 ) {
 
     LazyColumn(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .windowInsetsPadding(WindowInsets.safeDrawing),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         item {
@@ -852,7 +858,6 @@ fun EmojiOverlay(
     // 合并固定列表和正在编辑的临时状态，用于统一渲染
     val emojisToRender = remember(state.emojiDetections, editingEmoji) {
         val list = state.emojiDetections.toMutableList()
-//        val editingEmoji = editingEmoji
 
         if (editingEmoji != null) {
             val editingIndex = list.indexOfFirst { it.xCenter == editingEmoji.xCenter && it.yCenter == editingEmoji.yCenter }.takeIf { it != -1 }

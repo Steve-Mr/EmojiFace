@@ -1,6 +1,5 @@
 package top.maary.emojiface.ui.components
 
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -83,39 +82,38 @@ fun SideSheetContent(
     editingEmoji: EmojiDetection?,
     showSettingsSheet: Boolean
 ) {
-    val scrollState = rememberScrollState()
-        if (editingEmoji != null) {
-            val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
-            EditEmojiSideSheetContent(
-                initialEmoji = editingEmoji.emoji,
-                initialDiameter = editingEmoji.diameter,
-                initialRotation = editingEmoji.angle,
-                availableEmojis = state.predefinedEmojiList ?: emptyList(),
-                fontFamily = state.fontFamily,
-                onConfirm = actions.onConfirmEditing,
-                onDismiss = actions.onCancelEditing,
-                maxDiameter = maxDiameter,
-                onValueChange = actions.onEditingValueChanged
-            )
-        } else if (showSettingsSheet) {
-            var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
-            SettingsSideSheetContent(
-                emojiOptions = state.predefinedEmojiList ?: emptyList(),
-                isEditingEmojiList = isEditingEmojiListInSheet,
-                fontFamily = state.fontFamily,
-                isAppIconHidden = state.isAppIconHidden,
-                availableFontNames = state.availableFontNames ?: emptyList(),
-                selectedFontIndex = state.selectedFontIndex,
-                onEditClick = { isEditingEmojiListInSheet = true },
-                onEditConfirm = { newEmojiList ->
-                    actions.onPredefinedEmojisEdited(newEmojiList)
-                    isEditingEmojiListInSheet = false
-                },
-                onHideIconToggle = actions.onHideIconToggle,
-                onFontSelected = actions.onFontSelected,
-                onAddFontClick = actions.onAddFontClick,
-                onRemoveFontClick = actions.onRemoveFontClick
-            )
-        }
+    if (editingEmoji != null) {
+        val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
+        EditEmojiSideSheetContent(
+            initialEmoji = editingEmoji.emoji,
+            initialDiameter = editingEmoji.diameter,
+            initialRotation = editingEmoji.angle,
+            availableEmojis = state.predefinedEmojiList ?: emptyList(),
+            fontFamily = state.fontFamily,
+            onConfirm = actions.onConfirmEditing,
+            onDismiss = actions.onCancelEditing,
+            maxDiameter = maxDiameter,
+            onValueChange = actions.onEditingValueChanged
+        )
+    } else if (showSettingsSheet) {
+        var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
+        SettingsSideSheetContent(
+            emojiOptions = state.predefinedEmojiList ?: emptyList(),
+            isEditingEmojiList = isEditingEmojiListInSheet,
+            fontFamily = state.fontFamily,
+            isAppIconHidden = state.isAppIconHidden,
+            availableFontNames = state.availableFontNames ?: emptyList(),
+            selectedFontIndex = state.selectedFontIndex,
+            onEditClick = { isEditingEmojiListInSheet = true },
+            onEditConfirm = { newEmojiList ->
+                actions.onPredefinedEmojisEdited(newEmojiList)
+                isEditingEmojiListInSheet = false
+            },
+            onHideIconToggle = actions.onHideIconToggle,
+            onFontSelected = actions.onFontSelected,
+            onAddFontClick = actions.onAddFontClick,
+            onRemoveFontClick = actions.onRemoveFontClick
+        )
+    }
 
 }
