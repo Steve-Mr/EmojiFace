@@ -54,8 +54,8 @@ import top.maary.emojiface.ui.components.DisplayPane
 import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
 import top.maary.emojiface.ui.components.EmojiCard
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
-import top.maary.emojiface.ui.components.SideSheet
 import top.maary.emojiface.ui.components.SideSheetContent
+import top.maary.emojiface.ui.components.SurfaceSideSheet
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -262,10 +262,10 @@ fun LargeScreenLayout(
     }
 
     // 3. 使用 AppSideSheet 容器，传入状态和内容
-    SideSheet(
+    SurfaceSideSheet (
         showSheet = showSideSheet,
         onDismissSheet = onDismiss,
-        isModal = (editingEmoji == null), // 编辑 emoji 时为 false，其他情况(设置)为 true
+        isModal = (editingEmoji == null),
         sheetContent = {
             SideSheetContent(
                 state = state,

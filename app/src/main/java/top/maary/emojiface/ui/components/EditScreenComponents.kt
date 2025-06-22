@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,7 +27,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
@@ -89,6 +90,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -550,7 +552,11 @@ fun SettingsSideSheetContent(
     onAddFontClick: () -> Unit,
     onRemoveFontClick: (index: Int) -> Unit,
 ) {
-    Column (modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
+    Column (modifier = Modifier.padding(
+        top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding(),
+        end = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(
+            layoutDirection = LayoutDirection.Ltr
+        ))) {
         Box(modifier = Modifier
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(
@@ -611,6 +617,8 @@ fun SettingsSideSheetContent(
                 onAddClick = onAddFontClick,
                 onRemoveClick = { onRemoveFontClick(it) })
         }
+
+        Spacer(Modifier.height(WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()))
     }
 }
 
@@ -730,8 +738,12 @@ fun EditEmojiSideSheetContent(
     LazyColumn(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .windowInsetsPadding(WindowInsets.safeDrawing),
+            .padding(
+                top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding(),
+                start = 16.dp,
+                end = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(
+                    layoutDirection = LayoutDirection.Ltr
+                ) + 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         item {
@@ -834,6 +846,10 @@ fun EditEmojiSideSheetContent(
                 minRange = -90f,
                 maxRange = 90f
             )
+        }
+
+        item {
+            Spacer(Modifier.height(WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()))
         }
     }
 }

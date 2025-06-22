@@ -1,5 +1,6 @@
 package top.maary.emojiface.ui.components
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -14,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -27,7 +29,7 @@ import top.maary.emojiface.ui.edit.state.EditScreenState
  * @param content 主屏幕内容。
  */
 @Composable
-fun SideSheet(
+fun DrawerSideSheet(
     showSheet: Boolean,
     onDismissSheet: () -> Unit,
     isModal: Boolean = true,
@@ -59,6 +61,7 @@ fun SideSheet(
             drawerContent = {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     ModalDrawerSheet(
+                        windowInsets = WindowInsets(0.dp),
                         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                     ) {
                         // 直接渲染传入的 sheetContent
