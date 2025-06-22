@@ -1,5 +1,6 @@
 package top.maary.emojiface.ui.edit // 或者你選擇的包名
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,6 +31,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
@@ -53,8 +55,8 @@ import top.maary.emojiface.ui.components.DisplayPane
 import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
 import top.maary.emojiface.ui.components.EmojiCard
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
-import top.maary.emojiface.ui.components.SideSheet
 import top.maary.emojiface.ui.components.SideSheetContent
+import top.maary.emojiface.ui.components.SurfaceSideSheet
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -76,10 +78,9 @@ fun CompactScreenLayout(
         topBar = {
             CenterAlignedTopAppBar(
                 modifier = Modifier.shadow(8.dp), // 保留陰影
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.tertiary,
-                ),
+                    titleContentColor = MaterialTheme.colorScheme.tertiary),
                 title = {
                     // Compact 版本中標題為空
                 },
@@ -138,11 +139,16 @@ fun CompactScreenLayout(
                             vertical = 8.dp
                         ) // 增加垂直 padding
                     ) {
-                        itemsIndexed(state.emojiDetections) { index, detection ->
+                        itemsIndexed(
+                            items = state.emojiDetections,
+                            key = { _, item -> item.id } // key 使用 item 的唯一 id
+                        ) { index, detection ->
                             Spacer(modifier = Modifier.width(8.dp))
                             EmojiCard(
+                                modifier = Modifier.animateItem(),
                                 emoji = detection.emoji,
-                                onClick = { actions.onEmojiCardClick(index) }, // 使用 action
+                                onClick = { actions.onEmojiCardClick(index) },
+                                onLongClick = { actions.onEmojiCardLongClick(index) },
                                 fontFamily = state.fontFamily,
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                 // hPadding 和 vPadding 使用 EmojiCard 的默認值或按需調整
@@ -174,12 +180,21 @@ fun CompactScreenLayout(
     if (editingEmoji != null) {
         val bottomSheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = true,
-            // 只阻止用户将其关闭 (变为 Hidden)
-//            confirmValueChange = { it != SheetValue.Hidden }
         )
         val scope = rememberCoroutineScope()
 
         val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
+
+        var isSliding by remember { mutableStateOf(false) }
+
+        val containerColor by animateColorAsState(
+            targetValue = if (isSliding) {
+                MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+            },
+            label = "BottomSheetColorAnimation"
+        )
 
         ModalBottomSheet(
             onDismissRequest = {
@@ -191,7 +206,7 @@ fun CompactScreenLayout(
             sheetState = bottomSheetState,
             dragHandle = { },
             sheetGesturesEnabled = false,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+            containerColor = containerColor
         ) {
             // 完全复用现有的 Composable
             EditEmojiBottomSheetContent(
@@ -203,7 +218,8 @@ fun CompactScreenLayout(
                 onConfirm = actions.onConfirmEditing,
                 onDismiss = actions.onCancelEditing,
                 maxDiameter = maxDiameter,
-                onValueChange = actions.onEditingValueChanged
+                onValueChange = actions.onEditingValueChanged,
+                onSlidingStateChange = { isSliding = it }
             )
         }
     }
@@ -246,10 +262,19 @@ fun LargeScreenLayout(
     showSettingsSheet: Boolean,
     onDismissSettingsSheet: () -> Unit
 ) {
-    // 1. 逻辑更清晰：判断是否需要显示 SideSheet
     val showSideSheet = editingEmoji != null || showSettingsSheet
 
-    // 2. 决定关闭时应该执行哪个动作
+    var isSliding by remember { mutableStateOf(false) }
+
+    val sideSheetColor by animateColorAsState(
+        targetValue = if (isSliding) {
+            MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+        },
+        label = "SideSheetColorAnimation"
+    )
+
     val onDismiss = {
         if (editingEmoji != null) {
             actions.onCancelEditing()
@@ -258,17 +283,18 @@ fun LargeScreenLayout(
         }
     }
 
-    // 3. 使用 AppSideSheet 容器，传入状态和内容
-    SideSheet(
+    SurfaceSideSheet (
         showSheet = showSideSheet,
         onDismissSheet = onDismiss,
-        isModal = (editingEmoji == null), // 编辑 emoji 时为 false，其他情况(设置)为 true
+        isModal = (editingEmoji == null),
+        sheetContainerColor = sideSheetColor,
         sheetContent = {
             SideSheetContent(
                 state = state,
                 actions = actions,
                 editingEmoji = editingEmoji,
-                showSettingsSheet = showSettingsSheet
+                showSettingsSheet = showSettingsSheet,
+                onSlidingStateChange = { isSliding = it }
             )
         }
     ) {
@@ -346,10 +372,15 @@ fun LargeScreenLayout(
                                 columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
                                 modifier = Modifier.weight(1f) // Grid takes available space
                             ) {
-                                itemsIndexed(state.emojiDetections) { index, detection ->
+                                itemsIndexed(
+                                    items = state.emojiDetections,
+                                    key = { _, item -> item.id } // key 使用 item 的唯一 id
+                                ) { index, detection ->
                                     EmojiCard(
+                                        modifier = Modifier.animateItem(),
                                         emoji = detection.emoji,
-                                        onClick = { actions.onEmojiCardClick(index) }, // Use action
+                                        onClick = { actions.onEmojiCardClick(index) },
+                                        onLongClick = { actions.onEmojiCardLongClick(index) },
                                         fontFamily = state.fontFamily,
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                         hPadding = 8.dp,

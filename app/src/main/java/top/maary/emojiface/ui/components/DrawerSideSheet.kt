@@ -1,6 +1,6 @@
 package top.maary.emojiface.ui.components
 
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -28,7 +29,7 @@ import top.maary.emojiface.ui.edit.state.EditScreenState
  * @param content 主屏幕内容。
  */
 @Composable
-fun SideSheet(
+fun DrawerSideSheet(
     showSheet: Boolean,
     onDismissSheet: () -> Unit,
     isModal: Boolean = true,
@@ -60,6 +61,7 @@ fun SideSheet(
             drawerContent = {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     ModalDrawerSheet(
+                        windowInsets = WindowInsets(0.dp),
                         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest
                     ) {
                         // 直接渲染传入的 sheetContent
@@ -81,41 +83,42 @@ fun SideSheetContent(
     state: EditScreenState,
     actions: EditScreenActions,
     editingEmoji: EmojiDetection?,
-    showSettingsSheet: Boolean
+    showSettingsSheet: Boolean,
+    onSlidingStateChange: (Boolean) -> Unit
 ) {
-    val scrollState = rememberScrollState()
-        if (editingEmoji != null) {
-            val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
-            EditEmojiSideSheetContent(
-                initialEmoji = editingEmoji.emoji,
-                initialDiameter = editingEmoji.diameter,
-                initialRotation = editingEmoji.angle,
-                availableEmojis = state.predefinedEmojiList ?: emptyList(),
-                fontFamily = state.fontFamily,
-                onConfirm = actions.onConfirmEditing,
-                onDismiss = actions.onCancelEditing,
-                maxDiameter = maxDiameter,
-                onValueChange = actions.onEditingValueChanged
-            )
-        } else if (showSettingsSheet) {
-            var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
-            SettingsSideSheetContent(
-                emojiOptions = state.predefinedEmojiList ?: emptyList(),
-                isEditingEmojiList = isEditingEmojiListInSheet,
-                fontFamily = state.fontFamily,
-                isAppIconHidden = state.isAppIconHidden,
-                availableFontNames = state.availableFontNames ?: emptyList(),
-                selectedFontIndex = state.selectedFontIndex,
-                onEditClick = { isEditingEmojiListInSheet = true },
-                onEditConfirm = { newEmojiList ->
-                    actions.onPredefinedEmojisEdited(newEmojiList)
-                    isEditingEmojiListInSheet = false
-                },
-                onHideIconToggle = actions.onHideIconToggle,
-                onFontSelected = actions.onFontSelected,
-                onAddFontClick = actions.onAddFontClick,
-                onRemoveFontClick = actions.onRemoveFontClick
-            )
-        }
+    if (editingEmoji != null) {
+        val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
+        EditEmojiSideSheetContent(
+            initialEmoji = editingEmoji.emoji,
+            initialDiameter = editingEmoji.diameter,
+            initialRotation = editingEmoji.angle,
+            availableEmojis = state.predefinedEmojiList ?: emptyList(),
+            fontFamily = state.fontFamily,
+            onConfirm = actions.onConfirmEditing,
+            onDismiss = actions.onCancelEditing,
+            maxDiameter = maxDiameter,
+            onValueChange = actions.onEditingValueChanged,
+            onSlidingStateChange = onSlidingStateChange
+        )
+    } else if (showSettingsSheet) {
+        var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
+        SettingsSideSheetContent(
+            emojiOptions = state.predefinedEmojiList ?: emptyList(),
+            isEditingEmojiList = isEditingEmojiListInSheet,
+            fontFamily = state.fontFamily,
+            isAppIconHidden = state.isAppIconHidden,
+            availableFontNames = state.availableFontNames ?: emptyList(),
+            selectedFontIndex = state.selectedFontIndex,
+            onEditClick = { isEditingEmojiListInSheet = true },
+            onEditConfirm = { newEmojiList ->
+                actions.onPredefinedEmojisEdited(newEmojiList)
+                isEditingEmojiListInSheet = false
+            },
+            onHideIconToggle = actions.onHideIconToggle,
+            onFontSelected = actions.onFontSelected,
+            onAddFontClick = actions.onAddFontClick,
+            onRemoveFontClick = actions.onRemoveFontClick
+        )
+    }
 
 }

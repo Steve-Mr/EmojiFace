@@ -2,22 +2,30 @@ package top.maary.emojiface.ui.components
 
 import android.graphics.Paint
 import android.graphics.Typeface
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -63,6 +71,7 @@ import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvide
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,6 +84,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -82,6 +92,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
@@ -130,30 +141,60 @@ fun SaveButtonCompact(backgroundColor: Color, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsButton(backgroundColor: Color, onClick: () -> Unit) {
-    FloatingActionButton(onClick = onClick,
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // 根据按压状态，驱动一个缩放比例的动画
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.8f else 1.0f,
+        label = "SettingsButtonScaleAnimation"
+    )
+
+    FloatingActionButton(
+        onClick = onClick,
         containerColor = backgroundColor,
-        modifier = Modifier.padding(8.dp),
-        shape = MaterialShapes.Cookie7Sided.toShape()) {
+        // 使用 graphicsLayer 修饰符来应用缩放
+        modifier = Modifier
+            .padding(8.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        interactionSource = interactionSource,
+        // 在这里，我们可以安全地使用原始的 Cookie7Sided 形状
+        shape = MaterialShapes.Cookie7Sided.toShape()
+    ) {
         Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun EmojiCard(emoji: String,
-              onClick: () -> Unit,
-              clickable: Boolean = true,
-              fontFamily: FontFamily? = null,
-              containerColor: Color,
-              hPadding: Dp = 0.dp, vPadding: Dp = 16.dp) {
+fun EmojiCard(
+    emoji: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier, // 新增 Modifier 参数
+    onLongClick: () -> Unit = {},
+    clickable: Boolean = true,
+    fontFamily: FontFamily? = null,
+    containerColor: Color,
+    hPadding: Dp = 0.dp, vPadding: Dp = 16.dp
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier // 应用传入的 Modifier
             .wrapContentHeight()
             .wrapContentWidth()
             .padding(horizontal = hPadding, vertical = vPadding)
             .clip(MaterialShapes.Cookie4Sided.toShape())
             .background(containerColor)
-            .clickable(enabled = clickable) { onClick() },  // 添加点击事件
+            .pointerInput(clickable) {
+                if (clickable) {
+                    detectTapGestures(
+                        onTap = { onClick() },
+                        onLongPress = { onLongClick() }
+                    )
+                }
+            },
     ) {
         Text(text = emoji, fontSize = 40.sp, fontFamily = fontFamily, modifier = Modifier
             .padding(8.dp)
@@ -180,7 +221,14 @@ fun EmojiCardSmall(emoji: String, onClick: () -> Unit, fontFamily: FontFamily? =
 }
 
 @Composable
-fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String, ratio: Float, animate: Boolean) {
+fun ResultImg(
+    modifier: Modifier,
+    bitmap: ImageBitmap,
+    description: String,
+    ratio: Float,
+    animate: Boolean,
+    imageModifier: Modifier = Modifier
+) {
     GlowingCard (
         modifier = modifier,
         ratio = ratio,
@@ -194,7 +242,10 @@ fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String, rati
                     .padding(horizontal = ratio * 8.dp, vertical = 8.dp)
                     .clip(
                         RoundedCornerShape(16.dp)
-                    ))
+                    )
+                    // 使用 .then() 连接外部传入的 Modifier
+                    .then(imageModifier)
+            )
         }
     )
 }
@@ -387,7 +438,8 @@ fun SliderWithCaption(
     value: Float,
     onValueChange: (Float) -> Unit,
     minRange: Float,
-    maxRange: Float
+    maxRange: Float,
+    interactionSource: MutableInteractionSource
 ) {
 
     Column(
@@ -404,7 +456,8 @@ fun SliderWithCaption(
             modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
             value = value,
             onValueChange = onValueChange,
-            valueRange = minRange..maxRange
+            valueRange = minRange..maxRange,
+            interactionSource = interactionSource
         )
 
     }
@@ -503,67 +556,74 @@ fun SettingsSideSheetContent(
     onAddFontClick: () -> Unit,
     onRemoveFontClick: (index: Int) -> Unit,
 ) {
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 24.dp,
-                topEnd = 24.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
+    Column (modifier = Modifier.padding(
+        top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding(),
+        end = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(
+            layoutDirection = LayoutDirection.Ltr
+        ))) {
+        Box(modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(
+                RoundedCornerShape(
+                    topStart = 24.dp,
+                    topEnd = 24.dp,
+                    bottomStart = 4.dp,
+                    bottomEnd = 4.dp
+                )
             )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-        Column {
-            Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
-                text = stringResource(R.string.emoji_list))
-            if (!isEditingEmojiList) {
-                PredefinedEmojiSettings(
-                    emojiOptions = emojiOptions,
-                    onClick = onEditClick,
-                    fontFamily = fontFamily)
-            } else {
-                EditEmojiList(
-                    emojiOptions = emojiOptions,
-                    onClick = onEditConfirm,
-                    fontFamily = fontFamily)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+            Column {
+                Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
+                    text = stringResource(R.string.emoji_list))
+                if (!isEditingEmojiList) {
+                    PredefinedEmojiSettings(
+                        emojiOptions = emojiOptions,
+                        onClick = onEditClick,
+                        fontFamily = fontFamily)
+                } else {
+                    EditEmojiList(
+                        emojiOptions = emojiOptions,
+                        onClick = onEditConfirm,
+                        fontFamily = fontFamily)
+                }
             }
         }
-    }
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 4.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
+        Box(modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(
+                RoundedCornerShape(
+                    topStart = 4.dp,
+                    topEnd = 4.dp,
+                    bottomStart = 4.dp,
+                    bottomEnd = 4.dp
+                )
             )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-        HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+            HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
 
-    }
+        }
 
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 4.dp,
-                bottomStart = 24.dp,
-                bottomEnd = 24.dp
+        Box(modifier = Modifier
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(
+                RoundedCornerShape(
+                    topStart = 4.dp,
+                    topEnd = 4.dp,
+                    bottomStart = 24.dp,
+                    bottomEnd = 24.dp
+                )
             )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-        DropdownRow(
-            options = availableFontNames.toMutableList(),
-            position = selectedFontIndex,
-            onItemClicked = onFontSelected,
-            onAddClick = onAddFontClick,
-            onRemoveClick = { onRemoveFontClick(it) })
-    }
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+            DropdownRow(
+                options = availableFontNames.toMutableList(),
+                position = selectedFontIndex,
+                onItemClicked = onFontSelected,
+                onAddClick = onAddFontClick,
+                onRemoveClick = { onRemoveFontClick(it) })
+        }
 
+        Spacer(Modifier.height(WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()))
+    }
 }
 
 @Composable
@@ -576,8 +636,18 @@ fun EditEmojiBottomSheetContent(
     fontFamily: FontFamily?,
     onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSlidingStateChange: (Boolean) -> Unit
 ){
+    val sizeInteractionSource = remember { MutableInteractionSource() }
+    val angleInteractionSource = remember { MutableInteractionSource() }
+
+    val isSizeSliderDragged by sizeInteractionSource.collectIsDraggedAsState()
+    val isAngleSliderDragged by angleInteractionSource.collectIsDraggedAsState()
+
+    LaunchedEffect(isSizeSliderDragged, isAngleSliderDragged) {
+        onSlidingStateChange(isSizeSliderDragged || isAngleSliderDragged)
+    }
 
     Column (modifier = Modifier
         .fillMaxWidth()
@@ -626,7 +696,8 @@ fun EditEmojiBottomSheetContent(
                 value = initialDiameter,
                 onValueChange = { onValueChange(null, it, null) },
                 minRange = 20f,
-                maxRange = maxDiameter
+                maxRange = maxDiameter,
+                interactionSource = sizeInteractionSource
             )
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -645,7 +716,8 @@ fun EditEmojiBottomSheetContent(
                 value = initialRotation,
                 onValueChange = { onValueChange(null, null, it) },
                 minRange = -90f,
-                maxRange = 90f
+                maxRange = 90f,
+                interactionSource = angleInteractionSource
             )
         }
 
@@ -667,6 +739,7 @@ fun EditEmojiBottomSheetContent(
 
 @Composable
 fun EditEmojiSideSheetContent(
+    modifier: Modifier = Modifier,
     initialEmoji: String,
     initialDiameter: Float,
     initialRotation: Float,
@@ -675,13 +748,32 @@ fun EditEmojiSideSheetContent(
     fontFamily: FontFamily?,
     onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSlidingStateChange: (Boolean) -> Unit
 ) {
 
+    // 1. 为两个滑块创建 interactionSource
+    val sizeInteractionSource = remember { MutableInteractionSource() }
+    val angleInteractionSource = remember { MutableInteractionSource() }
+
+    // 2. 监测两个滑块的拖动状态
+    val isSizeSliderDragged by sizeInteractionSource.collectIsDraggedAsState()
+    val isAngleSliderDragged by angleInteractionSource.collectIsDraggedAsState()
+
+    // 3. 当任一滑块被拖动时，通过回调函数通知父组件
+    LaunchedEffect(isSizeSliderDragged, isAngleSliderDragged) {
+        onSlidingStateChange(isSizeSliderDragged || isAngleSliderDragged)
+    }
+
     LazyColumn(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(
+                top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding(),
+                start = 16.dp,
+                end = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(
+                    layoutDirection = LayoutDirection.Ltr
+                ) + 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         item {
@@ -760,7 +852,8 @@ fun EditEmojiSideSheetContent(
                 value = initialDiameter,
                 onValueChange = { onValueChange(null, it, null) },
                 minRange = 20f,
-                maxRange = maxDiameter
+                maxRange = maxDiameter,
+                interactionSource = sizeInteractionSource
             )
         }
         item {
@@ -782,8 +875,13 @@ fun EditEmojiSideSheetContent(
                 value = initialRotation,
                 onValueChange = { onValueChange(null, null, it) },
                 minRange = -90f,
-                maxRange = 90f
+                maxRange = 90f,
+                interactionSource = angleInteractionSource
             )
+        }
+
+        item {
+            Spacer(Modifier.height(WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()))
         }
     }
 }
@@ -797,7 +895,6 @@ fun EmojiOverlay(
 ) {
     // 获取原始图片尺寸和屏幕上容器的尺寸，用于坐标和大小的缩放
     val originalWidth = state.currentImage?.width?.toFloat() ?: return
-    val originalHeight = state.currentImage.height.toFloat()
     val containerWidth = state.imageContainerSize.width.toFloat()
     val containerHeight = state.imageContainerSize.height.toFloat()
 
@@ -809,7 +906,6 @@ fun EmojiOverlay(
     // 合并固定列表和正在编辑的临时状态，用于统一渲染
     val emojisToRender = remember(state.emojiDetections, editingEmoji) {
         val list = state.emojiDetections.toMutableList()
-        val editingEmoji = editingEmoji
 
         if (editingEmoji != null) {
             val editingIndex = list.indexOfFirst { it.xCenter == editingEmoji.xCenter && it.yCenter == editingEmoji.yCenter }.takeIf { it != -1 }
@@ -882,7 +978,6 @@ fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenA
 
             val cornerRadius = 16.dp
             val verticalPadding = 8.dp
-            // 水平 padding 依赖于宽高比，与 ResultImg 内部逻辑保持一致
             val horizontalPadding = (state.aspectRatio ?: 1f) * 8f.dp
 
             // 准备一个用于覆盖层的 Box，它的大小将和图片容器一致
@@ -891,76 +986,69 @@ fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenA
                     .aspectRatio(state.aspectRatio ?: 1f)
                     .fillMaxSize()
             ) {
-                GlowingCard (
+
+                // 1. 将原先 Image 的特定逻辑提取到一个 Modifier 变量中
+                val imageSpecificModifier = Modifier
+                    .onGloballyPositioned { layoutCoordinates ->
+                        // 回報容器尺寸
+                        actions.onImageContainerMeasured(layoutCoordinates.size)
+                    }
+                    .then(
+                        if (state.isAddMode) {
+                            Modifier.pointerInput(Unit) { // 合并 pointerInput
+                                detectTapGestures { offset ->
+                                    val containerWidth = state.imageContainerSize.width
+                                    val containerHeight = state.imageContainerSize.height
+                                    val originalBitmapWidth = state.currentImage?.width
+                                        ?: state.displayedBitmap.width
+                                    val originalBitmapHeight = state.currentImage?.height
+                                        ?: state.displayedBitmap.height
+
+                                    if (containerWidth > 0 && containerHeight > 0) {
+                                        val scaleX =
+                                            originalBitmapWidth.toFloat() / containerWidth
+                                        val scaleY =
+                                            originalBitmapHeight.toFloat() / containerHeight
+                                        val originalX = offset.x * scaleX
+                                        val originalY = offset.y * scaleY
+                                        actions.onImageTapToAdd(
+                                            Offset(
+                                                originalX,
+                                                originalY
+                                            )
+                                        )
+                                    } else {
+                                        actions.onImageTapToAdd(offset)
+                                    }
+                                }
+                            }
+                        } else Modifier
+                    )
+
+                // 2. 使用重构后的 ResultImg
+                ResultImg(
                     modifier = Modifier
-                        .aspectRatio(state.aspectRatio ?: 1f) // 使用 state 中的寬高比
-                        .fillMaxSize(),
+                        .aspectRatio(state.aspectRatio ?: 1f)
+                        .fillMaxSize(), // GlowingCard 的 Modifier
+                    bitmap = state.displayedBitmap,
+                    description = stringResource(R.string.process_result),
                     ratio = state.aspectRatio ?: 1f,
                     animate = state.isProcessing,
-                    cornersRadius = 16.dp,
-                    content = {
-                        Image(bitmap = state.displayedBitmap,
-                            contentDescription = stringResource(R.string.process_result),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(
-                                    horizontal = (state.aspectRatio ?: 1f) * 8.dp,
-                                    vertical = 8.dp
-                                )
-                                .clip(
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .onGloballyPositioned { layoutCoordinates ->
-                                    // 回報容器尺寸
-                                    actions.onImageContainerMeasured(layoutCoordinates.size)
-                                }
-                                .then(
-                                    if (state.isAddMode) {
-                                    Modifier.pointerInput(Unit) { // 合并 pointerInput
-
-                                        detectTapGestures { offset ->
-                                            // ... (原有的 onImageTapToAdd 逻辑保持不变)
-                                            val containerWidth = state.imageContainerSize.width
-                                            val containerHeight = state.imageContainerSize.height
-                                            val originalBitmapWidth = state.currentImage?.width
-                                                ?: state.displayedBitmap.width
-                                            val originalBitmapHeight = state.currentImage?.height
-                                                ?: state.displayedBitmap.height
-
-                                            if (containerWidth > 0 && containerHeight > 0) {
-                                                val scaleX =
-                                                    originalBitmapWidth.toFloat() / containerWidth
-                                                val scaleY =
-                                                    originalBitmapHeight.toFloat() / containerHeight
-                                                val originalX = offset.x * scaleX
-                                                val originalY = offset.y * scaleY
-                                                actions.onImageTapToAdd(
-                                                    Offset(
-                                                        originalX,
-                                                        originalY
-                                                    )
-                                                )
-                                            } else {
-                                                actions.onImageTapToAdd(offset)
-                                            }
-                                        }
-
-                                    }
-                                } else Modifier
-                                ))
-                    }
+                    imageModifier = imageSpecificModifier // 3. 将提取的 Modifier 传入
                 )
 
-                EmojiOverlay(state = state, editingEmoji = editingEmoji,
+                EmojiOverlay(
+                    state = state,
+                    editingEmoji = editingEmoji,
                     padding = PaddingValues(horizontal = horizontalPadding, vertical = verticalPadding),
-                    cornerRadius = cornerRadius,)
-
+                    cornerRadius = cornerRadius,
+                )
             }
 
         } else {
-            // 沒有圖片時顯示選擇圖片按鈕
+            // 沒有圖片時顯示選擇圖片按鈕 (这部分逻辑不变)
             ExtendedFloatingActionButton(
-                onClick = actions.onPickImageClick, // 使用 action
+                onClick = actions.onPickImageClick,
                 icon = {
                     Icon(
                         Icons.Outlined.AddPhotoAlternate,

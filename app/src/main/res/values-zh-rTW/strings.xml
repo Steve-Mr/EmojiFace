@@ -25,4 +25,6 @@
     <string name="created_by">此照片經過 FaceMoji 編輯。</string>
     <string name="emoji_list">Emoji 列表</string>
     <string name="emoji_font">Emoji 字體</string>
+    <string name="confirm_delete_title">確認刪除</string>
+    <string name="confirm_delete_message">您確定要刪除這個表情符號嗎？</string>
 </resources>

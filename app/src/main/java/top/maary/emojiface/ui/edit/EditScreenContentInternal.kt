@@ -9,7 +9,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -21,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,7 +37,6 @@ import top.maary.emojiface.util.Constants
 import top.maary.emojiface.util.getFileNameWithoutExtensionUsingPath
 import top.maary.emojiface.util.getParcelableExtraCompat
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScreenContentInternal(
     // Assuming Hilt provides the ViewModel with UseCases injected
@@ -56,6 +58,8 @@ fun EditScreenContentInternal(
     var tapPositionForAdd by remember { mutableStateOf(Offset.Zero) } // Store tap position for adding
     var isEditingEmojiListInSheet by remember { mutableStateOf(false) } // State for bottom sheet mode
     var isMediumLayout by remember { mutableStateOf(false) } // To pass to ActionRow if needed
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var emojiIndexToDelete by remember { mutableStateOf<Int?>(null) }
 
     // --- 3. Implement Launchers (No changes needed here) ---
     val photoPicker = rememberLauncherForActivityResult(
@@ -200,7 +204,7 @@ fun EditScreenContentInternal(
                 tapPositionForAdd = offset
                 selectedIndexForEdit = -1 // Mark as Add
                 isAddMode = false // Exit add mode state after tap
-                viewModel.addEmoji(offset.x, offset.y, viewModel.getRandomEmoji(), 100f, 0f, startEditing = true)
+                viewModel.addEmoji(offset.x, offset.y, viewModel.getRandomEmoji(), 100f, 0f)
             },
             onImageContainerMeasured = { size -> imageContainerSize = size },
             onPickImageClick = {
@@ -211,6 +215,10 @@ fun EditScreenContentInternal(
             onClearImageClick = { viewModel.clearImage() },
             onEmojiCardClick = { index ->
                 viewModel.startEditing(index)
+            },
+            onEmojiCardLongClick = { index ->
+                emojiIndexToDelete = index
+                showDeleteConfirmDialog = true
             },
             onAddEmojiCardClick = { isAddMode = true }, // Enter Add Mode
             onCloseClick = { activity?.finish() },
@@ -252,6 +260,38 @@ fun EditScreenContentInternal(
             onCancelEditing = {
                 viewModel.cancelEditing()
             },
+        )
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteConfirmDialog = false
+                emojiIndexToDelete = null
+            },
+            title = { Text(stringResource(R.string.confirm_delete_title)) },
+            text = { Text(stringResource(R.string.confirm_delete_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        emojiIndexToDelete?.let { viewModel.removeEmoji(it) }
+                        showDeleteConfirmDialog = false
+                        emojiIndexToDelete = null
+                    }
+                ) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmDialog = false
+                        emojiIndexToDelete = null
+                    }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
         )
     }
 
