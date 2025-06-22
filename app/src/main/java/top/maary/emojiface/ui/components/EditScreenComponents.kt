@@ -2,11 +2,14 @@ package top.maary.emojiface.ui.components
 
 import android.graphics.Paint
 import android.graphics.Typeface
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +78,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -130,10 +134,29 @@ fun SaveButtonCompact(backgroundColor: Color, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SettingsButton(backgroundColor: Color, onClick: () -> Unit) {
-    FloatingActionButton(onClick = onClick,
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // 根据按压状态，驱动一个缩放比例的动画
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.8f else 1.0f,
+        label = "SettingsButtonScaleAnimation"
+    )
+
+    FloatingActionButton(
+        onClick = onClick,
         containerColor = backgroundColor,
-        modifier = Modifier.padding(8.dp),
-        shape = MaterialShapes.Cookie7Sided.toShape()) {
+        // 使用 graphicsLayer 修饰符来应用缩放
+        modifier = Modifier
+            .padding(8.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        interactionSource = interactionSource,
+        // 在这里，我们可以安全地使用原始的 Cookie7Sided 形状
+        shape = MaterialShapes.Cookie7Sided.toShape()
+    ) {
         Icon(Icons.Outlined.Settings, stringResource(R.string.settings))
     }
 }
