@@ -180,7 +180,14 @@ fun EmojiCardSmall(emoji: String, onClick: () -> Unit, fontFamily: FontFamily? =
 }
 
 @Composable
-fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String, ratio: Float, animate: Boolean) {
+fun ResultImg(
+    modifier: Modifier,
+    bitmap: ImageBitmap,
+    description: String,
+    ratio: Float,
+    animate: Boolean,
+    imageModifier: Modifier = Modifier
+) {
     GlowingCard (
         modifier = modifier,
         ratio = ratio,
@@ -194,7 +201,10 @@ fun ResultImg(modifier: Modifier, bitmap: ImageBitmap, description: String, rati
                     .padding(horizontal = ratio * 8.dp, vertical = 8.dp)
                     .clip(
                         RoundedCornerShape(16.dp)
-                    ))
+                    )
+                    // 使用 .then() 连接外部传入的 Modifier
+                    .then(imageModifier)
+            )
         }
     )
 }
@@ -797,7 +807,6 @@ fun EmojiOverlay(
 ) {
     // 获取原始图片尺寸和屏幕上容器的尺寸，用于坐标和大小的缩放
     val originalWidth = state.currentImage?.width?.toFloat() ?: return
-    val originalHeight = state.currentImage.height.toFloat()
     val containerWidth = state.imageContainerSize.width.toFloat()
     val containerHeight = state.imageContainerSize.height.toFloat()
 
@@ -809,7 +818,7 @@ fun EmojiOverlay(
     // 合并固定列表和正在编辑的临时状态，用于统一渲染
     val emojisToRender = remember(state.emojiDetections, editingEmoji) {
         val list = state.emojiDetections.toMutableList()
-        val editingEmoji = editingEmoji
+//        val editingEmoji = editingEmoji
 
         if (editingEmoji != null) {
             val editingIndex = list.indexOfFirst { it.xCenter == editingEmoji.xCenter && it.yCenter == editingEmoji.yCenter }.takeIf { it != -1 }
@@ -882,7 +891,6 @@ fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenA
 
             val cornerRadius = 16.dp
             val verticalPadding = 8.dp
-            // 水平 padding 依赖于宽高比，与 ResultImg 内部逻辑保持一致
             val horizontalPadding = (state.aspectRatio ?: 1f) * 8f.dp
 
             // 准备一个用于覆盖层的 Box，它的大小将和图片容器一致
@@ -891,76 +899,69 @@ fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenA
                     .aspectRatio(state.aspectRatio ?: 1f)
                     .fillMaxSize()
             ) {
-                GlowingCard (
+
+                // 1. 将原先 Image 的特定逻辑提取到一个 Modifier 变量中
+                val imageSpecificModifier = Modifier
+                    .onGloballyPositioned { layoutCoordinates ->
+                        // 回報容器尺寸
+                        actions.onImageContainerMeasured(layoutCoordinates.size)
+                    }
+                    .then(
+                        if (state.isAddMode) {
+                            Modifier.pointerInput(Unit) { // 合并 pointerInput
+                                detectTapGestures { offset ->
+                                    val containerWidth = state.imageContainerSize.width
+                                    val containerHeight = state.imageContainerSize.height
+                                    val originalBitmapWidth = state.currentImage?.width
+                                        ?: state.displayedBitmap.width
+                                    val originalBitmapHeight = state.currentImage?.height
+                                        ?: state.displayedBitmap.height
+
+                                    if (containerWidth > 0 && containerHeight > 0) {
+                                        val scaleX =
+                                            originalBitmapWidth.toFloat() / containerWidth
+                                        val scaleY =
+                                            originalBitmapHeight.toFloat() / containerHeight
+                                        val originalX = offset.x * scaleX
+                                        val originalY = offset.y * scaleY
+                                        actions.onImageTapToAdd(
+                                            Offset(
+                                                originalX,
+                                                originalY
+                                            )
+                                        )
+                                    } else {
+                                        actions.onImageTapToAdd(offset)
+                                    }
+                                }
+                            }
+                        } else Modifier
+                    )
+
+                // 2. 使用重构后的 ResultImg
+                ResultImg(
                     modifier = Modifier
-                        .aspectRatio(state.aspectRatio ?: 1f) // 使用 state 中的寬高比
-                        .fillMaxSize(),
+                        .aspectRatio(state.aspectRatio ?: 1f)
+                        .fillMaxSize(), // GlowingCard 的 Modifier
+                    bitmap = state.displayedBitmap,
+                    description = stringResource(R.string.process_result),
                     ratio = state.aspectRatio ?: 1f,
                     animate = state.isProcessing,
-                    cornersRadius = 16.dp,
-                    content = {
-                        Image(bitmap = state.displayedBitmap,
-                            contentDescription = stringResource(R.string.process_result),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(
-                                    horizontal = (state.aspectRatio ?: 1f) * 8.dp,
-                                    vertical = 8.dp
-                                )
-                                .clip(
-                                    RoundedCornerShape(16.dp)
-                                )
-                                .onGloballyPositioned { layoutCoordinates ->
-                                    // 回報容器尺寸
-                                    actions.onImageContainerMeasured(layoutCoordinates.size)
-                                }
-                                .then(
-                                    if (state.isAddMode) {
-                                    Modifier.pointerInput(Unit) { // 合并 pointerInput
-
-                                        detectTapGestures { offset ->
-                                            // ... (原有的 onImageTapToAdd 逻辑保持不变)
-                                            val containerWidth = state.imageContainerSize.width
-                                            val containerHeight = state.imageContainerSize.height
-                                            val originalBitmapWidth = state.currentImage?.width
-                                                ?: state.displayedBitmap.width
-                                            val originalBitmapHeight = state.currentImage?.height
-                                                ?: state.displayedBitmap.height
-
-                                            if (containerWidth > 0 && containerHeight > 0) {
-                                                val scaleX =
-                                                    originalBitmapWidth.toFloat() / containerWidth
-                                                val scaleY =
-                                                    originalBitmapHeight.toFloat() / containerHeight
-                                                val originalX = offset.x * scaleX
-                                                val originalY = offset.y * scaleY
-                                                actions.onImageTapToAdd(
-                                                    Offset(
-                                                        originalX,
-                                                        originalY
-                                                    )
-                                                )
-                                            } else {
-                                                actions.onImageTapToAdd(offset)
-                                            }
-                                        }
-
-                                    }
-                                } else Modifier
-                                ))
-                    }
+                    imageModifier = imageSpecificModifier // 3. 将提取的 Modifier 传入
                 )
 
-                EmojiOverlay(state = state, editingEmoji = editingEmoji,
+                EmojiOverlay(
+                    state = state,
+                    editingEmoji = editingEmoji,
                     padding = PaddingValues(horizontal = horizontalPadding, vertical = verticalPadding),
-                    cornerRadius = cornerRadius,)
-
+                    cornerRadius = cornerRadius,
+                )
             }
 
         } else {
-            // 沒有圖片時顯示選擇圖片按鈕
+            // 沒有圖片時顯示選擇圖片按鈕 (这部分逻辑不变)
             ExtendedFloatingActionButton(
-                onClick = actions.onPickImageClick, // 使用 action
+                onClick = actions.onPickImageClick,
                 icon = {
                     Icon(
                         Icons.Outlined.AddPhotoAlternate,
