@@ -1,5 +1,6 @@
 package top.maary.emojiface.ui.edit // 或者你選擇的包名
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -184,6 +185,17 @@ fun CompactScreenLayout(
 
         val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
 
+        var isSliding by remember { mutableStateOf(false) }
+
+        val containerColor by animateColorAsState(
+            targetValue = if (isSliding) {
+                MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+            },
+            label = "BottomSheetColorAnimation"
+        )
+
         ModalBottomSheet(
             onDismissRequest = {
                 scope.launch {
@@ -194,7 +206,7 @@ fun CompactScreenLayout(
             sheetState = bottomSheetState,
             dragHandle = { },
             sheetGesturesEnabled = false,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+            containerColor = containerColor
         ) {
             // 完全复用现有的 Composable
             EditEmojiBottomSheetContent(
@@ -206,7 +218,8 @@ fun CompactScreenLayout(
                 onConfirm = actions.onConfirmEditing,
                 onDismiss = actions.onCancelEditing,
                 maxDiameter = maxDiameter,
-                onValueChange = actions.onEditingValueChanged
+                onValueChange = actions.onEditingValueChanged,
+                onSlidingStateChange = { isSliding = it }
             )
         }
     }
@@ -249,10 +262,19 @@ fun LargeScreenLayout(
     showSettingsSheet: Boolean,
     onDismissSettingsSheet: () -> Unit
 ) {
-    // 1. 逻辑更清晰：判断是否需要显示 SideSheet
     val showSideSheet = editingEmoji != null || showSettingsSheet
 
-    // 2. 决定关闭时应该执行哪个动作
+    var isSliding by remember { mutableStateOf(false) }
+
+    val sideSheetColor by animateColorAsState(
+        targetValue = if (isSliding) {
+            MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+        },
+        label = "SideSheetColorAnimation"
+    )
+
     val onDismiss = {
         if (editingEmoji != null) {
             actions.onCancelEditing()
@@ -261,17 +283,18 @@ fun LargeScreenLayout(
         }
     }
 
-    // 3. 使用 AppSideSheet 容器，传入状态和内容
     SurfaceSideSheet (
         showSheet = showSideSheet,
         onDismissSheet = onDismiss,
         isModal = (editingEmoji == null),
+        sheetContainerColor = sideSheetColor,
         sheetContent = {
             SideSheetContent(
                 state = state,
                 actions = actions,
                 editingEmoji = editingEmoji,
-                showSettingsSheet = showSettingsSheet
+                showSettingsSheet = showSettingsSheet,
+                onSlidingStateChange = { isSliding = it }
             )
         }
     ) {

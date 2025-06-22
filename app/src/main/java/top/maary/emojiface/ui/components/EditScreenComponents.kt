@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,6 +71,7 @@ import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvide
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -436,7 +438,8 @@ fun SliderWithCaption(
     value: Float,
     onValueChange: (Float) -> Unit,
     minRange: Float,
-    maxRange: Float
+    maxRange: Float,
+    interactionSource: MutableInteractionSource
 ) {
 
     Column(
@@ -453,7 +456,8 @@ fun SliderWithCaption(
             modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
             value = value,
             onValueChange = onValueChange,
-            valueRange = minRange..maxRange
+            valueRange = minRange..maxRange,
+            interactionSource = interactionSource
         )
 
     }
@@ -632,8 +636,18 @@ fun EditEmojiBottomSheetContent(
     fontFamily: FontFamily?,
     onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSlidingStateChange: (Boolean) -> Unit
 ){
+    val sizeInteractionSource = remember { MutableInteractionSource() }
+    val angleInteractionSource = remember { MutableInteractionSource() }
+
+    val isSizeSliderDragged by sizeInteractionSource.collectIsDraggedAsState()
+    val isAngleSliderDragged by angleInteractionSource.collectIsDraggedAsState()
+
+    LaunchedEffect(isSizeSliderDragged, isAngleSliderDragged) {
+        onSlidingStateChange(isSizeSliderDragged || isAngleSliderDragged)
+    }
 
     Column (modifier = Modifier
         .fillMaxWidth()
@@ -682,7 +696,8 @@ fun EditEmojiBottomSheetContent(
                 value = initialDiameter,
                 onValueChange = { onValueChange(null, it, null) },
                 minRange = 20f,
-                maxRange = maxDiameter
+                maxRange = maxDiameter,
+                interactionSource = sizeInteractionSource
             )
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -701,7 +716,8 @@ fun EditEmojiBottomSheetContent(
                 value = initialRotation,
                 onValueChange = { onValueChange(null, null, it) },
                 minRange = -90f,
-                maxRange = 90f
+                maxRange = 90f,
+                interactionSource = angleInteractionSource
             )
         }
 
@@ -732,8 +748,22 @@ fun EditEmojiSideSheetContent(
     fontFamily: FontFamily?,
     onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSlidingStateChange: (Boolean) -> Unit
 ) {
+
+    // 1. 为两个滑块创建 interactionSource
+    val sizeInteractionSource = remember { MutableInteractionSource() }
+    val angleInteractionSource = remember { MutableInteractionSource() }
+
+    // 2. 监测两个滑块的拖动状态
+    val isSizeSliderDragged by sizeInteractionSource.collectIsDraggedAsState()
+    val isAngleSliderDragged by angleInteractionSource.collectIsDraggedAsState()
+
+    // 3. 当任一滑块被拖动时，通过回调函数通知父组件
+    LaunchedEffect(isSizeSliderDragged, isAngleSliderDragged) {
+        onSlidingStateChange(isSizeSliderDragged || isAngleSliderDragged)
+    }
 
     LazyColumn(
         modifier = modifier
@@ -822,7 +852,8 @@ fun EditEmojiSideSheetContent(
                 value = initialDiameter,
                 onValueChange = { onValueChange(null, it, null) },
                 minRange = 20f,
-                maxRange = maxDiameter
+                maxRange = maxDiameter,
+                interactionSource = sizeInteractionSource
             )
         }
         item {
@@ -844,7 +875,8 @@ fun EditEmojiSideSheetContent(
                 value = initialRotation,
                 onValueChange = { onValueChange(null, null, it) },
                 minRange = -90f,
-                maxRange = 90f
+                maxRange = 90f,
+                interactionSource = angleInteractionSource
             )
         }
 

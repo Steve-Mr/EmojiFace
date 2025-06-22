@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -34,7 +34,8 @@ import androidx.compose.ui.unit.dp
 fun SurfaceSideSheet(
     showSheet: Boolean,
     onDismissSheet: () -> Unit,
-    isModal: Boolean = true, // <-- 新增 isModal 参数，默认为 true
+    isModal: Boolean = true,
+    sheetContainerColor: Color = MaterialTheme.colorScheme.surface,
     sheetContent: @Composable ColumnScope.() -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -60,7 +61,6 @@ fun SurfaceSideSheet(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(scrimColor)
-                    // --- 修改部分 ---
                     // 仅在 isModal 为 true 时，才允许通过点击关闭
                     .then(if (isModal) {
                         Modifier.pointerInput(Unit) {
@@ -69,7 +69,6 @@ fun SurfaceSideSheet(
                     } else {
                         Modifier
                     })
-                // --- 修改结束 ---
             )
         }
 
@@ -93,8 +92,8 @@ fun SurfaceSideSheet(
                 .fillMaxHeight()
                 .width(sheetWidth)
                 .align(Alignment.CenterEnd)
-                .offset { offset }
-                .shadow(8.dp)
+                .offset { offset },
+            color = sheetContainerColor
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()

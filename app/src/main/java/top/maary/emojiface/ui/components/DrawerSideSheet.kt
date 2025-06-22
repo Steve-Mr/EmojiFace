@@ -83,7 +83,8 @@ fun SideSheetContent(
     state: EditScreenState,
     actions: EditScreenActions,
     editingEmoji: EmojiDetection?,
-    showSettingsSheet: Boolean
+    showSettingsSheet: Boolean,
+    onSlidingStateChange: (Boolean) -> Unit
 ) {
     if (editingEmoji != null) {
         val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
@@ -96,7 +97,8 @@ fun SideSheetContent(
             onConfirm = actions.onConfirmEditing,
             onDismiss = actions.onCancelEditing,
             maxDiameter = maxDiameter,
-            onValueChange = actions.onEditingValueChanged
+            onValueChange = actions.onEditingValueChanged,
+            onSlidingStateChange = onSlidingStateChange
         )
     } else if (showSettingsSheet) {
         var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
