@@ -9,7 +9,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -34,7 +33,6 @@ import top.maary.emojiface.util.Constants
 import top.maary.emojiface.util.getFileNameWithoutExtensionUsingPath
 import top.maary.emojiface.util.getParcelableExtraCompat
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScreenContentInternal(
     // Assuming Hilt provides the ViewModel with UseCases injected
@@ -200,7 +198,7 @@ fun EditScreenContentInternal(
                 tapPositionForAdd = offset
                 selectedIndexForEdit = -1 // Mark as Add
                 isAddMode = false // Exit add mode state after tap
-                viewModel.addEmoji(offset.x, offset.y, viewModel.getRandomEmoji(), 100f, 0f, startEditing = true)
+                viewModel.addEmoji(offset.x, offset.y, viewModel.getRandomEmoji(), 100f, 0f)
             },
             onImageContainerMeasured = { size -> imageContainerSize = size },
             onPickImageClick = {

@@ -30,6 +30,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
@@ -76,10 +77,9 @@ fun CompactScreenLayout(
         topBar = {
             CenterAlignedTopAppBar(
                 modifier = Modifier.shadow(8.dp), // 保留陰影
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.tertiary,
-                ),
+                    titleContentColor = MaterialTheme.colorScheme.tertiary),
                 title = {
                     // Compact 版本中標題為空
                 },
@@ -174,8 +174,6 @@ fun CompactScreenLayout(
     if (editingEmoji != null) {
         val bottomSheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = true,
-            // 只阻止用户将其关闭 (变为 Hidden)
-//            confirmValueChange = { it != SheetValue.Hidden }
         )
         val scope = rememberCoroutineScope()
 
