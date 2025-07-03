@@ -4,9 +4,11 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -73,6 +75,7 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -96,11 +99,18 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import top.maary.emojiface.BuildConfig
 import top.maary.emojiface.R
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
+import top.maary.emojiface.ui.theme.Typography
 import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
 
 @Composable
@@ -298,7 +308,7 @@ fun HomeSwitchRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(modifier = Modifier.weight(1f), text = stringResource(R.string.hide_home))
+        Text(modifier = Modifier.weight(1f), text = stringResource(R.string.hide_home), color = MaterialTheme.colorScheme.onSurface)
         Tooltip(tooltipText = stringResource(R.string.hide_home_bug))
         Switch(checked = state, onCheckedChange = onCheckedChange)
     }
@@ -317,7 +327,7 @@ fun Tooltip(
         positionProvider = rememberTooltipPositionProvider(),
         tooltip = {
             RichTooltip {
-                Text(tooltipText)
+                Text(text = tooltipText, color = MaterialTheme.colorScheme.onSurface)
             }
         },
         state = tooltipState
@@ -331,7 +341,8 @@ fun Tooltip(
         } }) {
             Icon(
                 imageVector = Icons.Filled.Info,
-                contentDescription = "Show more information"
+                contentDescription = "Show more information",
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -425,7 +436,7 @@ fun DropdownRow(
             position = position, onItemClicked = onItemClicked, onItemActionClicked = onRemoveClick
         )
         OutlinedIconButton(onClick = { onAddClick() }, modifier = Modifier.padding(8.dp)) {
-            Icon(Icons.Outlined.AttachFile, stringResource(R.string.choose_font))
+            Icon(Icons.Outlined.AttachFile, stringResource(R.string.choose_font), tint = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -574,7 +585,8 @@ fun SettingsSideSheetContent(
             .background(MaterialTheme.colorScheme.surfaceContainerLow)){
             Column {
                 Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
-                    text = stringResource(R.string.emoji_list))
+                    text = stringResource(R.string.emoji_list),
+                    color = MaterialTheme.colorScheme.onSurface)
                 if (!isEditingEmojiList) {
                     PredefinedEmojiSettings(
                         emojiOptions = emojiOptions,
@@ -843,6 +855,7 @@ fun EditEmojiSideSheetContent(
                     Icon(
                         imageVector = Icons.Outlined.FormatSize,
                         contentDescription = stringResource(R.string.emoji_size),
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .padding(8.dp)
                             .size(16.dp)
@@ -866,6 +879,7 @@ fun EditEmojiSideSheetContent(
                     Icon(
                         imageVector = Icons.Outlined.Rotate90DegreesCw,
                         contentDescription = stringResource(R.string.emoji_angle),
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .padding(8.dp)
                             .size(16.dp)
@@ -1102,3 +1116,4 @@ fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
         )
     }
 }
+
