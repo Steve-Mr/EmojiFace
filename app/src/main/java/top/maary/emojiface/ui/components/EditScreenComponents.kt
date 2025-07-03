@@ -535,6 +535,7 @@ fun SettingsBottomSheetContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(text = stringResource(R.string.too_deep), color = MaterialTheme.colorScheme.onSurface)
+                    Tooltip(tooltipText = stringResource(R.string.just_kidding))
                     Switch(checked = isTooDeep, onCheckedChange = onTooDeepStateChanged)
                 }
          }
@@ -590,7 +591,6 @@ fun SettingsSideSheetContent(
         }
         SettingsItem(GroupPosition.MIDDLE){
             HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
-
         }
 
         SettingsItem(GroupPosition.BOTTOM){
