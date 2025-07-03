@@ -4,7 +4,6 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -489,17 +488,7 @@ fun SettingsBottomSheetContent(
     onAddFontClick: () -> Unit,
     onRemoveFontClick: (index: Int) -> Unit,
 ) {
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 24.dp,
-                topEnd = 24.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
-            )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+    SettingsItem(position = GroupPosition.TOP){
         Column {
             Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
                 text = stringResource(R.string.emoji_list))
@@ -516,32 +505,12 @@ fun SettingsBottomSheetContent(
             }
         }
     }
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 4.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
-            )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+    SettingsItem(GroupPosition.MIDDLE){
         HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
 
     }
 
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 4.dp,
-                bottomStart = 24.dp,
-                bottomEnd = 24.dp
-            )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+    SettingsItem(GroupPosition.BOTTOM){
         DropdownRow(
             options = availableFontNames.toMutableList(),
             position = selectedFontIndex,
@@ -572,17 +541,7 @@ fun SettingsSideSheetContent(
         end = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(
             layoutDirection = LayoutDirection.Ltr
         ))) {
-        Box(modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(
-                RoundedCornerShape(
-                    topStart = 24.dp,
-                    topEnd = 24.dp,
-                    bottomStart = 4.dp,
-                    bottomEnd = 4.dp
-                )
-            )
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+        SettingsItem(GroupPosition.TOP){
             Column {
                 Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
                     text = stringResource(R.string.emoji_list),
@@ -600,32 +559,12 @@ fun SettingsSideSheetContent(
                 }
             }
         }
-        Box(modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(
-                RoundedCornerShape(
-                    topStart = 4.dp,
-                    topEnd = 4.dp,
-                    bottomStart = 4.dp,
-                    bottomEnd = 4.dp
-                )
-            )
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+        SettingsItem(GroupPosition.MIDDLE){
             HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
 
         }
 
-        Box(modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(
-                RoundedCornerShape(
-                    topStart = 4.dp,
-                    topEnd = 4.dp,
-                    bottomStart = 24.dp,
-                    bottomEnd = 24.dp
-                )
-            )
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
+        SettingsItem(GroupPosition.BOTTOM){
             DropdownRow(
                 options = availableFontNames.toMutableList(),
                 position = selectedFontIndex,
@@ -1117,3 +1056,96 @@ fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
     }
 }
 
+
+@Composable
+fun AboutRow(easterEggOn: () -> Unit, easterEggOff: () -> Unit) {
+    var clickCount by remember {
+        mutableIntStateOf(0)
+    }
+    var job by remember {
+        mutableStateOf<Job?>(null)
+    }
+    Row (modifier = Modifier
+        .fillMaxWidth()
+        .combinedClickable(
+            onClick = {
+                clickCount++
+                if (clickCount == 1) {
+                    job = CoroutineScope(Dispatchers.Default).launch {
+                        delay(5000) // 500 milliseconds
+                        withContext(Dispatchers.Main) {
+                            clickCount = 0
+                        }
+                    }
+                } else if (clickCount == 5) {
+                    job?.cancel()
+                    clickCount = 0
+                    easterEggOn()
+                }
+            },
+            onLongClick = { easterEggOff() })
+        .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp)){
+        TextContent(title = stringResource(id = R.string.app_name), description = BuildConfig.VERSION_NAME)
+    }
+}
+
+@Composable
+fun TextContent(modifier: Modifier = Modifier, title: String, description: String) {
+    Column(modifier = modifier){
+        Text(
+            title,
+            style = Typography.titleLarge
+        )
+        Text(
+            description,
+            style = Typography.bodySmall,
+            maxLines = 5
+        )
+    }
+}
+
+enum class GroupPosition {
+    TOP,    // 顶部
+    MIDDLE, // 中间
+    BOTTOM, // 底部
+    SINGLE  // 独立，自成一组
+}
+
+@Composable
+fun SettingsItem(
+    position: GroupPosition,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    content: @Composable () -> Unit
+) {
+    // 根据 position 决定圆角形状
+    val shape = when (position) {
+        GroupPosition.TOP -> RoundedCornerShape(
+            topStart = 24.dp,
+            topEnd = 24.dp,
+            bottomStart = 4.dp,
+            bottomEnd = 4.dp
+        )
+
+        GroupPosition.MIDDLE -> RoundedCornerShape(4.dp)
+        GroupPosition.BOTTOM -> RoundedCornerShape(
+            topStart = 4.dp,
+            topEnd = 4.dp,
+            bottomStart = 24.dp,
+            bottomEnd = 24.dp
+        )
+
+        GroupPosition.SINGLE -> RoundedCornerShape(24.dp) // 上下都是大圆角
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(shape) // 动态应用形状
+            .background(containerColor),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
