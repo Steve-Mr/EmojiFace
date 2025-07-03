@@ -2,6 +2,7 @@ package top.maary.emojiface.ui.edit // Or your chosen package
 
 // Imports for Android, Lifecycle, Coroutines, Hilt, Flows, Graphics etc.
 import android.graphics.Bitmap
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.net.Uri
 import androidx.compose.ui.text.font.FontFamily
@@ -29,11 +30,13 @@ import top.maary.emojiface.domain.usecase.RenderEmojiOnBitmapUseCase
 import top.maary.emojiface.domain.usecase.SaveImageUseCase
 import top.maary.emojiface.domain.usecase.UpdateEmojiOptionsUseCase
 import top.maary.emojiface.ui.edit.model.EmojiDetection
+import top.maary.emojiface.ui.edit.model.FakeDetection
 import top.maary.emojiface.ui.edit.state.ShareEvent
 import top.maary.emojiface.util.Constants
 import top.maary.emojiface.util.getTypeFaceFromPath
 import top.maary.emojiface.util.loadFontFromPath
 import javax.inject.Inject
+import kotlin.random.Random
 
 // Define the UI State Data Class (can be in a separate file)
 data class EditUiState(
@@ -52,6 +55,9 @@ data class EditUiState(
     val successMessage: String? = null, // Optional for short success feedback
     val editingEmojiIndex: Int? = null, // 正在编辑的 emoji 的索引
     val editingEmoji: EmojiDetection? = null, // 正在编辑的 emoji 的瞬时数据
+    val isEasterEggEnabled: Boolean = false,
+    val isTooDeep: Boolean = false,
+    val fakeDetections: List<FakeDetection> = emptyList() // 存储假识别框
 )
 
 @HiltViewModel
@@ -121,6 +127,32 @@ class EmojiViewModel @Inject constructor(
                 }
             }
         }
+        viewModelScope.launch {
+            preferenceRepository.isEasterEggEnabled.collect { enabled ->
+                _uiState.update { it.copy(isEasterEggEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            preferenceRepository.isTooDeep.collect { enabled ->
+                _uiState.update { it.copy(isTooDeep = enabled) }
+            }
+        }
+    }
+
+    fun setEasterEggEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferenceRepository.updateEasterEggState(enabled)
+            // 如果关闭彩蛋，同时关闭 "Too Deep" 选项
+            if (!enabled) {
+                preferenceRepository.updateTooDeepState(false)
+            }
+        }
+    }
+
+    fun setTooDeepEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferenceRepository.updateTooDeepState(enabled)
+        }
     }
 
     // --- Public Functions (Matching Original API as much as possible) ---
@@ -141,7 +173,9 @@ class EmojiViewModel @Inject constructor(
                 errorMessage = null,
                 successMessage = null,
                 editingEmoji = null,
-                editingEmojiIndex = null
+                editingEmojiIndex = null,
+                // --- START: 新增代码 ---
+                fakeDetections = emptyList()
             )
         }
     }
@@ -183,6 +217,13 @@ class EmojiViewModel @Inject constructor(
                 onSuccess = { emojiDetections ->
                     _uiState.update { it.copy(selectedEmojis = emojiDetections) } // Update emojis first
                     renderInitialBitmap(detectionOutput.originalBitmap, emojiDetections) // Proceed to render
+                    if (_uiState.value.isTooDeep) {
+                        val originalBitmap = detectionOutput.originalBitmap
+                        val fakeBox = generateFakeDetection(originalBitmap.width, originalBitmap.height)
+                        _uiState.update { it.copy(fakeDetections = listOf(fakeBox)) }
+                    } else {
+                        _uiState.update { it.copy(fakeDetections = emptyList()) }
+                    }
                 },
                 onFailure = { exception ->
                     _uiState.update { it.copy(isProcessing = false, errorMessage = "Calculating positions failed: ${exception.localizedMessage}") }
@@ -495,5 +536,37 @@ class EmojiViewModel @Inject constructor(
     /** Clears the current success message from the state */
     fun clearSuccessMessage() {
         _uiState.update { it.copy(successMessage = null) }
+    }
+
+    private fun generateFakeDetection(bitmapWidth: Int, bitmapHeight: Int): FakeDetection {
+        // --- START: 修改的代码 ---
+        // 1. 确定一个基准尺寸，防止矩形过大或过小
+        //    取图片较短边的 1/6 到 1/4 之间作为基准
+        val baseDimension = Random.nextInt(
+            from = minOf(bitmapWidth, bitmapHeight) / 6,
+            until = minOf(bitmapWidth, bitmapHeight) / 4
+        )
+
+        // 2. 让宽度和高度在基准尺寸上下小范围浮动，确保它们的值很接近
+        //    这里的浮动范围是基准尺寸的 +/- 10%
+        val variance = (baseDimension * 0.1f).toInt()
+        val width = (baseDimension + Random.nextInt(-variance, variance + 1)).toFloat()
+        val height = (baseDimension + Random.nextInt(-variance, variance + 1)).toFloat()
+
+        // 3. 确保随机生成的位置不会让框超出图片边界
+        val left = Random.nextInt(0, bitmapWidth - width.toInt()).toFloat()
+        val top = Random.nextInt(0, bitmapHeight - height.toInt()).toFloat()
+        // --- END: 修改的代码 ---
+
+        val startAge = Random.nextInt(300, 990)
+        val endAge = startAge + Random.nextInt(4, 21)
+
+        return FakeDetection(
+            box = RectF(left, top, left + width, top + height),
+            label = "face",
+            confidence = Random.nextDouble(0.95, 0.99).toFloat(),
+            startAge = startAge,
+            endAge = endAge
+        )
     }
 }

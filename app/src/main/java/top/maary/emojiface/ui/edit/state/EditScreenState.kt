@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntSize
 import top.maary.emojiface.ui.edit.model.EmojiDetection
+import top.maary.emojiface.ui.edit.model.FakeDetection
 
 /**
  * 封裝 Edit Screen UI 渲染所需的所有狀態。
@@ -37,5 +38,8 @@ data class EditScreenState(
     val availableFontNames: List<String>?, // 從 fontList (路徑) 映射過來的顯示名稱
     val selectedFontIndex: Int, // 當前選中字體在列表中的索引，方便 Dropdown 使用
     val isMediumLayout: Boolean,
-    val editingEmojiIndex: Int?
+    val editingEmojiIndex: Int?,
+    val isEasterEggEnabled: Boolean = false,
+    val isTooDeep: Boolean = false,
+    val fakeDetections: List<FakeDetection> = emptyList() // 存储假识别框
 )

@@ -248,7 +248,11 @@ fun CompactScreenLayout(
                 onHideIconToggle = actions.onHideIconToggle,
                 onFontSelected = actions.onFontSelected,
                 onAddFontClick = actions.onAddFontClick,
-                onRemoveFontClick = actions.onRemoveFontClick
+                onRemoveFontClick = actions.onRemoveFontClick,
+                isEasterEggEnabled = state.isEasterEggEnabled,
+                onEasterEggStateChanged = actions.onEasterEggStateChanged,
+                isTooDeep = state.isTooDeep,
+                onTooDeepStateChanged = actions.onTooDeepStateChanged
             )
         }
     }

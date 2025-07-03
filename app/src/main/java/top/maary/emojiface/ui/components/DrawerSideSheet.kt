@@ -117,7 +117,11 @@ fun SideSheetContent(
             onHideIconToggle = actions.onHideIconToggle,
             onFontSelected = actions.onFontSelected,
             onAddFontClick = actions.onAddFontClick,
-            onRemoveFontClick = actions.onRemoveFontClick
+            onRemoveFontClick = actions.onRemoveFontClick,
+            isEasterEggEnabled = state.isEasterEggEnabled, // 传递彩蛋状态
+            isTooDeep = state.isTooDeep,                   // 传递 "Too Deep" 状态
+            onTooDeepStateChanged = actions.onTooDeepStateChanged, // 传递 Action
+            onEasterEggStateChanged = actions.onEasterEggStateChanged,
         )
     }
 

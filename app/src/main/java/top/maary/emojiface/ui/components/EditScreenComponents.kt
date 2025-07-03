@@ -1,7 +1,9 @@
 package top.maary.emojiface.ui.components
 
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Typeface
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -487,6 +489,10 @@ fun SettingsBottomSheetContent(
     onFontSelected: (index: Int) -> Unit,
     onAddFontClick: () -> Unit,
     onRemoveFontClick: (index: Int) -> Unit,
+    isEasterEggEnabled: Boolean,
+    onEasterEggStateChanged: (Boolean) -> Unit,
+    isTooDeep: Boolean,
+    onTooDeepStateChanged: (Boolean) -> Unit,
 ) {
     SettingsItem(position = GroupPosition.TOP){
         Column {
@@ -519,6 +525,25 @@ fun SettingsBottomSheetContent(
             onRemoveClick = { onRemoveFontClick(it) })
     }
 
+     if (isEasterEggEnabled) {
+         SettingsItem(GroupPosition.TOP) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = stringResource(R.string.too_deep), color = MaterialTheme.colorScheme.onSurface)
+                    Switch(checked = isTooDeep, onCheckedChange = onTooDeepStateChanged)
+                }
+         }
+     }
+
+    SettingsItem(if (isEasterEggEnabled) GroupPosition.BOTTOM else GroupPosition.SINGLE) {
+        AboutRow { onEasterEggStateChanged(it) }
+    }
+
 }
 
 @Composable
@@ -535,6 +560,10 @@ fun SettingsSideSheetContent(
     onFontSelected: (index: Int) -> Unit,
     onAddFontClick: () -> Unit,
     onRemoveFontClick: (index: Int) -> Unit,
+    isEasterEggEnabled: Boolean,
+    onEasterEggStateChanged: (Boolean) -> Unit,
+    isTooDeep: Boolean,
+    onTooDeepStateChanged: (Boolean) -> Unit,
 ) {
     Column (modifier = Modifier.padding(
         top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding(),
@@ -571,6 +600,26 @@ fun SettingsSideSheetContent(
                 onItemClicked = onFontSelected,
                 onAddClick = onAddFontClick,
                 onRemoveClick = { onRemoveFontClick(it) })
+        }
+
+
+        if (isEasterEggEnabled) {
+            SettingsItem(GroupPosition.TOP) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = stringResource(R.string.too_deep), color = MaterialTheme.colorScheme.onSurface)
+                    Switch(checked = isTooDeep, onCheckedChange = onTooDeepStateChanged)
+                }
+            }
+        }
+
+        SettingsItem(if (isEasterEggEnabled) GroupPosition.BOTTOM else GroupPosition.SINGLE) {
+            AboutRow { onEasterEggStateChanged(it) }
         }
 
         Spacer(Modifier.height(WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()))
@@ -883,6 +932,30 @@ fun EmojiOverlay(
         }
     }
 
+    val boxPaint = remember {
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            style = android.graphics.Paint.Style.STROKE
+            strokeWidth = 4f // 边框宽度
+            color = android.graphics.Color.GREEN // 边框颜色
+        }
+    }
+    val textBgPaint = remember {
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            style = android.graphics.Paint.Style.FILL
+            color = android.graphics.Color.GREEN // 文字背景颜色
+        }
+    }
+    val textPaint = remember {
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            style = android.graphics.Paint.Style.FILL
+            color = android.graphics.Color.BLACK // 文字颜色
+            textSize = 32f // 文字大小
+        }
+    }
+
     // 使用 Canvas Composable 进行绘制
     Canvas(modifier = Modifier
         .fillMaxSize()
@@ -916,6 +989,42 @@ fun EmojiOverlay(
                     paint
                 )
             }
+        }
+
+        state.fakeDetections.forEach { fake ->
+            // 缩放边界框坐标
+            val scaledBox = RectF(
+                fake.box.left * scale,
+                fake.box.top * scale,
+                fake.box.right * scale,
+                fake.box.bottom * scale
+            )
+            // 绘制矩形框
+            drawContext.canvas.nativeCanvas.drawRect(scaledBox, boxPaint)
+
+            // 准备要绘制的文字
+            val labelText = "${fake.label} ${"%.2f".format(fake.confidence)} age:${fake.startAge}-${fake.endAge}"
+
+            // 测量文字宽度以绘制背景
+            val textWidth = textPaint.measureText(labelText)
+            val textBounds = android.graphics.Rect()
+            textPaint.getTextBounds(labelText, 0, labelText.length, textBounds)
+            val textHeight = textBounds.height()
+
+            // 在框的左上角绘制文字和背景
+            val textBgRect = RectF(
+                scaledBox.left,
+                scaledBox.top - textHeight - 8f, // 向上偏移一点
+                scaledBox.left + textWidth + 8f,
+                scaledBox.top
+            )
+            drawContext.canvas.nativeCanvas.drawRect(textBgRect, textBgPaint)
+            drawContext.canvas.nativeCanvas.drawText(
+                labelText,
+                scaledBox.left + 4f,
+                scaledBox.top - 4f,
+                textPaint
+            )
         }
     }
 }
@@ -1058,7 +1167,7 @@ fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
 
 
 @Composable
-fun AboutRow(easterEggOn: () -> Unit, easterEggOff: () -> Unit) {
+fun AboutRow(onEasterEggStateChanged: (Boolean) -> Unit) {
     var clickCount by remember {
         mutableIntStateOf(0)
     }
@@ -1069,6 +1178,7 @@ fun AboutRow(easterEggOn: () -> Unit, easterEggOff: () -> Unit) {
         .fillMaxWidth()
         .combinedClickable(
             onClick = {
+                Log.e("AboutRow", "onClick: $clickCount")
                 clickCount++
                 if (clickCount == 1) {
                     job = CoroutineScope(Dispatchers.Default).launch {
@@ -1080,10 +1190,11 @@ fun AboutRow(easterEggOn: () -> Unit, easterEggOff: () -> Unit) {
                 } else if (clickCount == 5) {
                     job?.cancel()
                     clickCount = 0
-                    easterEggOn()
+                    onEasterEggStateChanged(true)
+                    Log.e("AboutRow", "Easter egg activated!")
                 }
             },
-            onLongClick = { easterEggOff() })
+            onLongClick = {  onEasterEggStateChanged(false) })
         .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp)){
         TextContent(title = stringResource(id = R.string.app_name), description = BuildConfig.VERSION_NAME)
     }

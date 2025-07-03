@@ -29,6 +29,8 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
         val IS_ICON_HIDE = booleanPreferencesKey("hide_app_icon")
         val SELECTED_FONT = stringPreferencesKey("selected_font")
         val FONT_LIST = stringPreferencesKey("font_list")
+        val EASTER_EGG = booleanPreferencesKey("easter_egg_enabled")
+        val IS_TOO_DEEP = booleanPreferencesKey("is_too_deep")
     }
 
     // 从 DataStore 中读取 emoji 列表（以逗号分隔存储）
@@ -101,6 +103,28 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
             prefs[SELECTED_FONT] ?: DEFAULT_FONT_MARKER
         }else {
             DEFAULT_FONT_MARKER
+        }
+    }
+
+    val isEasterEggEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
+        prefs[EASTER_EGG] ?: false
+    }
+
+    suspend fun updateEasterEggState(state: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[EASTER_EGG] = state
+        }
+    }
+
+    val isTooDeep: Flow<Boolean> = dataStore.data.map { prefs ->
+        val deepState = prefs[IS_TOO_DEEP] ?: false
+        val easterEggState = prefs[EASTER_EGG] ?: false
+        deepState and easterEggState
+    }
+
+    suspend fun updateTooDeepState(state: Boolean) {
+        dataStore.edit { prefs ->
+            prefs[IS_TOO_DEEP] = state
         }
     }
 }

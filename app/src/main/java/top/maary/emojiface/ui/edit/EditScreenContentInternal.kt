@@ -193,7 +193,10 @@ fun EditScreenContentInternal(
         selectedFontIndex = selectedFontIndex, // Derived value
         isMediumLayout = isMediumLayout, // Pass local state if needed by ActionRow etc.
         typeface = uiState.loadedTypeface, // Direct from uiState
-        editingEmojiIndex = uiState.editingEmoji?.let { uiState.selectedEmojis.indexOf(it) } // Get index of currently editing emoji
+        editingEmojiIndex = uiState.editingEmoji?.let { uiState.selectedEmojis.indexOf(it) }, // Get index of currently editing emoji
+        isEasterEggEnabled = uiState.isEasterEggEnabled,
+        isTooDeep = uiState.isTooDeep,
+        fakeDetections = uiState.fakeDetections
     )
 
     // --- 7. Create EditScreenActions Instance (Largely unchanged) ---
@@ -254,12 +257,10 @@ fun EditScreenContentInternal(
             onEditingValueChanged = { emoji, diameter, rotation ->
                 viewModel.updateEditingEmoji(emoji, diameter, rotation)
             },
-            onConfirmEditing = {
-                viewModel.confirmEditing()
-            },
-            onCancelEditing = {
-                viewModel.cancelEditing()
-            },
+            onConfirmEditing = { viewModel.confirmEditing() },
+            onCancelEditing = { viewModel.cancelEditing() },
+            onEasterEggStateChanged = { enabled -> viewModel.setEasterEggEnabled(enabled) },
+            onTooDeepStateChanged = { enabled -> viewModel.setTooDeepEnabled(enabled) }
         )
     }
 

@@ -57,5 +57,8 @@ data class EditScreenActions(
     /** 當使用者點擊「新增字體」按鈕時呼叫 (觸發文件選擇器)。 */
     val onAddFontClick: () -> Unit,
     /** 當使用者點擊移除字體圖標時呼叫，傳遞要移除字體的索引。 */
-    val onRemoveFontClick: (index: Int) -> Unit
+    val onRemoveFontClick: (index: Int) -> Unit,
+
+    val onEasterEggStateChanged: (Boolean) -> Unit,
+    val onTooDeepStateChanged: (Boolean) -> Unit
 )
