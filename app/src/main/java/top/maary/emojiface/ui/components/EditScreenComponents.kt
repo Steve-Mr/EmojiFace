@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Rotate90DegreesCw
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.SaveAlt
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -57,7 +58,9 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
@@ -69,6 +72,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
 import androidx.compose.material3.rememberTooltipState
@@ -494,7 +498,10 @@ fun SettingsBottomSheetContent(
     isTooDeep: Boolean,
     onTooDeepStateChanged: (Boolean) -> Unit,
 ) {
-    SettingsItem(position = GroupPosition.TOP){
+    SettingsItem(position = GroupPosition.TOP) {
+        MosaicModeRow()
+    }
+    SettingsItem(position = GroupPosition.BOTTOM){
         Column {
             Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
                 text = stringResource(R.string.emoji_list))
@@ -1213,6 +1220,68 @@ fun TextContent(modifier: Modifier = Modifier, title: String, description: Strin
             maxLines = 5
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun MosaicModeRow(){
+    val options = listOf(R.string.emoji, R.string.mosaic)
+    var selectedIndex by remember { mutableIntStateOf(0) }
+    Row (modifier = Modifier.fillMaxWidth()){
+        Text(
+            text = stringResource(R.string.mosaic_mode),
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+            style = Typography.titleLarge
+        )
+        Spacer(modifier = Modifier.weight(1f)) // 占位符，推送文本到左侧
+        options.forEachIndexed { index, option ->
+            ToggleButton (
+                checked = selectedIndex == index ,
+                onCheckedChange = { selectedIndex = index },
+                shapes =
+                    when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+            ) {
+                Text(text = stringResource(option))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun MosaicTypeToolbar() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically) {
+        FloatingActionButton(onClick = {}) { }
+        Spacer(modifier = Modifier.width(8.dp))
+        HorizontalFloatingToolbar(
+            expanded = true,
+            content = {
+                FilledIconButton(
+                    modifier = Modifier.width(64.dp),
+                    onClick = { /* doSomething() */ },
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = "Localized description")
+                }
+                FilledIconButton(
+                    modifier = Modifier.width(64.dp),
+                    onClick = { /* doSomething() */ },
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = "Localized description")
+                }
+            },
+            floatingActionButton = {
+                FloatingActionButton(onClick = {}) { }
+            }
+        )
+    }
+
 }
 
 enum class GroupPosition {

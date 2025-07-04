@@ -29,4 +29,7 @@
     <string name="confirm_delete_message">Are you sure you want to delete this emoji?</string>
     <string name="too_deep">Deep Recognition (Too Deep)</string>
     <string name="just_kidding">Just kidding</string>
+    <string name="mosaic_mode">Mosaic Mode</string>
+    <string name="mosaic">Mosaic</string>
+    <string name="emoji">Emoji</string>
 </resources>

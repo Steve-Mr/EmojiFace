@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,6 +32,12 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
         val FONT_LIST = stringPreferencesKey("font_list")
         val EASTER_EGG = booleanPreferencesKey("easter_egg_enabled")
         val IS_TOO_DEEP = booleanPreferencesKey("is_too_deep")
+        val MOSAIC_MODE = intPreferencesKey("mosaic_mode")
+        val MOSAIC_MODE_EMOJI = 0
+        val MOSAIC_MODE_BLUR = 1
+        val MOSAIC_TYPE = intPreferencesKey("mosaic_type")
+        val MOSAIC_TYPE_GAUSSIAN = 0 // 例如：高斯模糊
+        val MOSAIC_TYPE_PIXELATED = 1 // 例如：像素化
     }
 
     // 从 DataStore 中读取 emoji 列表（以逗号分隔存储）
@@ -125,6 +132,36 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
     suspend fun updateTooDeepState(state: Boolean) {
         dataStore.edit { prefs ->
             prefs[IS_TOO_DEEP] = state
+        }
+    }
+
+    val mosaicMode: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[MOSAIC_MODE] ?: MOSAIC_MODE_EMOJI
+    }
+
+    suspend fun setMosaicMode(mode: Int) {
+        if (mode == MOSAIC_MODE_EMOJI || mode == MOSAIC_MODE_BLUR) {
+            // 仅允许设置为已定义的模式
+            dataStore.edit { prefs ->
+                prefs[MOSAIC_MODE] = mode
+            }
+        } else {
+            throw IllegalArgumentException("Invalid mosaic mode: $mode")
+        }
+    }
+
+    val mosaicType: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[MOSAIC_TYPE] ?: MOSAIC_TYPE_GAUSSIAN
+    }
+
+    suspend fun setMosaicType(type: Int) {
+        if (type == MOSAIC_TYPE_GAUSSIAN || type == MOSAIC_TYPE_PIXELATED) {
+            // 仅允许设置为已定义的类型
+            dataStore.edit { prefs ->
+                prefs[MOSAIC_TYPE] = type
+            }
+        } else {
+            throw IllegalArgumentException("Invalid mosaic type: $type")
         }
     }
 }
