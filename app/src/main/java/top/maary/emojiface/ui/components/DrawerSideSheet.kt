@@ -122,6 +122,8 @@ fun SideSheetContent(
             isTooDeep = state.isTooDeep,                   // 传递 "Too Deep" 状态
             onTooDeepStateChanged = actions.onTooDeepStateChanged, // 传递 Action
             onEasterEggStateChanged = actions.onEasterEggStateChanged,
+            mosaicMode = state.mosaicMode,
+            onMosaicModeSelected = actions.onMosaicModeSelected,
         )
     }
 

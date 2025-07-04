@@ -60,5 +60,7 @@ data class EditScreenActions(
     val onRemoveFontClick: (index: Int) -> Unit,
 
     val onEasterEggStateChanged: (Boolean) -> Unit,
-    val onTooDeepStateChanged: (Boolean) -> Unit
+    val onTooDeepStateChanged: (Boolean) -> Unit,
+
+    val onMosaicModeSelected: (Int) -> Unit,
 )

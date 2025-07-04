@@ -50,10 +50,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import top.maary.emojiface.R
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
 import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
 import top.maary.emojiface.ui.components.EmojiCard
+import top.maary.emojiface.ui.components.MosaicTypeToolbar
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
 import top.maary.emojiface.ui.components.SideSheetContent
 import top.maary.emojiface.ui.components.SurfaceSideSheet
@@ -125,48 +127,52 @@ fun CompactScreenLayout(
             )
 
             if (state.displayedBitmap != null) {
-                Card(
-                    modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
-                ) {
-                    // --- 偵測到的表情符號行 ---
-                    LazyRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(
-                            horizontal = 0.dp,
-                            vertical = 8.dp
-                        ) // 增加垂直 padding
+                if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
+                    Card(
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        )
                     ) {
-                        itemsIndexed(
-                            items = state.emojiDetections,
-                            key = { _, item -> item.id } // key 使用 item 的唯一 id
-                        ) { index, detection ->
-                            Spacer(modifier = Modifier.width(8.dp))
-                            EmojiCard(
-                                modifier = Modifier.animateItem(),
-                                emoji = detection.emoji,
-                                onClick = { actions.onEmojiCardClick(index) },
-                                onLongClick = { actions.onEmojiCardLongClick(index) },
-                                fontFamily = state.fontFamily,
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                // hPadding 和 vPadding 使用 EmojiCard 的默認值或按需調整
-                            )
-                        }
-                        item {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            EmojiCard(
-                                emoji = "➕", // 或使用 Icons.Outlined.AddReaction
-                                onClick = actions.onAddEmojiCardClick, // 使用 action
-                                clickable = true,
-                                fontFamily = state.fontFamily,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
+                        // --- 偵測到的表情符號行 ---
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(
+                                horizontal = 0.dp,
+                                vertical = 8.dp
+                            ) // 增加垂直 padding
+                        ) {
+                            itemsIndexed(
+                                items = state.emojiDetections,
+                                key = { _, item -> item.id } // key 使用 item 的唯一 id
+                            ) { index, detection ->
+                                Spacer(modifier = Modifier.width(8.dp))
+                                EmojiCard(
+                                    modifier = Modifier.animateItem(),
+                                    emoji = detection.emoji,
+                                    onClick = { actions.onEmojiCardClick(index) },
+                                    onLongClick = { actions.onEmojiCardLongClick(index) },
+                                    fontFamily = state.fontFamily,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    // hPadding 和 vPadding 使用 EmojiCard 的默認值或按需調整
+                                )
+                            }
+                            item {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                EmojiCard(
+                                    emoji = "➕", // 或使用 Icons.Outlined.AddReaction
+                                    onClick = actions.onAddEmojiCardClick, // 使用 action
+                                    clickable = true,
+                                    fontFamily = state.fontFamily,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
 
+                        }
                     }
+                } else {
+                    MosaicTypeToolbar()
                 }
             }
 
@@ -252,7 +258,9 @@ fun CompactScreenLayout(
                 isEasterEggEnabled = state.isEasterEggEnabled,
                 onEasterEggStateChanged = actions.onEasterEggStateChanged,
                 isTooDeep = state.isTooDeep,
-                onTooDeepStateChanged = actions.onTooDeepStateChanged
+                onTooDeepStateChanged = actions.onTooDeepStateChanged,
+                mosaicMode = state.mosaicMode,
+                onMosaicModeSelected = actions.onMosaicModeSelected
             )
         }
     }

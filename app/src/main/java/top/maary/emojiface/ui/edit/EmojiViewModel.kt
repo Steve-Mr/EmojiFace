@@ -19,6 +19,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import top.maary.emojiface.datastore.PreferenceRepository
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
+import top.maary.emojiface.domain.usecase.BlurType
+import top.maary.emojiface.domain.usecase.CalculateBlurRegionsUseCase
 import top.maary.emojiface.domain.usecase.CalculateEmojiPositionsUseCase
 import top.maary.emojiface.domain.usecase.DetectFacesUseCase
 import top.maary.emojiface.domain.usecase.DetectionOutput
@@ -27,6 +31,7 @@ import top.maary.emojiface.domain.usecase.GetBitmapUseCase
 import top.maary.emojiface.domain.usecase.ManageAppIconVisibilityUseCase
 import top.maary.emojiface.domain.usecase.ManageFontUseCase
 import top.maary.emojiface.domain.usecase.RenderEmojiOnBitmapUseCase
+import top.maary.emojiface.domain.usecase.RenderMosaicOnBitmapUseCase
 import top.maary.emojiface.domain.usecase.SaveImageUseCase
 import top.maary.emojiface.domain.usecase.UpdateEmojiOptionsUseCase
 import top.maary.emojiface.ui.edit.model.EmojiDetection
@@ -57,7 +62,10 @@ data class EditUiState(
     val editingEmoji: EmojiDetection? = null, // 正在编辑的 emoji 的瞬时数据
     val isEasterEggEnabled: Boolean = false,
     val isTooDeep: Boolean = false,
-    val fakeDetections: List<FakeDetection> = emptyList() // 存储假识别框
+    val fakeDetections: List<FakeDetection> = emptyList(), // 存储假识别框
+    val detectionOutput: DetectionOutput? = null, // 保存原始检测结果
+    val mosaicMode: Int = MOSAIC_MODE_EMOJI, // 新增马赛克模式状态
+    val blurRegions: List<RectF> = emptyList()
 )
 
 @HiltViewModel
@@ -66,12 +74,14 @@ class EmojiViewModel @Inject constructor(
     // Inject Use Cases
     private val detectFacesUseCase: DetectFacesUseCase,
     private val calculateEmojiPositionsUseCase: CalculateEmojiPositionsUseCase,
+    private val calculateBlurRegionsUseCase: CalculateBlurRegionsUseCase,
     private val renderEmojiOnBitmapUseCase: RenderEmojiOnBitmapUseCase,
     private val manageFontUseCase: ManageFontUseCase, // Handles add/remove/select
     private val saveImageUseCase: SaveImageUseCase,
     private val generateShareableUriUseCase: GenerateShareableUriUseCase,
     private val manageAppIconVisibilityUseCase: ManageAppIconVisibilityUseCase, // Assuming created
     private val updateEmojiOptionsUseCase: UpdateEmojiOptionsUseCase, // Assuming created
+    private val renderMosaicOnBitmapUseCase: RenderMosaicOnBitmapUseCase, // 注入
     private val getBitmapUseCase: GetBitmapUseCase
     ) : ViewModel() {
 
@@ -137,6 +147,11 @@ class EmojiViewModel @Inject constructor(
                 _uiState.update { it.copy(isTooDeep = enabled) }
             }
         }
+        viewModelScope.launch {
+            preferenceRepository.mosaicMode.collect { mode ->
+                _uiState.update { it.copy(mosaicMode = mode) }
+            }
+        }
     }
 
     fun setEasterEggEnabled(enabled: Boolean) {
@@ -194,7 +209,12 @@ class EmojiViewModel @Inject constructor(
                     _uiState.update { it.copy( originalBitmap = bitmap)}
                     detectFacesUseCase(bitmap).fold(
                         onSuccess = { detectionOutput ->
-                            calculateEmojiPositions(detectionOutput) // Proceed to next step
+                            _uiState.update { it.copy(detectionOutput = detectionOutput) } // 保存结果
+                            // 根据模式选择处理方式
+                            when (_uiState.value.mosaicMode) {
+                                MOSAIC_MODE_EMOJI -> calculateEmojiPositions(detectionOutput)
+                                MOSAIC_MODE_BLUR -> calculateBlurRegions(detectionOutput)
+                            }
                         },
                         onFailure = { exception ->
                             _uiState.update { it.copy(isProcessing = false, errorMessage = "Face detection failed: ${exception.localizedMessage}") }
@@ -232,17 +252,43 @@ class EmojiViewModel @Inject constructor(
         }
     }
 
+    private fun calculateBlurRegions(detectionOutput: DetectionOutput) {
+        viewModelScope.launch {
+            calculateBlurRegionsUseCase(detectionOutput).fold(
+                onSuccess = { regions ->
+                    _uiState.update {
+                        it.copy(
+                            blurRegions = regions,
+                            isProcessing = false // 结束处理状态
+                        )
+                    }
+                },
+                onFailure = { exception ->
+                    _uiState.update { it.copy(isProcessing = false, errorMessage = "Calculating blur regions failed: ${exception.localizedMessage}") }
+                }
+            )
+        }
+    }
+
     /**
      * 关键修改：创建一个按需渲染最终 Bitmap 的挂起函数
      */
     private suspend fun renderFinalBitmap(): Bitmap? {
         val base = _uiState.value.originalBitmap ?: return null
-        val emojis = _uiState.value.selectedEmojis
-        val font = _uiState.value.selectedFontPath
+        val mode = _uiState.value.mosaicMode
 
-        val result = renderEmojiOnBitmapUseCase(base, emojis, font)
-
-        return result.getOrNull()
+        return when (mode) {
+            MOSAIC_MODE_EMOJI -> {
+                val emojis = _uiState.value.selectedEmojis
+                val font = _uiState.value.selectedFontPath
+                renderEmojiOnBitmapUseCase(base, emojis, font).getOrNull()
+            }
+            MOSAIC_MODE_BLUR -> {
+                val regions = _uiState.value.blurRegions
+                renderMosaicOnBitmapUseCase(base, regions, BlurType.Gaussian).getOrNull()
+            }
+            else -> base // 默认返回原图
+        }
     }
 
     // Private helper for detect flow
@@ -525,6 +571,12 @@ class EmojiViewModel @Inject constructor(
                 },
                 onFailure = { exception -> _uiState.update { it.copy(errorMessage = "Failed to select font: ${exception.localizedMessage}") } }
             )
+        }
+    }
+
+    fun setMosaicMode(mode: Int) {
+        viewModelScope.launch {
+            preferenceRepository.setMosaicMode(mode)
         }
     }
 

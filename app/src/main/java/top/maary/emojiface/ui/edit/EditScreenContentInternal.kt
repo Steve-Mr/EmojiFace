@@ -196,7 +196,9 @@ fun EditScreenContentInternal(
         editingEmojiIndex = uiState.editingEmoji?.let { uiState.selectedEmojis.indexOf(it) }, // Get index of currently editing emoji
         isEasterEggEnabled = uiState.isEasterEggEnabled,
         isTooDeep = uiState.isTooDeep,
-        fakeDetections = uiState.fakeDetections
+        fakeDetections = uiState.fakeDetections,
+        mosaicMode = uiState.mosaicMode,
+        blurRegions = uiState.blurRegions // 传递 mosaicMode
     )
 
     // --- 7. Create EditScreenActions Instance (Largely unchanged) ---
@@ -260,7 +262,8 @@ fun EditScreenContentInternal(
             onConfirmEditing = { viewModel.confirmEditing() },
             onCancelEditing = { viewModel.cancelEditing() },
             onEasterEggStateChanged = { enabled -> viewModel.setEasterEggEnabled(enabled) },
-            onTooDeepStateChanged = { enabled -> viewModel.setTooDeepEnabled(enabled) }
+            onTooDeepStateChanged = { enabled -> viewModel.setTooDeepEnabled(enabled) },
+            onMosaicModeSelected = { mode -> viewModel.setMosaicMode(mode) }
         )
     }
 

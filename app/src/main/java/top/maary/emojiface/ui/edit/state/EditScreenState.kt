@@ -1,5 +1,6 @@
 package top.maary.emojiface.ui.edit.state
 
+import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontFamily
@@ -41,5 +42,7 @@ data class EditScreenState(
     val editingEmojiIndex: Int?,
     val isEasterEggEnabled: Boolean = false,
     val isTooDeep: Boolean = false,
-    val fakeDetections: List<FakeDetection> = emptyList() // 存储假识别框
+    val fakeDetections: List<FakeDetection> = emptyList(), // 存储假识别框
+    val mosaicMode: Int, // 新增马赛克模式状态
+    val blurRegions: List<RectF> // <-- 新增
 )

@@ -91,6 +91,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
@@ -100,6 +102,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,11 +116,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.maary.emojiface.BuildConfig
 import top.maary.emojiface.R
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 import top.maary.emojiface.ui.theme.Typography
 import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
+import top.maary.emojiface.util.createBlurredRegionBitmap
 
 @Composable
 fun ShareButton(backgroundColor: Color, onClick: () -> Unit) {
@@ -497,39 +504,53 @@ fun SettingsBottomSheetContent(
     onEasterEggStateChanged: (Boolean) -> Unit,
     isTooDeep: Boolean,
     onTooDeepStateChanged: (Boolean) -> Unit,
+    mosaicMode: Int,
+    onMosaicModeSelected: (Int) -> Unit
 ) {
-    SettingsItem(position = GroupPosition.TOP) {
-        MosaicModeRow()
+    SettingsItem(if(mosaicMode == MOSAIC_MODE_EMOJI) GroupPosition.TOP else GroupPosition.SINGLE) {
+        MosaicModeRow(
+            selectedMode = mosaicMode,
+            onModeSelected = onMosaicModeSelected
+        )
     }
-    SettingsItem(position = GroupPosition.BOTTOM){
-        Column {
-            Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
-                text = stringResource(R.string.emoji_list))
-            if (!isEditingEmojiList) {
-                PredefinedEmojiSettings(
-                    emojiOptions = emojiOptions,
-                    onClick = onEditClick,
-                    fontFamily = fontFamily)
-            } else {
-                EditEmojiList(
-                    emojiOptions = emojiOptions,
-                    onClick = onEditConfirm,
-                    fontFamily = fontFamily)
+    if (mosaicMode == MOSAIC_MODE_EMOJI) {
+        SettingsItem(position = GroupPosition.MIDDLE) {
+            Column {
+                Text(
+                    modifier = Modifier.padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 8.dp,
+                        bottom = 0.dp
+                    ),
+                    text = stringResource(R.string.emoji_list)
+                )
+                if (!isEditingEmojiList) {
+                    PredefinedEmojiSettings(
+                        emojiOptions = emojiOptions,
+                        onClick = onEditClick,
+                        fontFamily = fontFamily
+                    )
+                } else {
+                    EditEmojiList(
+                        emojiOptions = emojiOptions,
+                        onClick = onEditConfirm,
+                        fontFamily = fontFamily
+                    )
+                }
             }
         }
+        SettingsItem(GroupPosition.BOTTOM){
+            DropdownRow(
+                options = availableFontNames.toMutableList(),
+                position = selectedFontIndex,
+                onItemClicked = onFontSelected,
+                onAddClick = onAddFontClick,
+                onRemoveClick = { onRemoveFontClick(it) })
+        }
     }
-    SettingsItem(GroupPosition.MIDDLE){
+    SettingsItem(GroupPosition.SINGLE){
         HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
-
-    }
-
-    SettingsItem(GroupPosition.BOTTOM){
-        DropdownRow(
-            options = availableFontNames.toMutableList(),
-            position = selectedFontIndex,
-            onItemClicked = onFontSelected,
-            onAddClick = onAddFontClick,
-            onRemoveClick = { onRemoveFontClick(it) })
     }
 
      if (isEasterEggEnabled) {
@@ -572,43 +593,52 @@ fun SettingsSideSheetContent(
     onEasterEggStateChanged: (Boolean) -> Unit,
     isTooDeep: Boolean,
     onTooDeepStateChanged: (Boolean) -> Unit,
+    mosaicMode: Int,
+    onMosaicModeSelected: (Int) -> Unit
 ) {
     Column (modifier = Modifier.padding(
         top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding(),
         end = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(
             layoutDirection = LayoutDirection.Ltr
         ))) {
-        SettingsItem(GroupPosition.TOP){
-            Column {
-                Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
-                    text = stringResource(R.string.emoji_list),
-                    color = MaterialTheme.colorScheme.onSurface)
-                if (!isEditingEmojiList) {
-                    PredefinedEmojiSettings(
-                        emojiOptions = emojiOptions,
-                        onClick = onEditClick,
-                        fontFamily = fontFamily)
-                } else {
-                    EditEmojiList(
-                        emojiOptions = emojiOptions,
-                        onClick = onEditConfirm,
-                        fontFamily = fontFamily)
+        SettingsItem(position = GroupPosition.TOP) {
+            MosaicModeRow(
+                selectedMode = mosaicMode,
+                onModeSelected = onMosaicModeSelected
+            )
+        }
+        if (mosaicMode == MOSAIC_MODE_EMOJI) {
+            SettingsItem(GroupPosition.MIDDLE){
+                Column {
+                    Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
+                        text = stringResource(R.string.emoji_list),
+                        color = MaterialTheme.colorScheme.onSurface)
+                    if (!isEditingEmojiList) {
+                        PredefinedEmojiSettings(
+                            emojiOptions = emojiOptions,
+                            onClick = onEditClick,
+                            fontFamily = fontFamily)
+                    } else {
+                        EditEmojiList(
+                            emojiOptions = emojiOptions,
+                            onClick = onEditConfirm,
+                            fontFamily = fontFamily)
+                    }
                 }
             }
+            SettingsItem(GroupPosition.BOTTOM){
+                DropdownRow(
+                    options = availableFontNames.toMutableList(),
+                    position = selectedFontIndex,
+                    onItemClicked = onFontSelected,
+                    onAddClick = onAddFontClick,
+                    onRemoveClick = { onRemoveFontClick(it) })
+            }
         }
-        SettingsItem(GroupPosition.MIDDLE){
+
+        SettingsItem(GroupPosition.SINGLE){
             HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
         }
-
-        SettingsItem(GroupPosition.BOTTOM){
-            DropdownRow(
-                options = availableFontNames.toMutableList(),
-                position = selectedFontIndex,
-                onItemClicked = onFontSelected,
-                onAddClick = onAddFontClick,
-                onRemoveClick = { onRemoveFontClick(it) })
-        }
-
 
         if (isEasterEggEnabled) {
             SettingsItem(GroupPosition.TOP) {
@@ -940,7 +970,7 @@ fun EmojiOverlay(
     }
 
     val boxPaint = remember {
-        android.graphics.Paint().apply {
+        Paint().apply {
             isAntiAlias = true
             style = android.graphics.Paint.Style.STROKE
             strokeWidth = 4f // 边框宽度
@@ -948,14 +978,14 @@ fun EmojiOverlay(
         }
     }
     val textBgPaint = remember {
-        android.graphics.Paint().apply {
+        Paint().apply {
             isAntiAlias = true
             style = android.graphics.Paint.Style.FILL
             color = android.graphics.Color.GREEN // 文字背景颜色
         }
     }
     val textPaint = remember {
-        android.graphics.Paint().apply {
+        Paint().apply {
             isAntiAlias = true
             style = android.graphics.Paint.Style.FILL
             color = android.graphics.Color.BLACK // 文字颜色
@@ -968,35 +998,75 @@ fun EmojiOverlay(
         .fillMaxSize()
         .padding(padding)
         .clip(RoundedCornerShape(cornerRadius))) {
-        emojisToRender.forEach { detection ->
-            // 从 state 获取加载好的原生 Typeface
-            paint.typeface = state.typeface ?: Typeface.DEFAULT
 
-            // 实时计算缩放后的大小
-            paint.textSize = detection.diameter * scale
+        when(state.mosaicMode) {
+            MOSAIC_MODE_EMOJI -> {
+                emojisToRender.forEach { detection ->
+                    // 从 state 获取加载好的原生 Typeface
+                    paint.typeface = state.typeface ?: Typeface.DEFAULT
 
-            // 计算垂直方向的偏移，与 RenderEmojiOnBitmapUseCase 完全一致
-            val verticalOffset = (paint.descent() + paint.ascent()) / 2
+                    // 实时计算缩放后的大小
+                    paint.textSize = detection.diameter * scale
 
-            // 缩放坐标
-            val centerX = detection.xCenter * scale
-            val centerY = detection.yCenter * scale
+                    // 计算垂直方向的偏移，与 RenderEmojiOnBitmapUseCase 完全一致
+                    val verticalOffset = (paint.descent() + paint.ascent()) / 2
 
-            // 将所有绘制操作放在 rotate 的 lambda 块中
-            // Compose 会自动处理 save 和 restore
-            rotate(
-                degrees = detection.angle,
-                pivot = Offset(centerX, centerY)
-            ) {
-                // 在这个代码块中执行的所有绘制操作都会被旋转
-                drawContext.canvas.nativeCanvas.drawText(
-                    detection.emoji,
-                    centerX,
-                    centerY - verticalOffset,
-                    paint
-                )
+                    // 缩放坐标
+                    val centerX = detection.xCenter * scale
+                    val centerY = detection.yCenter * scale
+
+                    // 将所有绘制操作放在 rotate 的 lambda 块中
+                    // Compose 会自动处理 save 和 restore
+                    rotate(
+                        degrees = detection.angle,
+                        pivot = Offset(centerX, centerY)
+                    ) {
+                        // 在这个代码块中执行的所有绘制操作都会被旋转
+                        drawContext.canvas.nativeCanvas.drawText(
+                            detection.emoji,
+                            centerX,
+                            centerY - verticalOffset,
+                            paint
+                        )
+                    }
+                }
+            }
+
+            MOSAIC_MODE_BLUR -> {
+                val sourceBitmap = state.displayedBitmap?.asAndroidBitmap() ?: return@Canvas
+
+                state.blurRegions.forEach { regionRectF ->
+                    // 1. 调用完全相同的工具函数获取模糊后的小图
+                    val blurredRegionBitmap = createBlurredRegionBitmap(sourceBitmap, regionRectF)
+
+                    // 2. 计算在屏幕上绘制的目标位置和尺寸
+                    val destinationRect = RectF(
+                        regionRectF.left * scale,
+                        regionRectF.top * scale,
+                        regionRectF.right * scale,
+                        regionRectF.bottom * scale
+                    )
+
+                    // 3. 将模糊小图绘制到屏幕上
+                    drawImage(
+                        image = blurredRegionBitmap.asImageBitmap(),
+                        dstOffset = IntOffset(
+                            destinationRect.left.toInt(),
+                            destinationRect.top.toInt()
+                        ),
+                        dstSize = IntSize(
+                            destinationRect.width().toInt(),
+                            destinationRect.height().toInt()
+                        )
+                    )
+
+                    // 4. 释放内存
+                    blurredRegionBitmap.recycle()
+                }
             }
         }
+
+
 
         state.fakeDetections.forEach { fake ->
             // 缩放边界框坐标
@@ -1224,20 +1294,29 @@ fun TextContent(modifier: Modifier = Modifier, title: String, description: Strin
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MosaicModeRow(){
-    val options = listOf(R.string.emoji, R.string.mosaic)
-    var selectedIndex by remember { mutableIntStateOf(0) }
-    Row (modifier = Modifier.fillMaxWidth()){
+fun MosaicModeRow(
+    selectedMode: Int,
+    onModeSelected: (Int) -> Unit
+){
+    val options = listOf(
+        stringResource(R.string.emoji) to MOSAIC_MODE_EMOJI,
+        stringResource(R.string.mosaic) to MOSAIC_MODE_BLUR
+    )
+
+    Row (
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically){
         Text(
             text = stringResource(R.string.mosaic_mode),
             modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
-            style = Typography.titleLarge
+            style = Typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.weight(1f)) // 占位符，推送文本到左侧
-        options.forEachIndexed { index, option ->
+        options.forEachIndexed { index, (label, mode) ->
             ToggleButton (
-                checked = selectedIndex == index ,
-                onCheckedChange = { selectedIndex = index },
+                checked = selectedMode == mode ,
+                onCheckedChange = { if (it) onModeSelected(mode) },
                 shapes =
                     when (index) {
                         0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
@@ -1245,7 +1324,7 @@ fun MosaicModeRow(){
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                     },
             ) {
-                Text(text = stringResource(option))
+                Text(text = label)
             }
         }
     }
