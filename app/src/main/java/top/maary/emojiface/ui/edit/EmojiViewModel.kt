@@ -9,6 +9,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -95,6 +97,8 @@ class EmojiViewModel @Inject constructor(
 
     private val editingStateFlow = MutableStateFlow<EmojiDetection?>(null)
 
+    private var mosaicModeUpdateJob: Job? = null
+
     init {
         // Observe preferences and update state
         observePreferences()
@@ -148,8 +152,41 @@ class EmojiViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            preferenceRepository.mosaicMode.collect { mode ->
-                _uiState.update { it.copy(mosaicMode = mode) }
+            preferenceRepository.mosaicMode.collect { newMode ->
+                _uiState.update { it.copy(isProcessing = true) }
+                // --- START: 防抖逻辑 ---
+
+                // 2. 取消上一个还未执行的更新任务
+                mosaicModeUpdateJob?.cancel()
+
+                // 3. 启动一个新的协程，并持有它的 Job
+                mosaicModeUpdateJob = viewModelScope.launch {
+                    // 4. 等待 200 毫秒。如果在此期间有新的模式切换，这个协程会被取消
+                    delay(200L)
+
+                    // 只有在用户停止切换 200 毫秒后，才会执行以下逻辑
+                    val currentState = _uiState.value
+                    _uiState.update { it.copy(mosaicMode = newMode) }
+
+                    if (currentState.originalBitmap != null && currentState.detectionOutput != null) {
+                        when (newMode) {
+                            MOSAIC_MODE_EMOJI -> {
+                                _uiState.update { it.copy(blurRegions = emptyList()) }
+                                calculateEmojiPositions(currentState.detectionOutput)
+                            }
+
+                            MOSAIC_MODE_BLUR -> {
+                                _uiState.update {
+                                    it.copy(
+                                        selectedEmojis = emptyList(),
+                                        editingEmoji = null
+                                    )
+                                }
+                                calculateBlurRegions(currentState.detectionOutput)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
