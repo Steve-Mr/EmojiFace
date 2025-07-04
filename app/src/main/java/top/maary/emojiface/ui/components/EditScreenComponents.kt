@@ -1,6 +1,7 @@
 package top.maary.emojiface.ui.components
 
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.Log
@@ -93,6 +94,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
@@ -1035,30 +1037,47 @@ fun EmojiOverlay(
             MOSAIC_MODE_BLUR -> {
                 val sourceBitmap = state.displayedBitmap?.asAndroidBitmap() ?: return@Canvas
 
-                state.blurRegions.forEach { regionRectF ->
-                    // 1. 调用完全相同的工具函数获取模糊后的小图
-                    val blurredRegionBitmap = createBlurredRegionBitmap(sourceBitmap, regionRectF)
+                state.blurRegions.forEach { region ->
+                    // 1. 调用工具函数获取模糊的小图
+                    val blurredRegionBitmap = createBlurredRegionBitmap(sourceBitmap, region.rect)
 
                     // 2. 计算在屏幕上绘制的目标位置和尺寸
                     val destinationRect = RectF(
-                        regionRectF.left * scale,
-                        regionRectF.top * scale,
-                        regionRectF.right * scale,
-                        regionRectF.bottom * scale
+                        region.rect.left * scale,
+                        region.rect.top * scale,
+                        region.rect.right * scale,
+                        region.rect.bottom * scale
                     )
 
-                    // 3. 将模糊小图绘制到屏幕上
-                    drawImage(
-                        image = blurredRegionBitmap.asImageBitmap(),
-                        dstOffset = IntOffset(
-                            destinationRect.left.toInt(),
-                            destinationRect.top.toInt()
-                        ),
-                        dstSize = IntSize(
-                            destinationRect.width().toInt(),
-                            destinationRect.height().toInt()
+                    // 3. 在 Canvas 中进行旋转和绘制
+                    drawIntoCanvas { canvas ->
+                        canvas.nativeCanvas.save() // 保存状态
+
+                        // 以目标矩形的中心为轴点进行旋转
+                        canvas.nativeCanvas.rotate(region.angle, destinationRect.centerX(), destinationRect.centerY())
+
+                        // 创建一个椭圆形的剪切路径
+                        val ovalPath = Path().apply {
+                            addOval(destinationRect, Path.Direction.CW)
+                        }
+                        // 应用剪切路径，后续的绘制只会在这个椭圆内显示
+                        canvas.nativeCanvas.clipPath(ovalPath)
+
+                        // 将模糊小图绘制到被剪切的画布上
+                        drawImage(
+                            image = blurredRegionBitmap.asImageBitmap(),
+                            dstOffset = IntOffset(
+                                destinationRect.left.toInt(),
+                                destinationRect.top.toInt()
+                            ),
+                            dstSize = IntSize(
+                                destinationRect.width().toInt(),
+                                destinationRect.height().toInt()
+                            )
                         )
-                    )
+
+                        canvas.nativeCanvas.restore() // 恢复状态，移除旋转和剪切
+                    }
 
                     // 4. 释放内存
                     blurredRegionBitmap.recycle()

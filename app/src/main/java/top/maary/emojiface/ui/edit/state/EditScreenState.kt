@@ -1,10 +1,10 @@
 package top.maary.emojiface.ui.edit.state
 
-import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.IntSize
+import top.maary.emojiface.ui.edit.model.BlurRegion
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.model.FakeDetection
 
@@ -44,5 +44,5 @@ data class EditScreenState(
     val isTooDeep: Boolean = false,
     val fakeDetections: List<FakeDetection> = emptyList(), // 存储假识别框
     val mosaicMode: Int, // 新增马赛克模式状态
-    val blurRegions: List<RectF> // <-- 新增
+    val blurRegions: List<BlurRegion> // <-- 新增
 )

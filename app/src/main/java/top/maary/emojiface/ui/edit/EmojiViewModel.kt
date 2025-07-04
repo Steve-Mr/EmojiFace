@@ -36,6 +36,7 @@ import top.maary.emojiface.domain.usecase.RenderEmojiOnBitmapUseCase
 import top.maary.emojiface.domain.usecase.RenderMosaicOnBitmapUseCase
 import top.maary.emojiface.domain.usecase.SaveImageUseCase
 import top.maary.emojiface.domain.usecase.UpdateEmojiOptionsUseCase
+import top.maary.emojiface.ui.edit.model.BlurRegion
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.model.FakeDetection
 import top.maary.emojiface.ui.edit.state.ShareEvent
@@ -67,7 +68,7 @@ data class EditUiState(
     val fakeDetections: List<FakeDetection> = emptyList(), // 存储假识别框
     val detectionOutput: DetectionOutput? = null, // 保存原始检测结果
     val mosaicMode: Int = MOSAIC_MODE_EMOJI, // 新增马赛克模式状态
-    val blurRegions: List<RectF> = emptyList()
+    val blurRegions: List<BlurRegion> = emptyList()
 )
 
 @HiltViewModel
