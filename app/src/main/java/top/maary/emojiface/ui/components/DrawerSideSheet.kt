@@ -16,6 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
+import top.maary.emojiface.ui.edit.model.BlurRegion
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -83,24 +85,40 @@ fun SideSheetContent(
     state: EditScreenState,
     actions: EditScreenActions,
     editingEmoji: EmojiDetection?,
+    editingBlurRegion: BlurRegion?, // 新增参数以接收正在编辑的模糊区域
     showSettingsSheet: Boolean,
     onSlidingStateChange: (Boolean) -> Unit
 ) {
-    if (editingEmoji != null) {
-        val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
+    // 首先判断当前是否处于任一编辑模式
+    val isEditing = editingEmoji != null || editingBlurRegion != null
+
+    if (isEditing) {
+        // --- 调用重构后的通用编辑组件 ---
         EditEmojiSideSheetContent(
-            initialEmoji = editingEmoji.emoji,
-            initialDiameter = editingEmoji.diameter,
-            initialRotation = editingEmoji.angle,
+            mosaicMode = state.mosaicMode,
+            // 传递瞬时状态
+            editingEmoji = editingEmoji,
+            editingBlurRegion = editingBlurRegion,
+            // 传递其他参数
             availableEmojis = state.predefinedEmojiList ?: emptyList(),
             fontFamily = state.fontFamily,
+            // 统一的回调
+            onEmojiChange = actions.onEmojiChange,
+            onSizeChange = { newFactor ->
+                if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
+                    actions.onSizeFactorChange(newFactor)
+                } else {
+                    actions.onBlurRegionSizeChange(newFactor)
+                }
+            },
+            onAngleChange = actions.onAngleChange,
             onConfirm = actions.onConfirmEditing,
             onDismiss = actions.onCancelEditing,
-            maxDiameter = maxDiameter,
-            onValueChange = actions.onEditingValueChanged,
             onSlidingStateChange = onSlidingStateChange
         )
+
     } else if (showSettingsSheet) {
+        // --- 这部分逻辑保持不变，用于显示设置面板 ---
         var isEditingEmojiListInSheet by remember { mutableStateOf(false) }
         SettingsSideSheetContent(
             emojiOptions = state.predefinedEmojiList ?: emptyList(),
@@ -118,13 +136,12 @@ fun SideSheetContent(
             onFontSelected = actions.onFontSelected,
             onAddFontClick = actions.onAddFontClick,
             onRemoveFontClick = actions.onRemoveFontClick,
-            isEasterEggEnabled = state.isEasterEggEnabled, // 传递彩蛋状态
-            isTooDeep = state.isTooDeep,                   // 传递 "Too Deep" 状态
-            onTooDeepStateChanged = actions.onTooDeepStateChanged, // 传递 Action
+            isEasterEggEnabled = state.isEasterEggEnabled,
+            isTooDeep = state.isTooDeep,
+            onTooDeepStateChanged = actions.onTooDeepStateChanged,
             onEasterEggStateChanged = actions.onEasterEggStateChanged,
             mosaicMode = state.mosaicMode,
             onMosaicModeSelected = actions.onMosaicModeSelected,
         )
     }
-
 }

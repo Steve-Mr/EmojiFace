@@ -63,6 +63,8 @@ data class EditUiState(
     val successMessage: String? = null, // Optional for short success feedback
     val editingEmojiIndex: Int? = null, // 正在编辑的 emoji 的索引
     val editingEmoji: EmojiDetection? = null, // 正在编辑的 emoji 的瞬时数据
+    val editingBlurRegionIndex: Int? = null,
+    val editingBlurRegion: BlurRegion? = null,
     val isEasterEggEnabled: Boolean = false,
     val isTooDeep: Boolean = false,
     val fakeDetections: List<FakeDetection> = emptyList(), // 存储假识别框
@@ -497,42 +499,206 @@ class EmojiViewModel @Inject constructor(
         _uiState.update { it.copy(editingEmoji = updatedEmoji) }
     }
 
-    /**
-     * 用户点击"确定"，确认修改
-     */
-    fun confirmEditing() {
-        val transientEmoji = _uiState.value.editingEmoji ?: return
-        val transientIndex = _uiState.value.editingEmojiIndex
-        val currentList = _uiState.value.selectedEmojis.toMutableList()
+    fun updateEditingValueChanged(emoji: String?, diameter: Float?, rotation: Float?) {
+        val state = _uiState.value
 
-        if (transientEmoji.emoji.isEmpty()) {
-            // This is a delete operation. Only delete if it's an existing emoji.
-            if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
-                currentList.removeAt(transientIndex)
+        when (state.mosaicMode) {
+            // --- Emoji 模式的逻辑保持不变 ---
+            MOSAIC_MODE_EMOJI -> {
+                if (emoji != null) {
+                    _uiState.value.editingEmoji?.let {
+                        _uiState.update { it.copy(editingEmoji = it.editingEmoji?.copy(emoji = emoji)) }
+                    }
+                }
+                if (diameter != null) {
+                    _uiState.value.editingEmoji?.let {
+                        _uiState.update { it.copy(editingEmoji = it.editingEmoji?.copy(diameter = diameter)) }
+                    }
+                }
+                if (rotation != null) {
+                    _uiState.value.editingEmoji?.let {
+                        _uiState.update { it.copy(editingEmoji = it.editingEmoji?.copy(angle = rotation)) }
+                    }
+                }
             }
-            // If it was a new emoji, clearing text is just a cancel, so we do nothing.
-        } else {
-            // This is an add or update operation.
-            if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
-                // Update existing emoji
-                currentList[transientIndex] = transientEmoji
-            } else if (transientIndex != null && transientIndex == -1) {
-                // Add new emoji
-                currentList.add(transientEmoji)
+
+            // --- 核心修改：添加 Blur 模式的处理逻辑 ---
+            MOSAIC_MODE_BLUR -> {
+                val editingRegion = state.editingBlurRegion ?: return
+                val originalRegionRect = state.blurRegions.getOrNull(state.editingBlurRegionIndex ?: -1)?.rect ?: editingRegion.rect
+
+                // 如果角度变化了
+                if (rotation != null) {
+                    _uiState.update { it.copy(editingBlurRegion = editingRegion.copy(angle = rotation)) }
+                }
+
+                // 如果大小变化了 (我们将滑块的 "diameter" 值解读为新的宽度)
+                if (diameter != null) {
+                    if (originalRegionRect.width() > 0) {
+                        // 保持原始的宽高比
+                        val aspectRatio = originalRegionRect.height() / originalRegionRect.width()
+                        val newWidth = diameter
+                        val newHeight = newWidth * aspectRatio
+
+                        // 以原始中心点为基准计算新矩形
+                        val newRect = RectF(
+                            originalRegionRect.centerX() - newWidth / 2,
+                            originalRegionRect.centerY() - newHeight / 2,
+                            originalRegionRect.centerX() + newWidth / 2,
+                            originalRegionRect.centerY() + newHeight / 2
+                        )
+                        _uiState.update { it.copy(editingBlurRegion = editingRegion.copy(rect = newRect)) }
+                    }
+                }
             }
         }
+    }
 
-        // 清除瞬时编辑状态
-        _uiState.update { it.copy(selectedEmojis = currentList, editingEmoji = null, editingEmojiIndex = null) }
-        editingStateFlow.value = null
+    // --- 新增：选中模糊区域进行编辑 ---
+    fun selectBlurRegionForEditing(index: Int) {
+        val region = _uiState.value.blurRegions.getOrNull(index) ?: return
+        _uiState.update {
+            it.copy(
+                editingBlurRegionIndex = index,
+                editingBlurRegion = region,
+                // 同时清空 Emoji 的编辑状态，确保互斥
+                editingEmojiIndex = null,
+                editingEmoji = null
+            )
+        }
     }
 
     /**
-     * 用户取消编辑
+     * 更新正在编辑的 Emoji 的大小。
+     * @param factor 新的大小比例因子 (例如，1.2f 表示放大20%)。
+     */
+    fun updateEditingEmojiSize(factor: Float) {
+        val index = _uiState.value.editingEmojiIndex ?: return
+        val currentEditingEmoji = _uiState.value.editingEmoji ?: return
+
+        // 获取原始 Emoji 以计算基准大小
+        val originalEmoji = _uiState.value.selectedEmojis.getOrNull(index)
+
+        // 如果是新增的 Emoji (index 为 -1)，则没有原始大小，暂时不处理缩放
+        if (originalEmoji == null) return
+
+        // 计算新的直径
+        val newDiameter = originalEmoji.diameter * factor
+
+        // 更新瞬时编辑状态
+        _uiState.update {
+            it.copy(editingEmoji = currentEditingEmoji.copy(diameter = newDiameter))
+        }
+    }
+
+    /**
+     * 更新正在编辑的 Blur 区域的大小。
+     * @param factor 新的大小比例因子。
+     */
+    fun updateEditingBlurRegionSize(factor: Float) {
+        val index = _uiState.value.editingBlurRegionIndex ?: return
+        val currentEditingRegion = _uiState.value.editingBlurRegion ?: return
+
+        // 获取原始 Blur 区域以计算基准大小
+        val originalRegion = _uiState.value.blurRegions.getOrNull(index) ?: return
+
+        val originalWidth = originalRegion.rect.width()
+        val originalHeight = originalRegion.rect.height()
+        val centerX = originalRegion.rect.centerX()
+        val centerY = originalRegion.rect.centerY()
+
+        // 计算新的宽高
+        val newWidth = originalWidth * factor
+        val newHeight = originalHeight * factor
+
+        // 创建新的 RectF
+        val newRect = RectF(
+            centerX - newWidth / 2,
+            centerY - newHeight / 2,
+            centerX + newWidth / 2,
+            centerY + newHeight / 2
+        )
+
+        // 更新瞬时编辑状态
+        _uiState.update {
+            it.copy(editingBlurRegion = currentEditingRegion.copy(rect = newRect))
+        }
+    }
+
+    /**
+     * 更新正在编辑的对象的角度 (通用)。
+     * @param newAngle 新的角度。
+     */
+    fun updateEditingAngle(newAngle: Float) {
+        // 根据模式更新对应的瞬时状态
+        if (_uiState.value.mosaicMode == MOSAIC_MODE_EMOJI) {
+            _uiState.value.editingEmoji?.let { emoji ->
+                _uiState.update { it.copy(editingEmoji = emoji.copy(angle = newAngle)) }
+            }
+        } else { // MOSAIC_MODE_BLUR
+            _uiState.value.editingBlurRegion?.let { region ->
+                _uiState.update { it.copy(editingBlurRegion = region.copy(angle = newAngle)) }
+            }
+        }
+    }
+
+    /**
+     * 用户点击"确定"，确认修改。
+     * 此函数现在可以同时处理 Emoji 和 Blur 模式的确认操作。
+     */
+    fun confirmEditing() {
+        val state = _uiState.value
+
+        when (state.mosaicMode) {
+            MOSAIC_MODE_EMOJI -> {
+                val transientEmoji = state.editingEmoji ?: return
+                val transientIndex = state.editingEmojiIndex
+                val currentList = state.selectedEmojis.toMutableList()
+
+                if (transientEmoji.emoji.isEmpty()) {
+                    // 如果是删除操作 (清空文本)
+                    if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
+                        currentList.removeAt(transientIndex)
+                    }
+                } else {
+                    // 新增或更新操作
+                    if (transientIndex != null && transientIndex >= 0 && transientIndex < currentList.size) {
+                        currentList[transientIndex] = transientEmoji // 更新
+                    } else {
+                        currentList.add(transientEmoji) // 新增
+                    }
+                }
+                _uiState.update { it.copy(selectedEmojis = currentList) }
+            }
+            MOSAIC_MODE_BLUR -> {
+                val editedRegion = state.editingBlurRegion ?: return
+                val index = state.editingBlurRegionIndex ?: return
+                val currentList = state.blurRegions.toMutableList()
+
+                if (index >= 0 && index < currentList.size) {
+                    currentList[index] = editedRegion
+                }
+                _uiState.update { it.copy(blurRegions = currentList) }
+            }
+        }
+
+        // 统一在最后退出编辑状态，清除所有编辑相关的瞬时数据
+        cancelEditing()
+    }
+
+    /**
+     * 用户取消编辑。
+     * 此函数现在会清除所有模式下的编辑状态，使其成为一个通用的取消操作。
      */
     fun cancelEditing() {
-        _uiState.update { it.copy(editingEmoji = null, editingEmojiIndex = null) }
-        editingStateFlow.value = null
+        _uiState.update {
+            it.copy(
+                editingEmoji = null,
+                editingEmojiIndex = null,
+                editingBlurRegion = null,
+                editingBlurRegionIndex = null
+            )
+        }
     }
 
     // --- Settings Related ---

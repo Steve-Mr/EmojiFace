@@ -1,15 +1,13 @@
 package top.maary.emojiface.util
 
 import android.graphics.Bitmap
-import android.graphics.Rect
-import android.graphics.RectF
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 
 // 缩放函数
 fun scaleBitmapIfNeeded(bitmap: Bitmap): Bitmap {
@@ -30,7 +28,7 @@ fun scaleBitmapIfNeeded(bitmap: Bitmap): Bitmap {
     val scaledWidth = (width * scaleFactor).toInt()
     val scaledHeight = (height * scaleFactor).toInt()
 
-    return Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+    return bitmap.scale(scaledWidth, scaledHeight)
 }
 
 fun bitmapToInputStream(bitmap: Bitmap?): InputStream {
@@ -261,38 +259,37 @@ fun applyStackBlur(bitmap: Bitmap, radius: Int): Bitmap {
  * @param regionRectF 需要模糊的区域，坐标基于 sourceBitmap。
  * @return 一个只包含模糊后区域的新的、小尺寸的位图。
  */
-fun createBlurredRegionBitmap(sourceBitmap: Bitmap, regionRectF: RectF): Bitmap {
-    // 1. 确保裁剪区域不会超出源位图的边界
-    val cropRect = Rect(
-        max(0f, regionRectF.left).toInt(),
-        max(0f, regionRectF.top).toInt(),
-        min(sourceBitmap.width.toFloat(), regionRectF.right).toInt(),
-        min(sourceBitmap.height.toFloat(), regionRectF.bottom).toInt()
-    )
-
-    // 如果裁剪区域无效（例如宽度或高度为0），则返回一个1x1的空白位图以避免崩溃
-    if (cropRect.width() <= 0 || cropRect.height() <= 0) {
+fun createBlurredRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface.ui.edit.model.BlurRegion): Bitmap {
+    val rect = region.rect
+    // 1. 确保裁剪区域有效
+    if (rect.width() <= 0 || rect.height() <= 0) {
         return createBitmap(1, 1)
     }
 
-    // 2. 从源位图中裁剪出人脸区域
-    val faceBitmap = Bitmap.createBitmap(
-        sourceBitmap,
-        cropRect.left,
-        cropRect.top,
-        cropRect.width(),
-        cropRect.height()
+    // 2. 创建一个中间位图，用于存放从原图中提取的、未经模糊的、但已旋转对齐的内容
+    val unblurredChunk = createBitmap(
+        rect.width().toInt(),
+        rect.height().toInt(),
+        Bitmap.Config.ARGB_8888
     )
+    val canvas = android.graphics.Canvas(unblurredChunk)
 
-    // 3. 根据裁剪区域的尺寸计算模糊半径。这是统一的计算标准。
-    val blurRadius = (max(cropRect.width(), cropRect.height()) / 8f).toInt().coerceIn(20, 55)
+    // 3. 对画布进行逆向变换。我们旋转 -angle 度，以便从 sourceBitmap 中“正向”地提取内容
+    canvas.rotate(-region.angle, rect.width() / 2f, rect.height() / 2f)
+    // 将画布平移，使得原图中的 rect 区域的左上角与我们画布的(0,0)对齐
+    canvas.translate(-rect.left, -rect.top)
 
-    // 4. 应用模糊处理
-    val blurredBitmap = applyStackBlur(faceBitmap, blurRadius)
+    // 4. 将完整的原图绘制到经过变换的画布上。
+    // 此时，只有我们感兴趣的旋转区域被绘制到了 unblurredChunk 上。
+    canvas.drawBitmap(sourceBitmap, 0f, 0f, null)
 
-    // 5. 释放中间创建的位图以节省内存
-    faceBitmap.recycle()
+    // 5. 根据区域尺寸计算模糊半径，并对提取出的内容进行模糊
+    val blurRadius = (max(rect.width(), rect.height()) / 8f).toInt().coerceIn(20, 55)
+    val blurredChunk = applyStackBlur(unblurredChunk, blurRadius)
 
-    // 6. 返回最终的模糊后的小块位图
-    return blurredBitmap
+    // 6. 释放中间创建的位图内存
+    unblurredChunk.recycle()
+
+    // 7. 返回最终的、内容已经旋转好并模糊过的位图
+    return blurredChunk
 }

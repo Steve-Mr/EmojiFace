@@ -27,7 +27,7 @@ class RenderMosaicOnBitmapUseCase @Inject constructor() {
                 when (blurType) {
                     is BlurType.Gaussian -> {
                         // 调用统一的工具函数获取模糊小图
-                        val blurredRegionBitmap = createBlurredRegionBitmap(baseBitmap, region.rect)
+                        val blurredRegionBitmap = createBlurredRegionBitmap(baseBitmap, region) // <-- 新的调用
 
                         // 使用 withSave 保证画布状态的正确保存和恢复
                         canvas.withSave {

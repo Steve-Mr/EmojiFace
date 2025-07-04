@@ -10,5 +10,6 @@ import android.graphics.RectF
  */
 data class BlurRegion(
     val rect: RectF,
-    val angle: Float
+    val angle: Float,
+    val originalRect: RectF = rect
 )

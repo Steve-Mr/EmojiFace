@@ -25,6 +25,8 @@ data class EditScreenActions(
     /** 當使用者長按現有的 EmojiCard 時呼叫，傳遞其索引以进行删除。 */
     val onEmojiCardLongClick: (index: Int) -> Unit,
 
+    val onBlurRegionSelected: (Int) -> Unit,
+
     // --- 主要導覽和動作按鈕 ---
     /** 當使用者點擊「關閉/退出」按鈕時呼叫。 */
     val onCloseClick: () -> Unit,
@@ -42,6 +44,20 @@ data class EditScreenActions(
     val onConfirmEditing: () -> Unit,
     /** 当用户取消实时编辑时调用 */
     val onCancelEditing: () -> Unit,
+
+    // --- 实时编辑操作 (重构后) ---
+    /** 当用户在编辑时更改 Emoji 字符或从列表中选择时调用。 */
+    val onEmojiChange: (emoji: String) -> Unit,
+    /** 当用户在编辑时拖动大小滑块时调用，传递新的比例因子。 */
+    val onSizeFactorChange: (factor: Float) -> Unit,
+    /** 当用户在编辑时拖动角度滑块时调用。 */
+    val onAngleChange: (angle: Float) -> Unit,
+
+    // --- Blur 区域专属编辑操作 ---
+    /** 当用户在编辑 Blur 区域时拖动大小滑块时调用。 */
+    val onBlurRegionSizeChange: (factor: Float) -> Unit,
+    /** 当用户在编辑 Blur 区域时拖动角度滑块时调用。 */
+    val onBlurRegionAngleChange: (angle: Float) -> Unit,
 
     // --- 設定底部工作表操作 ---
     /** 當設定底部工作表被關閉時呼叫。 */

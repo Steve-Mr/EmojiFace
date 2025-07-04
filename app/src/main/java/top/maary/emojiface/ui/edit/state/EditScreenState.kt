@@ -40,9 +40,10 @@ data class EditScreenState(
     val selectedFontIndex: Int, // 當前選中字體在列表中的索引，方便 Dropdown 使用
     val isMediumLayout: Boolean,
     val editingEmojiIndex: Int?,
+    val editingBlurRegionIndex: Int?,
     val isEasterEggEnabled: Boolean = false,
     val isTooDeep: Boolean = false,
     val fakeDetections: List<FakeDetection> = emptyList(), // 存储假识别框
     val mosaicMode: Int, // 新增马赛克模式状态
-    val blurRegions: List<BlurRegion> // <-- 新增
+    val blurRegions: List<BlurRegion>
 )

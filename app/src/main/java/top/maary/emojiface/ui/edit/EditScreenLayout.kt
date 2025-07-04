@@ -59,6 +59,7 @@ import top.maary.emojiface.ui.components.MosaicTypeToolbar
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
 import top.maary.emojiface.ui.components.SideSheetContent
 import top.maary.emojiface.ui.components.SurfaceSideSheet
+import top.maary.emojiface.ui.edit.model.BlurRegion
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -69,6 +70,7 @@ fun CompactScreenLayout(
     state: EditScreenState,
     actions: EditScreenActions,
     editingEmoji: EmojiDetection?,
+    editingBlurRegion: BlurRegion?,
     showSettingsSheet: Boolean,
     onDismissSettingsSheet: () -> Unit
 ) {
@@ -123,7 +125,8 @@ fun CompactScreenLayout(
                     .padding(8.dp),
                 state = state,
                 actions = actions,
-                editingEmoji = editingEmoji
+                editingEmoji = editingEmoji,
+                editingBlurRegion = editingBlurRegion
             )
 
             if (state.displayedBitmap != null) {
@@ -183,7 +186,7 @@ fun CompactScreenLayout(
 
         }
     }
-    if (editingEmoji != null) {
+    if (editingEmoji != null || editingBlurRegion != null) {
         val bottomSheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = true,
         )
@@ -216,16 +219,26 @@ fun CompactScreenLayout(
         ) {
             // 完全复用现有的 Composable
             EditEmojiBottomSheetContent(
-                initialEmoji = editingEmoji.emoji,
-                initialDiameter = editingEmoji.diameter,
-                initialRotation = editingEmoji.angle,
+                mosaicMode = state.mosaicMode,
+                // 传递瞬时状态
+                editingEmoji = editingEmoji,
+                editingBlurRegion = editingBlurRegion,
+                // 传递其他参数
                 availableEmojis = state.predefinedEmojiList ?: emptyList(),
                 fontFamily = state.fontFamily,
+                // 统一的回调
+                onEmojiChange = actions.onEmojiChange,
+                onSizeChange = { newFactor ->
+                    if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
+                        actions.onSizeFactorChange(newFactor)
+                    } else {
+                        actions.onBlurRegionSizeChange(newFactor)
+                    }
+                },
+                onAngleChange = actions.onAngleChange,
                 onConfirm = actions.onConfirmEditing,
                 onDismiss = actions.onCancelEditing,
-                maxDiameter = maxDiameter,
-                onValueChange = actions.onEditingValueChanged,
-                onSlidingStateChange = { isSliding = it }
+                onSlidingStateChange = { isSliding = it },
             )
         }
     }
@@ -271,10 +284,11 @@ fun LargeScreenLayout(
     state: EditScreenState,
     actions: EditScreenActions,
     editingEmoji: EmojiDetection?,
+    editingBlurRegion: BlurRegion?,
     showSettingsSheet: Boolean,
     onDismissSettingsSheet: () -> Unit
 ) {
-    val showSideSheet = editingEmoji != null || showSettingsSheet
+    val showSideSheet = editingEmoji != null || showSettingsSheet || editingBlurRegion != null
 
     var isSliding by remember { mutableStateOf(false) }
 
@@ -306,7 +320,8 @@ fun LargeScreenLayout(
                 actions = actions,
                 editingEmoji = editingEmoji,
                 showSettingsSheet = showSettingsSheet,
-                onSlidingStateChange = { isSliding = it }
+                onSlidingStateChange = { isSliding = it },
+                editingBlurRegion = editingBlurRegion
             )
         }
     ) {
@@ -362,7 +377,8 @@ fun LargeScreenLayout(
                             .fillMaxHeight(),
                         state = state,
                         actions = actions,
-                        editingEmoji = editingEmoji
+                        editingEmoji = editingEmoji,
+                        editingBlurRegion = editingBlurRegion
                     )
 
                     // --- Side Panel (Smaller Portion) ---

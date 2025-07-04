@@ -198,7 +198,8 @@ fun EditScreenContentInternal(
         isTooDeep = uiState.isTooDeep,
         fakeDetections = uiState.fakeDetections,
         mosaicMode = uiState.mosaicMode,
-        blurRegions = uiState.blurRegions // 传递 mosaicMode
+        blurRegions = uiState.blurRegions, // 传递 mosaicMode
+        editingBlurRegionIndex = uiState.editingBlurRegionIndex,
     )
 
     // --- 7. Create EditScreenActions Instance (Largely unchanged) ---
@@ -263,7 +264,13 @@ fun EditScreenContentInternal(
             onCancelEditing = { viewModel.cancelEditing() },
             onEasterEggStateChanged = { enabled -> viewModel.setEasterEggEnabled(enabled) },
             onTooDeepStateChanged = { enabled -> viewModel.setTooDeepEnabled(enabled) },
-            onMosaicModeSelected = { mode -> viewModel.setMosaicMode(mode) }
+            onMosaicModeSelected = { mode -> viewModel.setMosaicMode(mode) },
+            onBlurRegionSelected = { index -> viewModel.selectBlurRegionForEditing(index) },
+            onEmojiChange = { emoji -> viewModel.updateEditingEmoji(emoji = emoji) },
+            onSizeFactorChange = { factor -> viewModel.updateEditingEmojiSize(factor) },
+            onAngleChange = { angle -> viewModel.updateEditingAngle(angle) },
+            onBlurRegionSizeChange = { factor -> viewModel.updateEditingBlurRegionSize(factor) },
+            onBlurRegionAngleChange = { angle -> viewModel.updateEditingAngle(angle) }, // 角度更新可以共用一个函数
         )
     }
 
@@ -308,6 +315,7 @@ fun EditScreenContentInternal(
                 state = stateForUiLayout,
                 actions = actions,
                 editingEmoji = uiState.editingEmoji,
+                editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
                 onDismissSettingsSheet = actions.onSettingsSheetDismiss)
         }
@@ -317,6 +325,7 @@ fun EditScreenContentInternal(
                 state = stateForUiLayout,
                 actions = actions,
                 editingEmoji = uiState.editingEmoji,
+                editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
                 onDismissSettingsSheet = actions.onSettingsSheetDismiss)
         }
@@ -326,6 +335,7 @@ fun EditScreenContentInternal(
                 state = stateForUiLayout,
                 actions = actions,
                 editingEmoji = uiState.editingEmoji,
+                editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
                 onDismissSettingsSheet = actions.onSettingsSheetDismiss)
         }

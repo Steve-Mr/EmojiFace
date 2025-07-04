@@ -2,6 +2,7 @@ package top.maary.emojiface.ui.components
 
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.util.Log
@@ -100,6 +101,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -120,12 +122,15 @@ import top.maary.emojiface.BuildConfig
 import top.maary.emojiface.R
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
+import top.maary.emojiface.ui.edit.model.BlurRegion
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 import top.maary.emojiface.ui.theme.Typography
 import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
 import top.maary.emojiface.util.createBlurredRegionBitmap
+import top.maary.emojiface.util.isPointInRotatedEllipse
+import kotlin.math.pow
 
 @Composable
 fun ShareButton(backgroundColor: Color, onClick: () -> Unit) {
@@ -667,17 +672,36 @@ fun SettingsSideSheetContent(
 
 @Composable
 fun EditEmojiBottomSheetContent(
-    initialEmoji: String,
-    initialDiameter: Float,
-    initialRotation: Float,
-    maxDiameter: Float,
+    // --- 泛化后的新参数 ---
+    mosaicMode: Int,
+    // 直接传入瞬时状态对象
+    editingEmoji: EmojiDetection?,
+    editingBlurRegion: BlurRegion?,
+    // Emoji 模式专属参数
     availableEmojis: List<String>,
     fontFamily: FontFamily?,
-    onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
+    // 回调
+    onEmojiChange: (String) -> Unit,
+    onSizeChange: (Float) -> Unit,
+    onAngleChange: (Float) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     onSlidingStateChange: (Boolean) -> Unit
 ){
+    val (currentAngle, currentSizeFactor) = if (mosaicMode == MOSAIC_MODE_EMOJI && editingEmoji != null) {
+        val factor = if (editingEmoji.originalDiameter > 0f) {
+            editingEmoji.diameter / editingEmoji.originalDiameter
+        } else { 1.0f }
+        editingEmoji.angle to factor
+    } else if (mosaicMode == MOSAIC_MODE_BLUR && editingBlurRegion != null) {
+        val currentWidth = editingBlurRegion.rect.width()
+        val originalWidth = editingBlurRegion.originalRect.width()
+        val factor = if (originalWidth > 0f) currentWidth / originalWidth else 1.0f
+        editingBlurRegion.angle to factor
+    } else {
+        0f to 1.0f // 安全回退
+    }
+
     val sizeInteractionSource = remember { MutableInteractionSource() }
     val angleInteractionSource = remember { MutableInteractionSource() }
 
@@ -695,81 +719,85 @@ fun EditEmojiBottomSheetContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Row (verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                modifier = Modifier.width(96.dp),
-                value = initialEmoji,
-                onValueChange = { onValueChange(it, null, null) },
-                label = { Text(stringResource(R.string.new_emoji))},
-                textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            // 预置 emoji 选择行
-            LazyRow(modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                .padding(vertical = 8.dp)) {
-                item {
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                itemsIndexed(availableEmojis) { _, emoji ->
-                    EmojiCardSmall(emoji = emoji, onClick = { onValueChange(emoji, null, null) }, fontFamily = fontFamily)
+        // --- 条件UI：只在 Emoji 模式下显示 ---
+        if (mosaicMode == MOSAIC_MODE_EMOJI) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    modifier = Modifier.width(96.dp),
+                    value = editingEmoji?.emoji ?: "",
+                    onValueChange = { onEmojiChange(it) }, // 使用新的独立回调
+                    label = { Text(stringResource(R.string.new_emoji)) },
+                    textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                // 预置 emoji 选择行
+                LazyRow(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .padding(vertical = 8.dp)
+                ) {
+                    item { Spacer(modifier = Modifier.width(8.dp)) }
+                    itemsIndexed(availableEmojis) { _, emoji -> // 使用 items 简化
+                        EmojiCardSmall(
+                            emoji = emoji,
+                            onClick = { onEmojiChange(emoji) }, // 使用新的独立回调
+                            fontFamily = fontFamily
+                        )
+                    }
                 }
             }
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
+        // --- 通用UI：大小和角度滑块 ---
         Row(modifier = Modifier.fillMaxWidth()) {
+            // 大小滑块
             SliderWithCaption(
                 modifier = Modifier.weight(1f),
                 leadingIcon = {
                     Icon(imageVector = Icons.Outlined.FormatSize,
-                        contentDescription = stringResource(R.string.emoji_size),
+                        contentDescription = stringResource(R.string.emoji_size), // 文本可以保持不变
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(16.dp))
+                        modifier = Modifier.padding(8.dp).size(16.dp))
                 },
                 description = stringResource(R.string.emoji_size),
-                value = initialDiameter,
-                onValueChange = { onValueChange(null, it, null) },
-                minRange = 20f,
-                maxRange = maxDiameter,
+                value = currentSizeFactor, // 绑定到比例因子
+                onValueChange = onSizeChange, // 使用新的独立回调
+                minRange = 0.5f,  // 设置合理的比例范围，例如 50%
+                maxRange = 2.5f,  // 到 200%
                 interactionSource = sizeInteractionSource
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
+            // 角度滑块
             SliderWithCaption(
                 modifier = Modifier.weight(1f),
                 leadingIcon = {
                     Icon(imageVector = Icons.Outlined.Rotate90DegreesCw,
                         contentDescription = stringResource(R.string.emoji_angle),
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(16.dp))
+                        modifier = Modifier.padding(8.dp).size(16.dp))
                 },
                 description = stringResource(R.string.emoji_angle),
-                value = initialRotation,
-                onValueChange = { onValueChange(null, null, it) },
+                value = currentAngle,
+                onValueChange = { onAngleChange(it) }, // 使用新的独立回调
                 minRange = -90f,
                 maxRange = 90f,
                 interactionSource = angleInteractionSource
             )
         }
 
+        // --- 通用UI：确认和取消按钮 ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            TextButton(
-                onClick = { onDismiss() }) {
+            TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.cancel))
             }
-            TextButton(
-                onClick = { onConfirm() }) {
+            TextButton(onClick = onConfirm) {
                 Text(stringResource(R.string.ok))
             }
         }
@@ -778,28 +806,40 @@ fun EditEmojiBottomSheetContent(
 
 @Composable
 fun EditEmojiSideSheetContent(
+    mosaicMode: Int,
     modifier: Modifier = Modifier,
-    initialEmoji: String,
-    initialDiameter: Float,
-    initialRotation: Float,
-    maxDiameter: Float,
+    editingEmoji: EmojiDetection?,
+    editingBlurRegion: BlurRegion?,
     availableEmojis: List<String>,
     fontFamily: FontFamily?,
-    onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
+    onEmojiChange: (String) -> Unit,
+    onSizeChange: (Float) -> Unit,
+    onAngleChange: (Float) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     onSlidingStateChange: (Boolean) -> Unit
 ) {
+    // --- 内部计算：根据模式获取滑块的实时值 ---
+    val (currentAngle, currentSizeFactor) = if (mosaicMode == MOSAIC_MODE_EMOJI && editingEmoji != null) {
+        val factor = if (editingEmoji.originalDiameter > 0f) {
+            editingEmoji.diameter / editingEmoji.originalDiameter
+        } else { 1.0f }
+        editingEmoji.angle to factor
+    } else if (mosaicMode == MOSAIC_MODE_BLUR && editingBlurRegion != null) {
+        val currentWidth = editingBlurRegion.rect.width()
+        val originalWidth = editingBlurRegion.originalRect.width()
+        val factor = if (originalWidth > 0f) currentWidth / originalWidth else 1.0f
+        editingBlurRegion.angle to factor
+    } else {
+        0f to 1.0f // 安全回退
+    }
 
-    // 1. 为两个滑块创建 interactionSource
     val sizeInteractionSource = remember { MutableInteractionSource() }
     val angleInteractionSource = remember { MutableInteractionSource() }
 
-    // 2. 监测两个滑块的拖动状态
     val isSizeSliderDragged by sizeInteractionSource.collectIsDraggedAsState()
     val isAngleSliderDragged by angleInteractionSource.collectIsDraggedAsState()
 
-    // 3. 当任一滑块被拖动时，通过回调函数通知父组件
     LaunchedEffect(isSizeSliderDragged, isAngleSliderDragged) {
         onSlidingStateChange(isSizeSliderDragged || isAngleSliderDragged)
     }
@@ -813,68 +853,58 @@ fun EditEmojiSideSheetContent(
                 end = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(
                     layoutDirection = LayoutDirection.Ltr
                 ) + 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp) // 为所有 item 添加统一间距
     ) {
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
+        // --- 通用UI：确认和取消按钮 ---
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TextButton(
-                    onClick = { onDismiss() }) {
+                TextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.cancel))
                 }
-                TextButton(
-                    onClick = { onConfirm() }) {
+                TextButton(onClick = onConfirm) {
                     Text(stringResource(R.string.ok))
                 }
             }
         }
 
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+        // --- 条件UI：只在 Emoji 模式下显示 ---
+        if (mosaicMode == MOSAIC_MODE_EMOJI) {
+            item {
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = editingEmoji?.emoji ?: "",
+                    onValueChange = onEmojiChange, // 使用新的独立回调
+                    label = { Text(stringResource(R.string.new_emoji)) },
+                    textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
+                )
+            }
 
-        item {
-            OutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = initialEmoji,
-            onValueChange = { onValueChange(it, null, null) },
-            label = { Text(stringResource(R.string.new_emoji)) },
-            textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
-        ) }
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-
-        }
-
-        item {
-            // 预置 emoji 选择行
-            LazyRow(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .padding(vertical = 8.dp)
-            ) {
-                item {
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                itemsIndexed(availableEmojis) { _, emoji ->
-                    EmojiCardSmall(
-                        emoji = emoji,
-                        onClick = { onValueChange(emoji, null, null) },
-                        fontFamily = fontFamily
-                    )
+            item {
+                // 预置 emoji 选择行
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth() // 确保填满宽度
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .padding(vertical = 8.dp)
+                ) {
+                    item { Spacer(modifier = Modifier.width(8.dp)) }
+                    itemsIndexed(availableEmojis) { _, emoji -> // 使用 items 简化
+                        EmojiCardSmall(
+                            emoji = emoji,
+                            onClick = { onEmojiChange(emoji) }, // 使用新的独立回调
+                            fontFamily = fontFamily
+                        )
+                    }
                 }
             }
         }
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+
+        // --- 通用UI：大小滑块 ---
         item {
             SliderWithCaption(
                 modifier = Modifier.fillMaxWidth(),
@@ -883,22 +913,19 @@ fun EditEmojiSideSheetContent(
                         imageVector = Icons.Outlined.FormatSize,
                         contentDescription = stringResource(R.string.emoji_size),
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(16.dp)
+                        modifier = Modifier.padding(8.dp).size(16.dp)
                     )
                 },
-                description = stringResource(R.string.emoji_size),
-                value = initialDiameter,
-                onValueChange = { onValueChange(null, it, null) },
-                minRange = 20f,
-                maxRange = maxDiameter,
+                description = stringResource(R.string.emoji_size), //todo change text
+                value = currentSizeFactor, // 绑定到实时计算的值
+                onValueChange = onSizeChange, // 连接到统一的回调
+                minRange = 0.5f,
+                maxRange = 2.5f,
                 interactionSource = sizeInteractionSource
             )
         }
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
+
+        // --- 通用UI：角度滑块 ---
         item {
             SliderWithCaption(
                 modifier = Modifier.fillMaxWidth(),
@@ -907,14 +934,12 @@ fun EditEmojiSideSheetContent(
                         imageVector = Icons.Outlined.Rotate90DegreesCw,
                         contentDescription = stringResource(R.string.emoji_angle),
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(16.dp)
+                        modifier = Modifier.padding(8.dp).size(16.dp)
                     )
                 },
                 description = stringResource(R.string.emoji_angle),
-                value = initialRotation,
-                onValueChange = { onValueChange(null, null, it) },
+                value = currentAngle,
+                onValueChange = onAngleChange, // 使用新的独立回调
                 minRange = -90f,
                 maxRange = 90f,
                 interactionSource = angleInteractionSource
@@ -930,7 +955,9 @@ fun EditEmojiSideSheetContent(
 @Composable
 fun EmojiOverlay(
     state: EditScreenState,
+    actions: EditScreenActions,
     editingEmoji: EmojiDetection?,
+    editingBlurRegion: BlurRegion?,
     padding: PaddingValues,
     cornerRadius: Dp,
 ) {
@@ -944,19 +971,32 @@ fun EmojiOverlay(
     // 计算缩放比例
     val scale = containerWidth / originalWidth
 
+    val density = LocalDensity.current
+    val horizontalPaddingPx = with(density) { padding.calculateLeftPadding(LayoutDirection.Ltr).toPx() }
+    val verticalPaddingPx = with(density) { padding.calculateTopPadding().toPx() }
+
+
     // 合并固定列表和正在编辑的临时状态，用于统一渲染
     val emojisToRender = remember(state.emojiDetections, editingEmoji) {
         val list = state.emojiDetections.toMutableList()
-
         if (editingEmoji != null) {
             val editingIndex = list.indexOfFirst { it.xCenter == editingEmoji.xCenter && it.yCenter == editingEmoji.yCenter }.takeIf { it != -1 }
-
             if (editingIndex != null) {
                 // 原有逻辑：如果找到了（编辑模式），就替换它
                 list[editingIndex] = editingEmoji
             } else {
                 // 新增逻辑：如果没找到（新增模式），就把它添加到列表末尾
                 list.add(editingEmoji)
+            }
+        }
+        list
+    }
+
+    val regionsToRender = remember(state.blurRegions, editingBlurRegion) {
+        val list = state.blurRegions.toMutableList()
+        if (editingBlurRegion != null && state.editingBlurRegionIndex != null) {
+            if (state.editingBlurRegionIndex >= 0 && state.editingBlurRegionIndex < list.size) {
+                list[state.editingBlurRegionIndex] = editingBlurRegion
             }
         }
         list
@@ -999,7 +1039,47 @@ fun EmojiOverlay(
     Canvas(modifier = Modifier
         .fillMaxSize()
         .padding(padding)
-        .clip(RoundedCornerShape(cornerRadius))) {
+        .clip(RoundedCornerShape(cornerRadius))
+        .pointerInput(state.mosaicMode, emojisToRender, regionsToRender) {
+            detectTapGestures { offset ->
+                // 1. 检查点击是否在有效内容区域内
+                if (offset.x < horizontalPaddingPx || offset.x > containerWidth - horizontalPaddingPx ||
+                    offset.y < verticalPaddingPx || offset.y > state.imageContainerSize.height - verticalPaddingPx) {
+                    return@detectTapGestures // 点击在 padding 上，不处理
+                }
+
+                // 2. 将屏幕点击坐标转换为原始图片坐标
+                val originalTapPoint = PointF(
+                    (offset.x - horizontalPaddingPx) / scale,
+                    (offset.y - verticalPaddingPx) / scale
+                )
+
+                // 3. 根据当前模式，遍历并检测点击
+                if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
+                    // 从上层开始遍历 (因此用 reversed)
+                    val emojiIndex = emojisToRender.indices.reversed().firstOrNull { index ->
+                        val emoji = emojisToRender[index]
+                        // 对圆形来说，旋转不影响点到中心的距离判断
+                        val dx = originalTapPoint.x - emoji.xCenter
+                        val dy = originalTapPoint.y - emoji.yCenter
+                        (dx * dx + dy * dy) < (emoji.diameter / 2).pow(2)
+                    }
+                    if (emojiIndex != null) {
+                        actions.onEmojiCardClick(emojiIndex)
+                    }
+                } else { // MOSAIC_MODE_BLUR
+                    // 从上层开始遍历
+                    val regionIndex = regionsToRender.indices.reversed().firstOrNull { index ->
+                        val region = regionsToRender[index]
+                        isPointInRotatedEllipse(originalTapPoint, region)
+                    }
+                    if (regionIndex != null) {
+                        actions.onBlurRegionSelected(regionIndex)
+                    }
+                }
+            }
+        }
+    ) {
 
         when(state.mosaicMode) {
             MOSAIC_MODE_EMOJI -> {
@@ -1037,9 +1117,9 @@ fun EmojiOverlay(
             MOSAIC_MODE_BLUR -> {
                 val sourceBitmap = state.displayedBitmap?.asAndroidBitmap() ?: return@Canvas
 
-                state.blurRegions.forEach { region ->
+                regionsToRender.forEach { region ->
                     // 1. 调用工具函数获取模糊的小图
-                    val blurredRegionBitmap = createBlurredRegionBitmap(sourceBitmap, region.rect)
+                    val blurredRegionBitmap = createBlurredRegionBitmap(sourceBitmap, region)
 
                     // 2. 计算在屏幕上绘制的目标位置和尺寸
                     val destinationRect = RectF(
@@ -1085,8 +1165,6 @@ fun EmojiOverlay(
             }
         }
 
-
-
         state.fakeDetections.forEach { fake ->
             // 缩放边界框坐标
             val scaledBox = RectF(
@@ -1126,7 +1204,12 @@ fun EmojiOverlay(
 }
 
 @Composable
-fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenActions, editingEmoji: EmojiDetection?) {
+fun DisplayPane(
+    modifier: Modifier,
+    state: EditScreenState,
+    actions: EditScreenActions,
+    editingEmoji: EmojiDetection?,
+    editingBlurRegion: BlurRegion?) {
     // --- 圖片顯示區域 ---
     Box(
         modifier = modifier,
@@ -1197,7 +1280,9 @@ fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenA
 
                 EmojiOverlay(
                     state = state,
+                    actions = actions, // <-- 传入 actions
                     editingEmoji = editingEmoji,
+                    editingBlurRegion = editingBlurRegion, // <-- 传入新增的 editingBlurRegion
                     padding = PaddingValues(horizontal = horizontalPadding, vertical = verticalPadding),
                     cornerRadius = cornerRadius,
                 )
