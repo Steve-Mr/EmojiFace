@@ -164,7 +164,7 @@ fun CompactScreenLayout(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 EmojiCard(
                                     emoji = "➕", // 或使用 Icons.Outlined.AddReaction
-                                    onClick = actions.onAddEmojiCardClick, // 使用 action
+                                    onClick = actions.onAddClicked, // 使用 action
                                     clickable = true,
                                     fontFamily = state.fontFamily,
                                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
@@ -175,7 +175,7 @@ fun CompactScreenLayout(
                         }
                     }
                 } else {
-                    MosaicTypeToolbar()
+                    MosaicTypeToolbar(onAddBlurRegionClick = actions.onAddClicked)
                 }
             }
 
@@ -420,7 +420,7 @@ fun LargeScreenLayout(
                                     item {
                                         EmojiCard(
                                             emoji = "➕",
-                                            onClick = actions.onAddEmojiCardClick, // Use action
+                                            onClick = actions.onAddClicked, // Use action
                                             clickable = true,
                                             fontFamily = state.fontFamily,
                                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,

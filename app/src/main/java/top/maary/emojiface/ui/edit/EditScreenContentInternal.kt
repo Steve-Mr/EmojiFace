@@ -210,7 +210,7 @@ fun EditScreenContentInternal(
                 tapPositionForAdd = offset
                 selectedIndexForEdit = -1 // Mark as Add
                 isAddMode = false // Exit add mode state after tap
-                viewModel.addEmoji(offset.x, offset.y, viewModel.getRandomEmoji(), 100f, 0f)
+                viewModel.addItemAtPosition(offset.x, offset.y)
             },
             onImageContainerMeasured = { size -> imageContainerSize = size },
             onPickImageClick = {
@@ -226,7 +226,7 @@ fun EditScreenContentInternal(
                 emojiIndexToDelete = index
                 showDeleteConfirmDialog = true
             },
-            onAddEmojiCardClick = { isAddMode = true }, // Enter Add Mode
+            onAddClicked = { isAddMode = true }, // Enter Add Mode
             onCloseClick = { activity?.finish() },
             // Share/Save now ignore the bitmap param internally in VM
             onShareClick = { viewModel.shareImage() },

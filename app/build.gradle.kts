@@ -139,6 +139,8 @@ dependencies {
     implementation(libs.androidx.exifinterface)
 
     implementation(libs.material3)
+
+    implementation(libs.androidx.material)
 }
 
 kapt {

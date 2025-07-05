@@ -21,7 +21,7 @@ data class EditScreenActions(
     /** 當使用者點擊現有的 EmojiCard 時呼叫，傳遞其索引。 */
     val onEmojiCardClick: (index: Int) -> Unit,
     /** 當使用者點擊「新增」的 EmojiCard 時呼叫。 */
-    val onAddEmojiCardClick: () -> Unit,
+    val onAddClicked: () -> Unit,
     /** 當使用者長按現有的 EmojiCard 時呼叫，傳遞其索引以进行删除。 */
     val onEmojiCardLongClick: (index: Int) -> Unit,
 

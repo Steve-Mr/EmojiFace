@@ -438,6 +438,48 @@ class EmojiViewModel @Inject constructor(
         return _uiState.value.predefinedEmojiOptions.randomOrNull() ?: "❓" // Default fallback
     }
 
+    /**
+     * 当用户在“添加模式”下点击图片时调用。
+     * 此函数会根据当前的 mosaicMode 决定是添加 Emoji 还是 Blur Region。
+     */
+    fun addItemAtPosition(x: Float, y: Float) {
+        val state = _uiState.value
+        when (state.mosaicMode) {
+            MOSAIC_MODE_EMOJI -> {
+                // --- 复用原有的 Emoji 添加逻辑 ---
+                addNewEmoji(state, x, y)
+            }
+            MOSAIC_MODE_BLUR -> {
+                // --- 调用我们刚刚创建的新函数 ---
+                addNewBlurRegion(x, y)
+            }
+        }
+    }
+
+    private fun addNewEmoji(
+        state: EditUiState,
+        x: Float,
+        y: Float
+    ) {
+        if (state.originalBitmap == null) {
+            _uiState.update { it.copy(errorMessage = "Cannot add emoji without an image.") }
+            return
+        }
+        val newDetection = EmojiDetection(
+            xCenter = x,
+            yCenter = y,
+            diameter = 100f,
+            angle = 0f,
+            emoji = getRandomEmoji()
+        )
+        _uiState.update {
+            it.copy(
+                editingEmoji = newDetection,
+                editingEmojiIndex = -1 // 使用 -1 标记为新增
+            )
+        }
+    }
+
     // --- Emoji Manipulation ---
 
     /**
@@ -554,6 +596,43 @@ class EmojiViewModel @Inject constructor(
         }
     }
 
+    fun addNewBlurRegion(tapPositionX: Float, tapPositionY: Float) {
+        if (_uiState.value.originalBitmap == null) {
+            _uiState.update { it.copy(errorMessage = "Cannot add blur region without an image.") }
+            return
+        }
+
+        // 1. 创建一个新的、默认的 BlurRegion 对象
+        //  - RectF 定义了位置和初始大小，可以设置为一个固定的初始尺寸。
+        //  - angle 初始为 0。
+        val initialSize = 200f // 举例：初始直径为 200 像素
+        val newRegionRect = RectF(
+            tapPositionX - initialSize / 2,
+            tapPositionY - initialSize / 2,
+            tapPositionX + initialSize / 2,
+            tapPositionY + initialSize / 2
+        )
+        val newBlurRegion = BlurRegion(
+            rect = newRegionRect,
+            angle = 0f,
+            originalRect = newRegionRect // 将初始矩形也记录下来
+        )
+
+        // 2. 更新 UI State，将这个新区域设置为正在编辑的区域
+        //    - `editingBlurRegion` 用于在 Overlay 中实时预览。
+        //    - `editingBlurRegionIndex` 设置为 -1 (或任何不在列表中的值)，
+        //      用于告诉 `confirmEditing` 这是一个“新增”操作。
+        _uiState.update {
+            it.copy(
+                editingBlurRegion = newBlurRegion,
+                editingBlurRegionIndex = -1, // 使用 -1 标记为新增
+                // 确保清空 Emoji 的编辑状态，避免冲突
+                editingEmoji = null,
+                editingEmojiIndex = null
+            )
+        }
+    }
+
     // --- 新增：选中模糊区域进行编辑 ---
     fun selectBlurRegionForEditing(index: Int) {
         val region = _uiState.value.blurRegions.getOrNull(index) ?: return
@@ -573,18 +652,13 @@ class EmojiViewModel @Inject constructor(
      * @param factor 新的大小比例因子 (例如，1.2f 表示放大20%)。
      */
     fun updateEditingEmojiSize(factor: Float) {
-        val index = _uiState.value.editingEmojiIndex ?: return
         val currentEditingEmoji = _uiState.value.editingEmoji ?: return
 
         // 获取原始 Emoji 以计算基准大小
-        val originalEmoji = _uiState.value.selectedEmojis.getOrNull(index)
-
-        // 如果是新增的 Emoji (index 为 -1)，则没有原始大小，暂时不处理缩放
-        if (originalEmoji == null) return
+        val originalDiameter = currentEditingEmoji.originalDiameter
 
         // 计算新的直径
-        val newDiameter = originalEmoji.diameter * factor
-
+        val newDiameter = originalDiameter * factor
         // 更新瞬时编辑状态
         _uiState.update {
             it.copy(editingEmoji = currentEditingEmoji.copy(diameter = newDiameter))
@@ -596,16 +670,15 @@ class EmojiViewModel @Inject constructor(
      * @param factor 新的大小比例因子。
      */
     fun updateEditingBlurRegionSize(factor: Float) {
-        val index = _uiState.value.editingBlurRegionIndex ?: return
         val currentEditingRegion = _uiState.value.editingBlurRegion ?: return
 
         // 获取原始 Blur 区域以计算基准大小
-        val originalRegion = _uiState.value.blurRegions.getOrNull(index) ?: return
+        val originalRect = currentEditingRegion.originalRect
 
-        val originalWidth = originalRegion.rect.width()
-        val originalHeight = originalRegion.rect.height()
-        val centerX = originalRegion.rect.centerX()
-        val centerY = originalRegion.rect.centerY()
+        val originalWidth = originalRect.width()
+        val originalHeight = originalRect.height()
+        val centerX = originalRect.centerX()
+        val centerY = originalRect.centerY()
 
         // 计算新的宽高
         val newWidth = originalWidth * factor
@@ -676,7 +749,11 @@ class EmojiViewModel @Inject constructor(
                 val currentList = state.blurRegions.toMutableList()
 
                 if (index >= 0 && index < currentList.size) {
+                    // 更新现有区域
                     currentList[index] = editedRegion
+                } else {
+                    // 如果 index 是 -1 或 null，则为新增
+                    currentList.add(editedRegion)
                 }
                 _uiState.update { it.copy(blurRegions = currentList) }
             }

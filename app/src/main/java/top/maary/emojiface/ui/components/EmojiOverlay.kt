@@ -82,11 +82,17 @@ fun EmojiOverlay(
 
     val regionsToRender = remember(state.blurRegions, editingBlurRegion) {
         val list = state.blurRegions.toMutableList()
-        if (editingBlurRegion != null && state.editingBlurRegionIndex != null) {
-            if (state.editingBlurRegionIndex >= 0 && state.editingBlurRegionIndex < list.size) {
-                list[state.editingBlurRegionIndex] = editingBlurRegion
+        if (editingBlurRegion != null) {
+            val editingIndex = state.editingBlurRegionIndex
+            // 如果 index 有效且在列表范围内，则替换
+            if (editingIndex != null && editingIndex >= 0 && editingIndex < list.size) {
+                list[editingIndex] = editingBlurRegion
+            } else {
+                // 否则 (index 为 -1 或 null)，则为新增，直接添加到列表末尾用于渲染
+                list.add(editingBlurRegion)
             }
         }
+        // **--- 结束修改 ---**
         list
     }
 
@@ -129,46 +135,51 @@ fun EmojiOverlay(
             .fillMaxSize()
             .padding(padding)
             .clip(RoundedCornerShape(cornerRadius))
-            .pointerInput(state.mosaicMode, emojisToRender, regionsToRender) {
-                detectTapGestures { offset ->
-                    // 1. 检查点击是否在有效内容区域内
-                    if (offset.x < horizontalPaddingPx || offset.x > containerWidth - horizontalPaddingPx ||
-                        offset.y < verticalPaddingPx || offset.y > state.imageContainerSize.height - verticalPaddingPx
-                    ) {
-                        return@detectTapGestures // 点击在 padding 上，不处理
-                    }
+            .then(
+                if(!state.isAddMode){
+                    Modifier.pointerInput(state.mosaicMode, emojisToRender, regionsToRender) {
+                        detectTapGestures { offset ->
+                            // 1. 检查点击是否在有效内容区域内
+                            if (offset.x < horizontalPaddingPx || offset.x > containerWidth - horizontalPaddingPx ||
+                                offset.y < verticalPaddingPx || offset.y > state.imageContainerSize.height - verticalPaddingPx
+                            ) {
+                                return@detectTapGestures // 点击在 padding 上，不处理
+                            }
 
-                    // 2. 将屏幕点击坐标转换为原始图片坐标
-                    val originalTapPoint = PointF(
-                        (offset.x - horizontalPaddingPx) / scale,
-                        (offset.y - verticalPaddingPx) / scale
-                    )
+                            // 2. 将屏幕点击坐标转换为原始图片坐标
+                            val originalTapPoint = PointF(
+                                (offset.x - horizontalPaddingPx) / scale,
+                                (offset.y - verticalPaddingPx) / scale
+                            )
 
-                    // 3. 根据当前模式，遍历并检测点击
-                    if (state.mosaicMode == PreferenceRepository.MOSAIC_MODE_EMOJI) {
-                        // 从上层开始遍历 (因此用 reversed)
-                        val emojiIndex = emojisToRender.indices.reversed().firstOrNull { index ->
-                            val emoji = emojisToRender[index]
-                            // 对圆形来说，旋转不影响点到中心的距离判断
-                            val dx = originalTapPoint.x - emoji.xCenter
-                            val dy = originalTapPoint.y - emoji.yCenter
-                            (dx * dx + dy * dy) < (emoji.diameter / 2).pow(2)
-                        }
-                        if (emojiIndex != null) {
-                            actions.onEmojiCardClick(emojiIndex)
-                        }
-                    } else { // MOSAIC_MODE_BLUR
-                        // 从上层开始遍历
-                        val regionIndex = regionsToRender.indices.reversed().firstOrNull { index ->
-                            val region = regionsToRender[index]
-                            isPointInRotatedEllipse(originalTapPoint, region)
-                        }
-                        if (regionIndex != null) {
-                            actions.onBlurRegionSelected(regionIndex)
+                            // 3. 根据当前模式，遍历并检测点击
+                            if (state.mosaicMode == PreferenceRepository.MOSAIC_MODE_EMOJI) {
+                                // 从上层开始遍历 (因此用 reversed)
+                                val emojiIndex = emojisToRender.indices.reversed().firstOrNull { index ->
+                                    val emoji = emojisToRender[index]
+                                    // 对圆形来说，旋转不影响点到中心的距离判断
+                                    val dx = originalTapPoint.x - emoji.xCenter
+                                    val dy = originalTapPoint.y - emoji.yCenter
+                                    (dx * dx + dy * dy) < (emoji.diameter / 2).pow(2)
+                                }
+                                if (emojiIndex != null) {
+                                    actions.onEmojiCardClick(emojiIndex)
+                                }
+                            } else { // MOSAIC_MODE_BLUR
+                                // 从上层开始遍历
+                                val regionIndex = regionsToRender.indices.reversed().firstOrNull { index ->
+                                    val region = regionsToRender[index]
+                                    isPointInRotatedEllipse(originalTapPoint, region)
+                                }
+                                if (regionIndex != null) {
+                                    actions.onBlurRegionSelected(regionIndex)
+                                }
+                            }
                         }
                     }
-                }
-            }
+                } else { Modifier }
+            )
+
     ) {
 
         when (state.mosaicMode) {

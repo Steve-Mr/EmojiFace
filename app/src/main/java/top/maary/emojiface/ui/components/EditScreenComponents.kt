@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
@@ -590,13 +591,15 @@ fun MosaicModeRow(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun MosaicTypeToolbar() {
+fun MosaicTypeToolbar(
+    onAddBlurRegionClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically) {
-        FloatingActionButton(onClick = {}) { }
-        Spacer(modifier = Modifier.width(8.dp))
+//        FloatingActionButton(onClick = {}) { }
+//        Spacer(modifier = Modifier.width(8.dp))
         HorizontalFloatingToolbar(
             expanded = true,
             content = {
@@ -610,11 +613,13 @@ fun MosaicTypeToolbar() {
                     modifier = Modifier.width(64.dp),
                     onClick = { /* doSomething() */ },
                 ) {
-                    Icon(Icons.Default.Info, contentDescription = "Localized description")
+                    Icon(Icons.Outlined.Add, contentDescription = "Localized description")
                 }
             },
             floatingActionButton = {
-                FloatingActionButton(onClick = {}) { }
+                FloatingActionButton(onClick = onAddBlurRegionClick) {
+                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.add))
+                }
             }
         )
     }
