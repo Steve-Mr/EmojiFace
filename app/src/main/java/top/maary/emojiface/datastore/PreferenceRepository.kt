@@ -38,6 +38,9 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
         val MOSAIC_TYPE = intPreferencesKey("mosaic_type")
         val MOSAIC_TYPE_GAUSSIAN = 0 // 例如：高斯模糊
         val MOSAIC_TYPE_PIXELATED = 1 // 例如：像素化
+        val MOSAIC_TARGET = intPreferencesKey("mosaic_target")
+        const val MOSAIC_TARGET_FACE = 0 // 作用于整个面部
+        const val MOSAIC_TARGET_EYES = 1 // 仅作用于眼部
     }
 
     // 从 DataStore 中读取 emoji 列表（以逗号分隔存储）
@@ -162,6 +165,21 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
             }
         } else {
             throw IllegalArgumentException("Invalid mosaic type: $type")
+        }
+    }
+
+    val mosaicTarget: Flow<Int> = dataStore.data.map { prefs ->
+        prefs[MOSAIC_TARGET] ?: MOSAIC_TARGET_FACE
+    }
+
+    suspend fun setMosaicTarget(target: Int) {
+        if (target == MOSAIC_TARGET_FACE || target == MOSAIC_TARGET_EYES) {
+            // 仅允许设置为已定义的目标
+            dataStore.edit { prefs ->
+                prefs[MOSAIC_TARGET] = target
+            }
+        } else {
+            throw IllegalArgumentException("Invalid mosaic target: $target")
         }
     }
 }
