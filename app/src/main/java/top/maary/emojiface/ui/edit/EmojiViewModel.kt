@@ -69,7 +69,8 @@ data class EditUiState(
     val isTooDeep: Boolean = false,
     val fakeDetections: List<FakeDetection> = emptyList(), // 存储假识别框
     val detectionOutput: DetectionOutput? = null, // 保存原始检测结果
-    val mosaicMode: Int = MOSAIC_MODE_EMOJI, // 新增马赛克模式状态
+    val mosaicMode: Int = MOSAIC_MODE_EMOJI, // 马赛克模式状态
+    val mosaicType: Int = PreferenceRepository.MOSAIC_TYPE_GAUSSIAN,
     val blurRegions: List<BlurRegion> = emptyList()
 )
 
@@ -190,6 +191,11 @@ class EmojiViewModel @Inject constructor(
                         }
                     }
                 }
+            }
+        }
+        viewModelScope.launch {
+            preferenceRepository.mosaicType.collect { type ->
+                _uiState.update { it.copy(mosaicType = type) }
             }
         }
     }
@@ -325,7 +331,13 @@ class EmojiViewModel @Inject constructor(
             }
             MOSAIC_MODE_BLUR -> {
                 val regions = _uiState.value.blurRegions
-                renderMosaicOnBitmapUseCase(base, regions, BlurType.Gaussian).getOrNull()
+                val type = _uiState.value.mosaicType // <-- 从 state 中获取当前类型
+                val blurType = when (type) { // <-- 将 int 转换为 BlurType
+                    PreferenceRepository.MOSAIC_TYPE_PIXELATED -> BlurType.Pixelated
+                    PreferenceRepository.MOSAIC_TYPE_HALFTONE -> BlurType.Halftone
+                    else -> BlurType.Gaussian
+                }
+                renderMosaicOnBitmapUseCase(base, regions, blurType).getOrNull()
             }
             else -> base // 默认返回原图
         }
@@ -861,6 +873,12 @@ class EmojiViewModel @Inject constructor(
         }
     }
 
+    fun setMosaicType(type: Int) {
+        viewModelScope.launch {
+            preferenceRepository.setMosaicType(type)
+        }
+    }
+
     /** Clears the current error message from the state */
     fun clearErrorMessage() {
         _uiState.update { it.copy(errorMessage = null) }
@@ -869,6 +887,38 @@ class EmojiViewModel @Inject constructor(
     /** Clears the current success message from the state */
     fun clearSuccessMessage() {
         _uiState.update { it.copy(successMessage = null) }
+    }
+
+    private fun rerenderBlurEffect(baseBitmap: Bitmap, regions: List<BlurRegion>, type: Int) {
+        viewModelScope.launch {
+            // 将 Int 类型转换为我们定义的 BlurType
+            val blurType = when (type) {
+                PreferenceRepository.MOSAIC_TYPE_PIXELATED -> BlurType.Pixelated
+                PreferenceRepository.MOSAIC_TYPE_HALFTONE -> BlurType.Halftone
+                else -> BlurType.Gaussian
+            }
+
+            // 调用 UseCase 进行渲染
+            renderMosaicOnBitmapUseCase(baseBitmap, regions, blurType).fold(
+                onSuccess = { renderedBitmap ->
+                    // 更新用于显示的 processedBitmap
+                    _uiState.update {
+                        it.copy(
+                            processedBitmap = renderedBitmap,
+                            isRendering = false
+                        )
+                    }
+                },
+                onFailure = { exception ->
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = "Re-rendering failed: ${exception.localizedMessage}",
+                            isRendering = false
+                        )
+                    }
+                }
+            )
+        }
     }
 
     private fun generateFakeDetection(bitmapWidth: Int, bitmapHeight: Int): FakeDetection {

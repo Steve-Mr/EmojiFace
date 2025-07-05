@@ -33,4 +33,7 @@
     <string name="mosaic">Mosaic</string>
     <string name="emoji">Emoji</string>
     <string name="add">Add</string>
+    <string name="gaussian">Gaussian</string>
+    <string name="pixelated">Pixelated</string>
+    <string name="halftone">halftone</string>
 </resources>

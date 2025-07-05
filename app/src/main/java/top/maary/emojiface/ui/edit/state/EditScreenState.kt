@@ -45,5 +45,6 @@ data class EditScreenState(
     val isTooDeep: Boolean = false,
     val fakeDetections: List<FakeDetection> = emptyList(), // 存储假识别框
     val mosaicMode: Int, // 新增马赛克模式状态
+    val mosaicType: Int,
     val blurRegions: List<BlurRegion>
 )

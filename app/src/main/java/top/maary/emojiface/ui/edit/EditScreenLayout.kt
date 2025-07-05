@@ -175,7 +175,11 @@ fun CompactScreenLayout(
                         }
                     }
                 } else {
-                    MosaicTypeToolbar(onAddBlurRegionClick = actions.onAddClicked)
+                    MosaicTypeToolbar(
+                        selectedType = state.mosaicType, // <-- 传递当前选中的类型
+                        onMosaicTypeSelected = actions.onMosaicTypeSelected, // <-- 传递 Action
+                        onAddBlurRegionClick = actions.onAddClicked
+                    )
                 }
             }
 

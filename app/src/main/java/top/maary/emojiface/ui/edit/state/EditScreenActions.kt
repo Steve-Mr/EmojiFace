@@ -79,4 +79,5 @@ data class EditScreenActions(
     val onTooDeepStateChanged: (Boolean) -> Unit,
 
     val onMosaicModeSelected: (Int) -> Unit,
+    val onMosaicTypeSelected: (type: Int) -> Unit,
 )

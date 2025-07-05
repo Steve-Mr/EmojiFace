@@ -35,6 +35,8 @@ import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 import top.maary.emojiface.util.createBlurredRegionBitmap
+import top.maary.emojiface.util.createHalftoneRegionBitmap
+import top.maary.emojiface.util.createPixelatedRegionBitmap
 import top.maary.emojiface.util.isPointInRotatedEllipse
 import kotlin.math.pow
 
@@ -220,7 +222,19 @@ fun EmojiOverlay(
 
                 regionsToRender.forEach { region ->
                     // 1. 调用工具函数获取模糊的小图
-                    val blurredRegionBitmap = createBlurredRegionBitmap(sourceBitmap, region)
+                    val blurredRegionBitmap = when (state.mosaicType) {
+                        PreferenceRepository.MOSAIC_TYPE_PIXELATED -> {
+                             createPixelatedRegionBitmap(sourceBitmap, region) // 待实现
+//                            createBlurredRegionBitmap(sourceBitmap, region) // 暂时回退
+                        }
+                        PreferenceRepository.MOSAIC_TYPE_HALFTONE -> {
+                             createHalftoneRegionBitmap(sourceBitmap, region) // 待实现
+//                            createBlurredRegionBitmap(sourceBitmap, region) // 暂时回退
+                        }
+                        else -> { // 默认为 Gaussian
+                            createBlurredRegionBitmap(sourceBitmap, region)
+                        }
+                    }
 
                     // 2. 计算在屏幕上绘制的目标位置和尺寸
                     val destinationRect = RectF(

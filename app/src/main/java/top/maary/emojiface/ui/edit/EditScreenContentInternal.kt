@@ -198,6 +198,7 @@ fun EditScreenContentInternal(
         isTooDeep = uiState.isTooDeep,
         fakeDetections = uiState.fakeDetections,
         mosaicMode = uiState.mosaicMode,
+        mosaicType = uiState.mosaicType,
         blurRegions = uiState.blurRegions, // 传递 mosaicMode
         editingBlurRegionIndex = uiState.editingBlurRegionIndex,
     )
@@ -265,6 +266,7 @@ fun EditScreenContentInternal(
             onEasterEggStateChanged = { enabled -> viewModel.setEasterEggEnabled(enabled) },
             onTooDeepStateChanged = { enabled -> viewModel.setTooDeepEnabled(enabled) },
             onMosaicModeSelected = { mode -> viewModel.setMosaicMode(mode) },
+            onMosaicTypeSelected = { type -> viewModel.setMosaicType(type) },
             onBlurRegionSelected = { index -> viewModel.selectBlurRegionForEditing(index) },
             onEmojiChange = { emoji -> viewModel.updateEditingEmoji(emoji = emoji) },
             onSizeFactorChange = { factor -> viewModel.updateEditingEmojiSize(factor) },
