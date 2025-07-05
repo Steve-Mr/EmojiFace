@@ -70,9 +70,11 @@ fun SettingsBottomSheetContent(
     isTooDeep: Boolean,
     onTooDeepStateChanged: (Boolean) -> Unit,
     mosaicMode: Int,
-    onMosaicModeSelected: (Int) -> Unit
+    onMosaicModeSelected: (Int) -> Unit,
+    mosaicTarget: Int,
+    onMosaicTargetSelected: (Int) -> Unit
 ) {
-    SettingsItem(if (mosaicMode == PreferenceRepository.MOSAIC_MODE_EMOJI) GroupPosition.TOP else GroupPosition.SINGLE) {
+    SettingsItem(GroupPosition.TOP) {
         MosaicModeRow(
             selectedMode = mosaicMode,
             onModeSelected = onMosaicModeSelected
@@ -112,6 +114,12 @@ fun SettingsBottomSheetContent(
                 onItemClicked = onFontSelected,
                 onAddClick = onAddFontClick,
                 onRemoveClick = { onRemoveFontClick(it) })
+        }
+    } else {
+        SettingsItem(GroupPosition.BOTTOM) { 
+            MosaicTargetRow(
+                selectedTarget = mosaicTarget,
+                onTargetSelected = onMosaicTargetSelected )
         }
     }
     SettingsItem(GroupPosition.SINGLE) {
@@ -162,7 +170,9 @@ fun SettingsSideSheetContent(
     isTooDeep: Boolean,
     onTooDeepStateChanged: (Boolean) -> Unit,
     mosaicMode: Int,
-    onMosaicModeSelected: (Int) -> Unit
+    onMosaicModeSelected: (Int) -> Unit,
+    mosaicTarget: Int,
+    onMosaicTargetSelected: (Int) -> Unit
 ) {
     Column(
         modifier = Modifier.padding(
@@ -172,75 +182,28 @@ fun SettingsSideSheetContent(
             )
         )
     ) {
-        SettingsItem(position = GroupPosition.TOP) {
-            MosaicModeRow(
-                selectedMode = mosaicMode,
-                onModeSelected = onMosaicModeSelected
-            )
-        }
-        if (mosaicMode == PreferenceRepository.MOSAIC_MODE_EMOJI) {
-            SettingsItem(GroupPosition.MIDDLE) {
-                Column {
-                    Text(
-                        modifier = Modifier.padding(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 8.dp,
-                            bottom = 0.dp
-                        ),
-                        text = stringResource(R.string.emoji_list),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (!isEditingEmojiList) {
-                        PredefinedEmojiSettings(
-                            emojiOptions = emojiOptions,
-                            onClick = onEditClick,
-                            fontFamily = fontFamily
-                        )
-                    } else {
-                        EditEmojiList(
-                            emojiOptions = emojiOptions,
-                            onClick = onEditConfirm,
-                            fontFamily = fontFamily
-                        )
-                    }
-                }
-            }
-            SettingsItem(GroupPosition.BOTTOM) {
-                DropdownRow(
-                    options = availableFontNames.toMutableList(),
-                    position = selectedFontIndex,
-                    onItemClicked = onFontSelected,
-                    onAddClick = onAddFontClick,
-                    onRemoveClick = { onRemoveFontClick(it) })
-            }
-        }
-
-        SettingsItem(GroupPosition.SINGLE) {
-            HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
-        }
-
-        if (isEasterEggEnabled) {
-            SettingsItem(GroupPosition.TOP) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.too_deep),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Switch(checked = isTooDeep, onCheckedChange = onTooDeepStateChanged)
-                }
-            }
-        }
-
-        SettingsItem(if (isEasterEggEnabled) GroupPosition.BOTTOM else GroupPosition.SINGLE) {
-            AboutRow { onEasterEggStateChanged(it) }
-        }
+        SettingsBottomSheetContent(
+            emojiOptions = emojiOptions,
+            isEditingEmojiList = isEditingEmojiList,
+            fontFamily = fontFamily,
+            isAppIconHidden = isAppIconHidden,
+            availableFontNames = availableFontNames,
+            selectedFontIndex = selectedFontIndex,
+            onEditClick = onEditClick,
+            onEditConfirm = onEditConfirm,
+            onHideIconToggle = onHideIconToggle,
+            onFontSelected = onFontSelected,
+            onAddFontClick = onAddFontClick,
+            onRemoveFontClick = onRemoveFontClick,
+            isEasterEggEnabled = isEasterEggEnabled,
+            onEasterEggStateChanged = onEasterEggStateChanged,
+            isTooDeep = isTooDeep,
+            onTooDeepStateChanged = onTooDeepStateChanged,
+            mosaicMode = mosaicMode,
+            onMosaicModeSelected = onMosaicModeSelected,
+            mosaicTarget = mosaicTarget,
+            onMosaicTargetSelected = onMosaicTargetSelected
+        )
 
         Spacer(Modifier.height(WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()))
     }
@@ -601,6 +564,8 @@ fun SideSheetContent(
             onEasterEggStateChanged = actions.onEasterEggStateChanged,
             mosaicMode = state.mosaicMode,
             onMosaicModeSelected = actions.onMosaicModeSelected,
+            mosaicTarget = state.mosaicTarget,
+            onMosaicTargetSelected = actions.onMosaicTargetSelected
         )
     }
 }

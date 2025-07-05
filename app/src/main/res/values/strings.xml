@@ -36,4 +36,7 @@
     <string name="gaussian">Gaussian</string>
     <string name="pixelated">Pixelated</string>
     <string name="halftone">halftone</string>
+    <string name="face">Face</string>
+    <string name="eyes">Eyes</string>
+    <string name="mosaic_target">Target</string>
 </resources>

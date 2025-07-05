@@ -277,7 +277,9 @@ fun CompactScreenLayout(
                 isTooDeep = state.isTooDeep,
                 onTooDeepStateChanged = actions.onTooDeepStateChanged,
                 mosaicMode = state.mosaicMode,
-                onMosaicModeSelected = actions.onMosaicModeSelected
+                onMosaicModeSelected = actions.onMosaicModeSelected,
+                mosaicTarget = state.mosaicTarget,
+                onMosaicTargetSelected = actions.onMosaicTargetSelected
             )
         }
     }

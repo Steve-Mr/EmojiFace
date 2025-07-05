@@ -71,6 +71,7 @@ data class EditUiState(
     val detectionOutput: DetectionOutput? = null, // 保存原始检测结果
     val mosaicMode: Int = MOSAIC_MODE_EMOJI, // 马赛克模式状态
     val mosaicType: Int = PreferenceRepository.MOSAIC_TYPE_GAUSSIAN,
+    val mosaicTarget: Int = PreferenceRepository.MOSAIC_TARGET_FACE,
     val blurRegions: List<BlurRegion> = emptyList()
 )
 
@@ -156,29 +157,28 @@ class EmojiViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            preferenceRepository.mosaicMode.collect { newMode ->
+            combine(
+                preferenceRepository.mosaicMode,
+                preferenceRepository.mosaicTarget
+            ) { mode, target ->
+                mode to target // 将两个 Flow 的最新值合并成一个 Pair
+            }.collect { (mode, target) ->
                 _uiState.update { it.copy(isProcessing = true) }
-                // --- START: 防抖逻辑 ---
 
-                // 2. 取消上一个还未执行的更新任务
                 mosaicModeUpdateJob?.cancel()
-
-                // 3. 启动一个新的协程，并持有它的 Job
                 mosaicModeUpdateJob = viewModelScope.launch {
-                    // 4. 等待 200 毫秒。如果在此期间有新的模式切换，这个协程会被取消
-                    delay(200L)
+                    delay(200L) // 防抖
 
-                    // 只有在用户停止切换 200 毫秒后，才会执行以下逻辑
                     val currentState = _uiState.value
-                    _uiState.update { it.copy(mosaicMode = newMode) }
+                    // 同时更新 mode 和 target
+                    _uiState.update { it.copy(mosaicMode = mode, mosaicTarget = target) }
 
                     if (currentState.originalBitmap != null && currentState.detectionOutput != null) {
-                        when (newMode) {
+                        when (mode) {
                             MOSAIC_MODE_EMOJI -> {
                                 _uiState.update { it.copy(blurRegions = emptyList()) }
                                 calculateEmojiPositions(currentState.detectionOutput)
                             }
-
                             MOSAIC_MODE_BLUR -> {
                                 _uiState.update {
                                     it.copy(
@@ -186,9 +186,12 @@ class EmojiViewModel @Inject constructor(
                                         editingEmoji = null
                                     )
                                 }
+                                // 将 target 传递给计算函数
                                 calculateBlurRegions(currentState.detectionOutput)
                             }
                         }
+                    } else {
+                        _uiState.update { it.copy(isProcessing = false) }
                     }
                 }
             }
@@ -300,7 +303,8 @@ class EmojiViewModel @Inject constructor(
 
     private fun calculateBlurRegions(detectionOutput: DetectionOutput) {
         viewModelScope.launch {
-            calculateBlurRegionsUseCase(detectionOutput).fold(
+            val target = _uiState.value.mosaicTarget
+            calculateBlurRegionsUseCase(detectionOutput, target).fold(
                 onSuccess = { regions ->
                     _uiState.update {
                         it.copy(
@@ -656,6 +660,12 @@ class EmojiViewModel @Inject constructor(
                 editingEmojiIndex = null,
                 editingEmoji = null
             )
+        }
+    }
+
+    fun setMosaicTarget(target: Int) {
+        viewModelScope.launch {
+            preferenceRepository.setMosaicTarget(target)
         }
     }
 

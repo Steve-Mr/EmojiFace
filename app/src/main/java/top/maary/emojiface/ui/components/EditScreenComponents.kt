@@ -33,6 +33,8 @@ import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Done
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.TagFaces
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.rounded.SaveAlt
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
@@ -96,6 +98,8 @@ import top.maary.emojiface.BuildConfig
 import top.maary.emojiface.R
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TARGET_EYES
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TARGET_FACE
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TYPE_GAUSSIAN
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TYPE_HALFTONE
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TYPE_PIXELATED
@@ -597,15 +601,53 @@ fun MosaicModeRow(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
+fun MosaicTargetRow(
+    selectedTarget: Int,
+    onTargetSelected: (Int) -> Unit
+){
+    val mosaicTargets = listOf(
+        Triple(MOSAIC_TARGET_FACE, Icons.Outlined.TagFaces, R.string.face),
+        Triple(MOSAIC_TARGET_EYES, Icons.Outlined.Visibility, R.string.eyes),
+    )
+
+    Row (
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically){
+        Text(
+            text = stringResource(R.string.mosaic_target),
+            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+            style = Typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.weight(1f)) // 占位符，推送文本到左侧
+        mosaicTargets.forEachIndexed { index, (target, icon, stringRes) ->
+            ToggleButton (
+                checked = selectedTarget == target,
+                onCheckedChange = { if (it) onTargetSelected(target) },
+                shapes =
+                    when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        mosaicTargets.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+            ) {
+                Text(text = stringResource(stringRes))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
 fun MosaicTypeToolbar(
     selectedType: Int,                      // <-- 接收当前选中的类型
     onMosaicTypeSelected: (Int) -> Unit,    // <-- 接收类型选择的 Action
     onAddBlurRegionClick: () -> Unit
 ) {
     val mosaicTypes = listOf(
-        MOSAIC_TYPE_GAUSSIAN to R.drawable.gaussian,
-        MOSAIC_TYPE_PIXELATED to R.drawable.pixelated,
-        MOSAIC_TYPE_HALFTONE to R.drawable.halftone
+        Triple(MOSAIC_TYPE_GAUSSIAN, R.drawable.gaussian, R.string.gaussian),
+        Triple(MOSAIC_TYPE_PIXELATED, R.drawable.pixelated, R.string.pixelated),
+        Triple(MOSAIC_TYPE_HALFTONE, R.drawable.halftone, R.string.halftone)
     )
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -616,7 +658,7 @@ fun MosaicTypeToolbar(
             expanded = true,
             content = {
                 // 使用循环来创建按钮，代码更简洁且易于扩展
-                mosaicTypes.forEach { (type, iconRes) ->
+                mosaicTypes.forEachIndexed { index, (type, iconRes, stringRes) ->
                     // 根据是否被选中来决定按钮的外观
                     val isSelected = selectedType == type
                     val containerColor = if (isSelected) {
@@ -640,7 +682,7 @@ fun MosaicTypeToolbar(
                     ) {
                         Icon(
                             painter = painterResource(id = iconRes),
-                            contentDescription = "Mosaic Type $type" // Accessibility
+                            contentDescription = stringResource(id = stringRes)
                         )
                     }
                 }
@@ -654,56 +696,6 @@ fun MosaicTypeToolbar(
     }
 
 }
-
-//@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-//@Composable
-//fun MosaicTypeToolbar(
-//    selectedType: Int,                      // <-- 接收当前选中的类型
-//    onMosaicTypeSelected: (Int) -> Unit,    // <-- 接收类型选择的 Action
-//    onAddBlurRegionClick: () -> Unit
-//) {
-//    val mosaicTypes = listOf(
-//        Triple(MOSAIC_TYPE_GAUSSIAN, R.drawable.gaussian, R.string.gaussian),
-//        Triple(MOSAIC_TYPE_PIXELATED, R.drawable.pixelated, R.string.pixelated),
-//        Triple(MOSAIC_TYPE_HALFTONE, R.drawable.halftone, R.string.halftone)
-//    )
-//    Row(
-//        modifier = Modifier.fillMaxWidth(),
-//        horizontalArrangement = Arrangement.Center,
-//        verticalAlignment = Alignment.CenterVertically) {
-//        HorizontalFloatingToolbar(
-//            expanded = true,
-//            content = {
-//                // 使用循环来创建按钮，代码更简洁且易于扩展
-//                mosaicTypes.forEachIndexed { index, (type, iconRes, stringRes) ->
-//                    val isSelected = selectedType == type
-//
-//                    ToggleButton(
-//                        checked = isSelected,
-//                        onCheckedChange = { onMosaicTypeSelected(type) },
-//                        modifier = Modifier.width(64.dp),
-//                        shapes = when (index) {
-//                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-//                            mosaicTypes.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
-//                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
-//                        }
-//                    ) {
-//                        Icon(
-//                            painter = painterResource(id = iconRes),
-//                            contentDescription = stringResource(id = stringRes)
-//                        )
-//                    }
-//                }
-//            },
-//            floatingActionButton = {
-//                FloatingActionButton(onClick = onAddBlurRegionClick) {
-//                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.add))
-//                }
-//            }
-//        )
-//    }
-//
-//}
 
 enum class GroupPosition {
     TOP,    // 顶部

@@ -44,7 +44,8 @@ data class EditScreenState(
     val isEasterEggEnabled: Boolean = false,
     val isTooDeep: Boolean = false,
     val fakeDetections: List<FakeDetection> = emptyList(), // 存储假识别框
-    val mosaicMode: Int, // 新增马赛克模式状态
+    val mosaicMode: Int, // 马赛克模式状态
     val mosaicType: Int,
+    val mosaicTarget: Int,
     val blurRegions: List<BlurRegion>
 )

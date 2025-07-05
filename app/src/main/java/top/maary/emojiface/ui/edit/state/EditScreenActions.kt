@@ -80,4 +80,5 @@ data class EditScreenActions(
 
     val onMosaicModeSelected: (Int) -> Unit,
     val onMosaicTypeSelected: (type: Int) -> Unit,
+    val onMosaicTargetSelected: (Int) -> Unit
 )
