@@ -1,6 +1,9 @@
 package top.maary.emojiface.util
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import java.io.ByteArrayInputStream
@@ -293,3 +296,136 @@ fun createBlurredRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface.
     // 7. 返回最终的、内容已经旋转好并模糊过的位图
     return blurredChunk
 }
+
+/**
+ * 从源位图中裁剪指定区域，应用【像素化】效果，并返回处理后的小块位图。
+ *
+ * @param sourceBitmap 原始的、未经修改的完整位图。
+ * @param region 需要处理的区域，包含位置、大小和角度信息。
+ * @return 一个只包含像素化后区域的新的、小尺寸的位图。
+ */
+fun createPixelatedRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface.ui.edit.model.BlurRegion): Bitmap {
+    // 步骤 1: 像高斯模糊一样，先提取出旋转对齐的、未经处理的区域内容。
+    // 这部分代码与 createBlurredRegionBitmap 完全一致，确保了逻辑的统一。
+    val rect = region.rect
+    if (rect.width() <= 0 || rect.height() <= 0) return createBitmap(1, 1)
+
+    val unblurredChunk = createBitmap(rect.width().toInt(), rect.height().toInt(), Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(unblurredChunk)
+    canvas.rotate(-region.angle, rect.width() / 2f, rect.height() / 2f)
+    canvas.translate(-rect.left, -rect.top)
+    canvas.drawBitmap(sourceBitmap, 0f, 0f, null)
+
+    // 步骤 2: 对提取出的内容进行像素化处理。
+    // 根据区域大小决定像素块的大小，确保效果协调。尺寸越大，像素块也越大。
+    val pixelSize = (rect.width() / 20f).coerceIn(10f, 40f).toInt()
+
+    // 2a. 极度缩小图片，尺寸为原始尺寸除以像素块大小。
+    val tinyBitmap = unblurredChunk.scale(
+        (unblurredChunk.width / pixelSize).coerceAtLeast(1),
+        (unblurredChunk.height / pixelSize).coerceAtLeast(1),
+        filter = false // 使用 filter = false (最近邻插值) 是像素化效果的关键
+    )
+
+    // 2b. 将极小的图片再放大回原始尺寸，同样使用最近邻插值。
+    val pixelatedChunk = tinyBitmap.scale(unblurredChunk.width, unblurredChunk.height, filter = false)
+
+    // 步骤 3: 释放中间创建的位图内存。
+    unblurredChunk.recycle()
+    tinyBitmap.recycle()
+
+    // 步骤 4: 返回最终的、内容已经像素化过的位图。
+    return pixelatedChunk
+}
+
+/**
+ * 从源位图中裁剪指定区域，应用【半色调网点】效果，并返回处理后的小块位图。
+ *
+ * @param sourceBitmap 原始的、未经修改的完整位图。
+ * @param region 需要处理的区域，包含位置、大小和角度信息。
+ * @return 一个只包含半色调效果区域的新的、小尺寸的位图。
+ */
+fun createHalftoneRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface.ui.edit.model.BlurRegion): Bitmap {
+    // 步骤 1: 提取旋转对齐的、未经处理的区域内容 (逻辑不变)。
+    val rect = region.rect
+    if (rect.width() <= 0 || rect.height() <= 0) return createBitmap(1, 1)
+
+    val unblurredChunk = createBitmap(rect.width().toInt(), rect.height().toInt(), Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(unblurredChunk)
+    canvas.rotate(-region.angle, rect.width() / 2f, rect.height() / 2f)
+    canvas.translate(-rect.left, -rect.top)
+    canvas.drawBitmap(sourceBitmap, 0f, 0f, null)
+
+    // 步骤 2: 创建一个临时位图，用于绘制由平均色组成的“色块背景”。
+    val blockyBitmap = createBitmap(unblurredChunk.width, unblurredChunk.height, Bitmap.Config.ARGB_8888)
+    val blockyCanvas = Canvas(blockyBitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG) // 复用画笔
+    val cellSize = (rect.width() / 25f).coerceIn(15f, 35f).toInt()
+
+    // 步骤 3: 遍历并填充“色块背景” (逻辑基本不变)。
+    for (y in 0 until unblurredChunk.height step cellSize) {
+        for (x in 0 until unblurredChunk.width step cellSize) {
+            // --- 计算单元格内的平均颜色 (逻辑不变) ---
+            var totalRed = 0L; var totalGreen = 0L; var totalBlue = 0L; var pixelCount = 0
+            val endX = (x + cellSize).coerceAtMost(unblurredChunk.width)
+            val endY = (y + cellSize).coerceAtMost(unblurredChunk.height)
+            for (py in y until endY) {
+                for (px in x until endX) {
+                    val pixel = unblurredChunk.getPixel(px, py)
+                    totalRed += Color.red(pixel); totalGreen += Color.green(pixel); totalBlue += Color.blue(pixel)
+                    pixelCount++
+                }
+            }
+            if (pixelCount == 0) continue
+            val avgColor = Color.rgb((totalRed / pixelCount).toInt(), (totalGreen / pixelCount).toInt(), (totalBlue / pixelCount).toInt())
+
+            // 用平均色填充矩形
+            paint.color = avgColor
+            paint.style = Paint.Style.FILL
+            blockyCanvas.drawRect(x.toFloat(), y.toFloat(), (x + cellSize).toFloat(), (y + cellSize).toFloat(), paint)
+        }
+    }
+
+    // **--- 步骤 4:【核心新增】对整个“色块背景”应用一次模糊，实现平滑过渡 ---**
+    // 模糊半径与单元格大小成正比，效果更佳
+    val blurRadius = (cellSize * 0.7f).toInt().coerceAtLeast(1)
+    val finalBitmap = applyStackBlur(blockyBitmap, blurRadius)
+    // 此时 finalBitmap 已经是我们想要的、色彩平滑过渡的背景了
+    blockyBitmap.recycle() // 释放临时的色块位图
+
+    // 步骤 5: 在这个平滑的背景之上，再绘制质感圆点。
+    val finalCanvas = Canvas(finalBitmap)
+    // (此处重用之前的循环和计算逻辑，但只用于获取信息，并绘制圆点)
+    for (y in 0 until unblurredChunk.height step cellSize) {
+        for (x in 0 until unblurredChunk.width step cellSize) {
+            // --- 重新计算平均颜色和亮度，仅为获取圆点信息 ---
+            var totalRed = 0L; var totalGreen = 0L; var totalBlue = 0L; var pixelCount = 0
+            val endX = (x + cellSize).coerceAtMost(unblurredChunk.width)
+            val endY = (y + cellSize).coerceAtMost(unblurredChunk.height)
+            for (py in y until endY) {
+                for (px in x until endX) {
+                    val pixel = unblurredChunk.getPixel(px, py)
+                    totalRed += Color.red(pixel); totalGreen += Color.green(pixel); totalBlue += Color.blue(pixel)
+                    pixelCount++
+                }
+            }
+            if (pixelCount == 0) continue
+            val avgRed = (totalRed / pixelCount).toInt(); val avgGreen = (totalGreen / pixelCount).toInt(); val avgBlue = (totalBlue / pixelCount).toInt()
+
+            // 绘制圆点逻辑 (与您提供的代码一致)
+            val brightness = (avgRed * 0.299 + avgGreen * 0.587 + avgBlue * 0.114) / 255.0
+            val radius = (brightness * cellSize * 0.5).toFloat()
+            val darkerColor = Color.rgb((avgRed * 0.8).toInt(), (avgGreen * 0.8).toInt(), (avgBlue * 0.8).toInt())
+            paint.color = darkerColor
+            finalCanvas.drawCircle(x + cellSize / 2f, y + cellSize / 2f, radius, paint)
+        }
+    }
+
+    // 步骤 6: 释放中间位图 (逻辑不变)。
+    unblurredChunk.recycle()
+
+    // 步骤 7: 返回最终效果。
+    return finalBitmap
+}
+
+

@@ -33,11 +33,12 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
         val EASTER_EGG = booleanPreferencesKey("easter_egg_enabled")
         val IS_TOO_DEEP = booleanPreferencesKey("is_too_deep")
         val MOSAIC_MODE = intPreferencesKey("mosaic_mode")
-        val MOSAIC_MODE_EMOJI = 0
-        val MOSAIC_MODE_BLUR = 1
+        const val MOSAIC_MODE_EMOJI = 0
+        const val MOSAIC_MODE_BLUR = 1
         val MOSAIC_TYPE = intPreferencesKey("mosaic_type")
-        val MOSAIC_TYPE_GAUSSIAN = 0 // 例如：高斯模糊
-        val MOSAIC_TYPE_PIXELATED = 1 // 例如：像素化
+        const val MOSAIC_TYPE_GAUSSIAN = 0  // 高斯模糊
+        const val MOSAIC_TYPE_PIXELATED = 1 // 像素化
+        const val MOSAIC_TYPE_HALFTONE = 2  // 半色调网点效果
         val MOSAIC_TARGET = intPreferencesKey("mosaic_target")
         const val MOSAIC_TARGET_FACE = 0 // 作用于整个面部
         const val MOSAIC_TARGET_EYES = 1 // 仅作用于眼部
@@ -158,7 +159,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
     }
 
     suspend fun setMosaicType(type: Int) {
-        if (type == MOSAIC_TYPE_GAUSSIAN || type == MOSAIC_TYPE_PIXELATED) {
+        if (type == MOSAIC_TYPE_GAUSSIAN || type == MOSAIC_TYPE_PIXELATED || type == MOSAIC_TYPE_HALFTONE) {
             // 仅允许设置为已定义的类型
             dataStore.edit { prefs ->
                 prefs[MOSAIC_TYPE] = type
