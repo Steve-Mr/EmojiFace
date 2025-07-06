@@ -513,6 +513,25 @@ fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
     }
 }
 
+@Composable
+fun EasterEggRow(
+    isTooDeep: Boolean,
+    onTooDeepStateChanged: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextContent(title = stringResource(R.string.too_deep), description = stringResource(R.string.too_deep_description))
+        Spacer(modifier = Modifier.weight(1f))
+        Tooltip(tooltipText = stringResource(R.string.just_kidding))
+        Switch(checked = isTooDeep, onCheckedChange = onTooDeepStateChanged)
+    }
+}
+
 
 @Composable
 fun AboutRow(onEasterEggStateChanged: (Boolean) -> Unit) {
@@ -522,8 +541,7 @@ fun AboutRow(onEasterEggStateChanged: (Boolean) -> Unit) {
     var job by remember {
         mutableStateOf<Job?>(null)
     }
-    Row (modifier = Modifier
-        .fillMaxWidth()
+    Row (modifier = Modifier.fillMaxWidth()
         .combinedClickable(
             onClick = {
                 Log.e("AboutRow", "onClick: $clickCount")
@@ -543,8 +561,20 @@ fun AboutRow(onEasterEggStateChanged: (Boolean) -> Unit) {
                 }
             },
             onLongClick = {  onEasterEggStateChanged(false) })
-        .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 16.dp)){
-        TextContent(title = stringResource(id = R.string.app_name), description = BuildConfig.VERSION_NAME)
+        .padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(ButtonDefaults.MinHeight),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(id = R.string.app_name),
+                modifier = Modifier
+            )
+            Text(
+                BuildConfig.VERSION_NAME,
+                style = Typography.bodySmall,
+            )
+        }
     }
 }
 
@@ -553,12 +583,10 @@ fun TextContent(modifier: Modifier = Modifier, title: String, description: Strin
     Column(modifier = modifier){
         Text(
             title,
-            style = Typography.titleLarge
         )
         Text(
             description,
             style = Typography.bodySmall,
-            maxLines = 5
         )
     }
 }
@@ -579,8 +607,6 @@ fun MosaicModeRow(
         verticalAlignment = Alignment.CenterVertically){
         Text(
             text = stringResource(R.string.mosaic_mode),
-            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
-            style = Typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.weight(1f)) // 占位符，推送文本到左侧
@@ -617,8 +643,6 @@ fun MosaicTargetRow(
         verticalAlignment = Alignment.CenterVertically){
         Text(
             text = stringResource(R.string.mosaic_target),
-            modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
-            style = Typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.weight(1f)) // 占位符，推送文本到左侧
@@ -721,7 +745,6 @@ fun MosaicTypeBlock(
             horizontalAlignment = Alignment.CenterHorizontally,
 
             ) {
-//        FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
 
             // 使用循环来创建按钮，代码更简洁且易于扩展
             mosaicTypes.forEachIndexed { index, (type, iconRes, stringRes) ->

@@ -21,11 +21,24 @@
     <string name="process_result">处理结果</string>
     <string name="change_emoji">更改表情</string>
     <string name="new_emoji">新表情</string>
-    <string name="emoji_size">表情大小</string>
+    <string name="emoji_size">大小</string>
     <string name="emoji_angle">旋转角度</string>
     <string name="created_by">此照片经过 FaceMoji 编辑。</string>
     <string name="emoji_list">Emoji 列表</string>
     <string name="emoji_font">Emoji 字体</string>
     <string name="confirm_delete_title">确认删除</string>
     <string name="confirm_delete_message">您确定要删除这个表情符号吗？</string>
+    <string name="too_deep">深度识别</string>
+    <string name="too_deep_description">（太深了）</string>
+    <string name="just_kidding">开个玩笑</string>
+    <string name="mosaic_mode">遮挡模式</string>
+    <string name="mosaic">模糊</string>
+    <string name="emoji">Emoji</string>
+    <string name="add">添加</string>
+    <string name="gaussian">高斯模糊</string>
+    <string name="pixelated">像素化</string>
+    <string name="halftone">半色调</string>
+    <string name="face">面部</string>
+    <string name="eyes">眼部</string>
+    <string name="mosaic_target">目标</string>
 </resources>

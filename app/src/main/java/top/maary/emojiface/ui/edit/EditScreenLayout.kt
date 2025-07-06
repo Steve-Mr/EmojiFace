@@ -303,8 +303,10 @@ fun LargeScreenLayout(
     val sideSheetColor by animateColorAsState(
         targetValue = if (isSliding) {
             MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f)
-        } else {
+        } else if (editingEmoji != null){
             MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLowest
         },
         label = "SideSheetColorAnimation"
     )

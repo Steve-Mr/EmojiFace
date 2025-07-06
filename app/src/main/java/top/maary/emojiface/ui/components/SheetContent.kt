@@ -1,5 +1,15 @@
 package top.maary.emojiface.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -26,7 +36,6 @@ import androidx.compose.material.icons.outlined.Rotate90DegreesCw
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -74,79 +83,127 @@ fun SettingsBottomSheetContent(
     mosaicTarget: Int,
     onMosaicTargetSelected: (Int) -> Unit
 ) {
-    SettingsItem(GroupPosition.TOP) {
-        MosaicModeRow(
-            selectedMode = mosaicMode,
-            onModeSelected = onMosaicModeSelected
-        )
-    }
-    if (mosaicMode == PreferenceRepository.MOSAIC_MODE_EMOJI) {
-        SettingsItem(position = GroupPosition.MIDDLE) {
-            Column {
-                Text(
-                    modifier = Modifier.padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 8.dp,
-                        bottom = 0.dp
-                    ),
-                    text = stringResource(R.string.emoji_list)
+    LazyColumn(
+        modifier = Modifier.animateContentSize() // ✨ 添加这一行
+    ) {
+        item {
+            SettingsItem(GroupPosition.TOP) {
+                MosaicModeRow(
+                    selectedMode = mosaicMode,
+                    onModeSelected = onMosaicModeSelected
                 )
-                if (!isEditingEmojiList) {
-                    PredefinedEmojiSettings(
-                        emojiOptions = emojiOptions,
-                        onClick = onEditClick,
-                        fontFamily = fontFamily
+            }
+        }
+        item {
+            AnimatedContent(
+                targetState = mosaicMode,
+                label = "MosaicModeAnimation",
+                transitionSpec = {
+                    // 定义动画规格
+                    // 退出动画：向下滑出 + 淡出，持续 300ms
+                    val exitTransition = slideOutVertically { height -> height } + fadeOut(
+                        animationSpec = tween(300)
                     )
+                    // 进入动画：从下方滑入 + 淡入，持续 300ms，但延迟 300ms 开始
+                    val enterTransition = slideInVertically { height -> height } + fadeIn(
+                        animationSpec = tween(300, delayMillis = 300)
+                    )
+
+                    // 将进入和退出动画组合起来，并应用平滑的尺寸变化
+                    (enterTransition togetherWith exitTransition).using(
+                        // SizeTransform 确保容器尺寸平滑变化，不会出现内容被裁剪或跳变的问题
+                        SizeTransform(clip = true)
+                    )
+                }
+            ) { targetMode ->
+                if (targetMode == PreferenceRepository.MOSAIC_MODE_EMOJI) {
+                    Column {
+                        SettingsItem(position = GroupPosition.MIDDLE) {
+                            Column {
+                                Text(
+                                    modifier = Modifier.padding(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 8.dp,
+                                        bottom = 0.dp
+                                    ),
+                                    text = stringResource(R.string.emoji_list)
+                                )
+                                if (!isEditingEmojiList) {
+                                    PredefinedEmojiSettings(
+                                        emojiOptions = emojiOptions,
+                                        onClick = onEditClick,
+                                        fontFamily = fontFamily
+                                    )
+                                } else {
+                                    EditEmojiList(
+                                        emojiOptions = emojiOptions,
+                                        onClick = onEditConfirm,
+                                        fontFamily = fontFamily
+                                    )
+                                }
+                            }
+                        }
+                        SettingsItem(GroupPosition.BOTTOM) {
+                            DropdownRow(
+                                options = availableFontNames.toMutableList(),
+                                position = selectedFontIndex,
+                                onItemClicked = onFontSelected,
+                                onAddClick = onAddFontClick,
+                                onRemoveClick = { onRemoveFontClick(it) })
+                        }
+                    }
                 } else {
-                    EditEmojiList(
-                        emojiOptions = emojiOptions,
-                        onClick = onEditConfirm,
-                        fontFamily = fontFamily
+                    SettingsItem(GroupPosition.BOTTOM) {
+                        MosaicTargetRow(
+                            selectedTarget = mosaicTarget,
+                            onTargetSelected = onMosaicTargetSelected
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        item {
+            SettingsItem(GroupPosition.SINGLE) {
+                HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        item {
+            AnimatedVisibility(
+                visible = isEasterEggEnabled,
+                // 定义进入动画：从下方滑入并淡入
+                enter = slideInVertically { it } + fadeIn(),
+                // 定义退出动画：向下方滑出并淡出
+                exit = slideOutVertically { it } + fadeOut()
+            ) {
+                SettingsItem(GroupPosition.TOP) {
+                    EasterEggRow(
+                        isTooDeep = isTooDeep,
+                        onTooDeepStateChanged = onTooDeepStateChanged
                     )
                 }
             }
         }
-        SettingsItem(GroupPosition.BOTTOM) {
-            DropdownRow(
-                options = availableFontNames.toMutableList(),
-                position = selectedFontIndex,
-                onItemClicked = onFontSelected,
-                onAddClick = onAddFontClick,
-                onRemoveClick = { onRemoveFontClick(it) })
-        }
-    } else {
-        SettingsItem(GroupPosition.BOTTOM) { 
-            MosaicTargetRow(
-                selectedTarget = mosaicTarget,
-                onTargetSelected = onMosaicTargetSelected )
-        }
-    }
-    SettingsItem(GroupPosition.SINGLE) {
-        HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
-    }
 
-     if (isEasterEggEnabled) {
-         SettingsItem(GroupPosition.TOP) {
-             Row(
-                 modifier = Modifier
-                     .fillMaxWidth()
-                     .padding(8.dp),
-                 horizontalArrangement = Arrangement.SpaceBetween,
-                 verticalAlignment = Alignment.CenterVertically
-             ) {
-                 Text(
-                     text = stringResource(R.string.too_deep),
-                     color = MaterialTheme.colorScheme.onSurface
-                 )
-                 Tooltip(tooltipText = stringResource(R.string.just_kidding))
-                 Switch(checked = isTooDeep, onCheckedChange = onTooDeepStateChanged)
-             }
-         }
-     }
+        item {
+            SettingsItem(if (isEasterEggEnabled) GroupPosition.BOTTOM else GroupPosition.SINGLE) {
+                AboutRow { onEasterEggStateChanged(it) }
+            }
+        }
 
-    SettingsItem(if (isEasterEggEnabled) GroupPosition.BOTTOM else GroupPosition.SINGLE) {
-        AboutRow { onEasterEggStateChanged(it) }
+        item {
+            Spacer(Modifier.height(WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()))
+        }
     }
 
 }
