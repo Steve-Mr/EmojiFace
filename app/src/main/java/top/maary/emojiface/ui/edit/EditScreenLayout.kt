@@ -50,11 +50,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import top.maary.emojiface.R
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
 import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
 import top.maary.emojiface.ui.components.EmojiCard
+import top.maary.emojiface.ui.components.MosaicTypeBlock
 import top.maary.emojiface.ui.components.MosaicTypeToolbar
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
 import top.maary.emojiface.ui.components.SideSheetContent
@@ -401,39 +403,51 @@ fun LargeScreenLayout(
                             modifier = Modifier.fillMaxHeight(), // Column fills the card height
                             verticalArrangement = Arrangement.SpaceBetween // Pushes grid up and buttons down
                         ) {
-                            // --- Emoji Grid ---
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
-                                modifier = Modifier.weight(1f) // Grid takes available space
-                            ) {
-                                itemsIndexed(
-                                    items = state.emojiDetections,
-                                    key = { _, item -> item.id } // key 使用 item 的唯一 id
-                                ) { index, detection ->
-                                    EmojiCard(
-                                        modifier = Modifier.animateItem(),
-                                        emoji = detection.emoji,
-                                        onClick = { actions.onEmojiCardClick(index) },
-                                        onLongClick = { actions.onEmojiCardLongClick(index) },
-                                        fontFamily = state.fontFamily,
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        hPadding = 8.dp,
-                                        vPadding = 8.dp
-                                    )
-                                }
-                                // Show Add button only if an image is present
-                                if (state.displayedBitmap != null) {
-                                    item {
+                            if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
+                                // --- Emoji Grid ---
+                                LazyVerticalGrid(
+                                    columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
+                                    modifier = Modifier.weight(1f) // Grid takes available space
+                                ) {
+                                    itemsIndexed(
+                                        items = state.emojiDetections,
+                                        key = { _, item -> item.id } // key 使用 item 的唯一 id
+                                    ) { index, detection ->
                                         EmojiCard(
-                                            emoji = "➕",
-                                            onClick = actions.onAddClicked, // Use action
-                                            clickable = true,
+                                            modifier = Modifier.animateItem(),
+                                            emoji = detection.emoji,
+                                            onClick = { actions.onEmojiCardClick(index) },
+                                            onLongClick = { actions.onEmojiCardLongClick(index) },
                                             fontFamily = state.fontFamily,
                                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                             hPadding = 8.dp,
                                             vPadding = 8.dp
                                         )
                                     }
+                                    // Show Add button only if an image is present
+                                    if (state.displayedBitmap != null) {
+                                        item {
+                                            EmojiCard(
+                                                emoji = "➕",
+                                                onClick = actions.onAddClicked, // Use action
+                                                clickable = true,
+                                                fontFamily = state.fontFamily,
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                hPadding = 8.dp,
+                                                vPadding = 8.dp
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (state.mosaicMode == MOSAIC_MODE_BLUR) {
+                                if (state.displayedBitmap != null) {
+                                    MosaicTypeBlock(
+                                        selectedType = state.mosaicType, // <-- 传递当前选中的类型
+                                        onMosaicTypeSelected = actions.onMosaicTypeSelected, // <-- 传递 Action
+                                        onAddBlurRegionClick = actions.onAddClicked
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
                             }
 

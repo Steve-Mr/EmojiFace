@@ -36,6 +36,8 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TagFaces
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.rounded.SaveAlt
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -695,6 +697,73 @@ fun MosaicTypeToolbar(
         )
     }
 
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun MosaicTypeBlock(
+    selectedType: Int,                      // <-- 接收当前选中的类型
+    onMosaicTypeSelected: (Int) -> Unit,    // <-- 接收类型选择的 Action
+    onAddBlurRegionClick: () -> Unit
+) {
+    val mosaicTypes = listOf(
+        Triple(MOSAIC_TYPE_GAUSSIAN, R.drawable.gaussian, R.string.gaussian),
+        Triple(MOSAIC_TYPE_PIXELATED, R.drawable.pixelated, R.string.pixelated),
+        Triple(MOSAIC_TYPE_HALFTONE, R.drawable.halftone, R.string.halftone)
+    )
+    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier.wrapContentWidth().wrapContentHeight()
+                .clip(RoundedCornerShape(12.dp))
+                .background(FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContainerColor)
+                .padding(8.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+
+            ) {
+//        FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+
+            // 使用循环来创建按钮，代码更简洁且易于扩展
+            mosaicTypes.forEachIndexed { index, (type, iconRes, stringRes) ->
+                // 根据是否被选中来决定按钮的外观
+                val isSelected = selectedType == type
+                val containerColor = if (isSelected) {
+                    FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContentColor
+                } else {
+                    FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContainerColor
+                }
+
+                val contentColor = if (isSelected) {
+                    FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContainerColor
+                } else {
+                    FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContentColor
+                }
+
+                Button(
+                    onClick = { onMosaicTypeSelected(type) }, // <-- 调用 Action
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = containerColor,
+                        contentColor = contentColor
+                    ),
+                ) {
+                    Icon(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = stringResource(id = stringRes)
+                    )
+                    Text(stringResource(stringRes))
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            ExtendedFloatingActionButton(
+                onClick = onAddBlurRegionClick,
+                containerColor = FloatingToolbarDefaults.vibrantFloatingToolbarColors().fabContainerColor,
+                contentColor = FloatingToolbarDefaults.vibrantFloatingToolbarColors().fabContentColor
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.add))
+                Text(stringResource(R.string.add))
+            }
+        }
+    }
 }
 
 enum class GroupPosition {
