@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.get
 import androidx.core.graphics.scale
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -371,7 +372,7 @@ fun createHalftoneRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface
             val endY = (y + cellSize).coerceAtMost(unblurredChunk.height)
             for (py in y until endY) {
                 for (px in x until endX) {
-                    val pixel = unblurredChunk.getPixel(px, py)
+                    val pixel = unblurredChunk[px, py]
                     totalRed += Color.red(pixel); totalGreen += Color.green(pixel); totalBlue += Color.blue(pixel)
                     pixelCount++
                 }
@@ -397,6 +398,7 @@ fun createHalftoneRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface
     val finalCanvas = Canvas(finalBitmap)
     // (此处重用之前的循环和计算逻辑，但只用于获取信息，并绘制圆点)
     for (y in 0 until unblurredChunk.height step cellSize) {
+        val isOffsetRow = ((y / cellSize) % 2 == 1)
         for (x in 0 until unblurredChunk.width step cellSize) {
             // --- 重新计算平均颜色和亮度，仅为获取圆点信息 ---
             var totalRed = 0L; var totalGreen = 0L; var totalBlue = 0L; var pixelCount = 0
@@ -417,7 +419,10 @@ fun createHalftoneRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface
             val radius = (brightness * cellSize * 0.5).toFloat()
             val darkerColor = Color.rgb((avgRed * 0.8).toInt(), (avgGreen * 0.8).toInt(), (avgBlue * 0.8).toInt())
             paint.color = darkerColor
-            finalCanvas.drawCircle(x + cellSize / 2f, y + cellSize / 2f, radius, paint)
+
+            val cx = x + cellSize / 2f + if (isOffsetRow) cellSize / 2f else 0f
+            val cy = y + cellSize / 2f
+            finalCanvas.drawCircle(cx, cy, radius, paint)
         }
     }
 
