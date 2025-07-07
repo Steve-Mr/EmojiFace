@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -63,6 +65,10 @@ fun EmojiOverlay(
     val horizontalPaddingPx = with(density) { padding.calculateLeftPadding(LayoutDirection.Ltr).toPx() }
     val verticalPaddingPx = with(density) { padding.calculateTopPadding().toPx() }
 
+    val bitmapCache = remember { mutableMapOf<BlurRegion, ImageBitmap>() }
+    LaunchedEffect(state.blurRegions, state.mosaicType) {
+        bitmapCache.clear()
+    }
 
     // 合并固定列表和正在编辑的临时状态，用于统一渲染
     val emojisToRender = remember(state.emojiDetections, editingEmoji) {
@@ -221,18 +227,22 @@ fun EmojiOverlay(
                 val sourceBitmap = state.displayedBitmap?.asAndroidBitmap() ?: return@Canvas
 
                 regionsToRender.forEach { region ->
-                    // 1. 调用工具函数获取模糊的小图
-                    val blurredRegionBitmap = when (state.mosaicType) {
-                        PreferenceRepository.MOSAIC_TYPE_PIXELATED -> {
-                             createPixelatedRegionBitmap(sourceBitmap, region) // 待实现
-//                            createBlurredRegionBitmap(sourceBitmap, region) // 暂时回退
-                        }
-                        PreferenceRepository.MOSAIC_TYPE_HALFTONE -> {
-                             createHalftoneRegionBitmap(sourceBitmap, region) // 待实现
-//                            createBlurredRegionBitmap(sourceBitmap, region) // 暂时回退
-                        }
-                        else -> { // 默认为 Gaussian
-                            createBlurredRegionBitmap(sourceBitmap, region)
+
+                    val regionBitmap = if (region == editingBlurRegion) {
+                        // a. 如果是正在编辑的区域，总是重新生成
+                        when (state.mosaicType) {
+                            PreferenceRepository.MOSAIC_TYPE_PIXELATED -> createPixelatedRegionBitmap(sourceBitmap, region)
+                            PreferenceRepository.MOSAIC_TYPE_HALFTONE -> createHalftoneRegionBitmap(sourceBitmap, region)
+                            else -> createBlurredRegionBitmap(sourceBitmap, region)
+                        }.asImageBitmap() // 转换为 Compose 使用的 ImageBitmap
+                    } else {
+                        // b. 如果不是正在编辑的区域，尝试从缓存获取，如果没有则生成并存入缓存
+                        bitmapCache.getOrPut(region) {
+                            when (state.mosaicType) {
+                                PreferenceRepository.MOSAIC_TYPE_PIXELATED -> createPixelatedRegionBitmap(sourceBitmap, region)
+                                PreferenceRepository.MOSAIC_TYPE_HALFTONE -> createHalftoneRegionBitmap(sourceBitmap, region)
+                                else -> createBlurredRegionBitmap(sourceBitmap, region)
+                            }.asImageBitmap()
                         }
                     }
 
@@ -264,7 +274,7 @@ fun EmojiOverlay(
 
                         // 将模糊小图绘制到被剪切的画布上
                         drawImage(
-                            image = blurredRegionBitmap.asImageBitmap(),
+                            image = regionBitmap,
                             dstOffset = IntOffset(
                                 destinationRect.left.toInt(),
                                 destinationRect.top.toInt()
@@ -277,9 +287,6 @@ fun EmojiOverlay(
 
                         canvas.nativeCanvas.restore() // 恢复状态，移除旋转和剪切
                     }
-
-                    // 4. 释放内存
-                    blurredRegionBitmap.recycle()
                 }
             }
         }
