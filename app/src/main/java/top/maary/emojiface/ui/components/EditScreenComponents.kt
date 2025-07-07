@@ -64,6 +64,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
 import androidx.compose.material3.rememberTooltipState
@@ -650,12 +651,15 @@ fun MosaicTargetRow(
             ToggleButton (
                 checked = selectedTarget == target,
                 onCheckedChange = { if (it) onTargetSelected(target) },
-                shapes =
-                    when (index) {
+                shapes = when (index) {
                         0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                         mosaicTargets.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                         else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
                     },
+                colors = ToggleButtonDefaults.toggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    checkedContentColor = MaterialTheme.colorScheme.secondary
+                )
             ) {
                 Text(text = stringResource(stringRes))
             }
@@ -680,7 +684,7 @@ fun MosaicTypeToolbar(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically) {
         HorizontalFloatingToolbar(
-            colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+            colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
             expanded = true,
             content = {
                 // 使用循环来创建按钮，代码更简洁且易于扩展
@@ -688,15 +692,15 @@ fun MosaicTypeToolbar(
                     // 根据是否被选中来决定按钮的外观
                     val isSelected = selectedType == type
                     val containerColor = if (isSelected) {
-                        FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContentColor
+                        FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContentColor
                     } else {
-                        FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContainerColor
+                        FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContainerColor
                     }
 
                     val contentColor = if (isSelected) {
-                        FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContainerColor
+                        FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContainerColor
                     } else {
-                        FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContentColor
+                        FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContentColor
                     }
 
                     FilledIconButton(
@@ -737,9 +741,9 @@ fun MosaicTypeBlock(
     )
     Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
         Column(
-            modifier = Modifier.wrapContentWidth().wrapContentHeight()
+            modifier = Modifier.fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContainerColor)
+                .background(Color.Transparent)
                 .padding(8.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -751,15 +755,15 @@ fun MosaicTypeBlock(
                 // 根据是否被选中来决定按钮的外观
                 val isSelected = selectedType == type
                 val containerColor = if (isSelected) {
-                    FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContentColor
+                    FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContentColor
                 } else {
-                    FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContainerColor
+                    FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContainerColor
                 }
 
                 val contentColor = if (isSelected) {
-                    FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContainerColor
+                    FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContainerColor
                 } else {
-                    FloatingToolbarDefaults.vibrantFloatingToolbarColors().toolbarContentColor
+                    FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContentColor
                 }
 
                 Button(

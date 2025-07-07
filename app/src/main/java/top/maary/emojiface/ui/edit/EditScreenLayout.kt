@@ -26,6 +26,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -91,7 +92,10 @@ fun CompactScreenLayout(
                     // Compact 版本中標題為空
                 },
                 navigationIcon = {
-                    IconButton(onClick = actions.onCloseClick) { // 使用 action
+                    IconButton(onClick = actions.onCloseClick,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.secondary)) { // 使用 action
                         Icon(
                             imageVector = Icons.Outlined.Close,
                             contentDescription = stringResource(R.string.exit)
@@ -101,7 +105,10 @@ fun CompactScreenLayout(
                 actions = {
                     // 只有在有圖片加載/處理後才顯示清除按鈕
                     if (state.displayedBitmap != null) {
-                        IconButton(onClick = actions.onClearImageClick) { // 使用 action
+                        IconButton(onClick = actions.onClearImageClick,
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.secondary)) { // 使用 action
                             Icon(
                                 imageVector = Icons.Outlined.DeleteSweep,
                                 contentDescription = stringResource(R.string.clear_photo)
