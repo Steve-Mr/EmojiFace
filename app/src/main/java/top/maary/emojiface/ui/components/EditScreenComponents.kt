@@ -12,6 +12,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -742,6 +743,7 @@ fun MosaicTypeBlock(
     Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
         Column(
             modifier = Modifier.fillMaxWidth()
+                .width(IntrinsicSize.Max)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.Transparent)
                 .padding(8.dp),
@@ -772,6 +774,7 @@ fun MosaicTypeBlock(
                         containerColor = containerColor,
                         contentColor = contentColor
                     ),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
                         painter = painterResource(id = iconRes),
