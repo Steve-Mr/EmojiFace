@@ -7,6 +7,7 @@ import android.graphics.Paint
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.get
 import androidx.core.graphics.scale
+import top.maary.emojiface.ui.edit.model.BlurRegion
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -255,6 +256,23 @@ fun applyStackBlur(bitmap: Bitmap, radius: Int): Bitmap {
     return blurredBitmap
 }
 
+fun calculateHybridCellSize(
+    region: BlurRegion,
+    source: Bitmap,
+    baseDivisor: Float = 80f,
+    regionWeight: Float = 0.8f,
+    baseCells: Int = 12
+): Int {
+    val globalSize = (max(source.width, source.height) / baseDivisor).toInt()
+    val regionSize = max(region.rect.width(), region.rect.height())
+    val regionCellSize = (regionSize / baseCells).toInt()
+    val hybrid = (regionCellSize * regionWeight + globalSize * (1 - regionWeight)).toInt()
+    return max(hybrid, 1) // ✅ 只保证合法，不限制上界
+}
+
+
+
+
 /**
  * 从源位图中裁剪指定区域，应用模糊效果，并返回处理后的小块位图。
  * 这个函数集中了模糊处理的所有逻辑，以确保各处效果一致。
@@ -263,7 +281,7 @@ fun applyStackBlur(bitmap: Bitmap, radius: Int): Bitmap {
  * @param regionRectF 需要模糊的区域，坐标基于 sourceBitmap。
  * @return 一个只包含模糊后区域的新的、小尺寸的位图。
  */
-fun createBlurredRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface.ui.edit.model.BlurRegion): Bitmap {
+fun createBlurredRegionBitmap(sourceBitmap: Bitmap, region: BlurRegion): Bitmap {
     val rect = region.rect
     // 1. 确保裁剪区域有效
     if (rect.width() <= 0 || rect.height() <= 0) {
@@ -288,7 +306,12 @@ fun createBlurredRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface.
     canvas.drawBitmap(sourceBitmap, 0f, 0f, null)
 
     // 5. 根据区域尺寸计算模糊半径，并对提取出的内容进行模糊
-    val blurRadius = (max(rect.width(), rect.height()) / 8f).toInt().coerceIn(20, 55)
+    val blurRadius = calculateHybridCellSize(
+        region = region,
+        source = sourceBitmap,
+        baseDivisor = 120f,
+        baseCells = 10,
+    )
     val blurredChunk = applyStackBlur(unblurredChunk, blurRadius)
 
     // 6. 释放中间创建的位图内存
@@ -319,7 +342,13 @@ fun createPixelatedRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojifac
 
     // 步骤 2: 对提取出的内容进行像素化处理。
     // 根据区域大小决定像素块的大小，确保效果协调。尺寸越大，像素块也越大。
-    val pixelSize = (rect.width() / 20f).coerceIn(10f, 40f).toInt()
+    val pixelSize = calculateHybridCellSize(
+        region = region,
+        source = sourceBitmap,
+        baseDivisor = 80f,
+        baseCells = 12,
+    )
+
 
     // 2a. 极度缩小图片，尺寸为原始尺寸除以像素块大小。
     val tinyBitmap = unblurredChunk.scale(
@@ -361,7 +390,13 @@ fun createHalftoneRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface
     val blockyBitmap = createBitmap(unblurredChunk.width, unblurredChunk.height, Bitmap.Config.ARGB_8888)
     val blockyCanvas = Canvas(blockyBitmap)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG) // 复用画笔
-    val cellSize = (rect.width() / 25f).coerceIn(15f, 35f).toInt()
+    val cellSize = calculateHybridCellSize(
+        region = region,
+        source = sourceBitmap,
+        baseDivisor = 70f,
+        baseCells = 12,
+    )
+
 
     // 步骤 3: 遍历并填充“色块背景” (逻辑基本不变)。
     for (y in 0 until unblurredChunk.height step cellSize) {
