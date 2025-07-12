@@ -60,13 +60,25 @@ if __name__ == '__main__':
     # 将两个 APK 路径放入一个列表
     apk_paths = [apk_path1, apk_path2]
 
-    # 从环境变量中获取版本信息和提交信息来构建消息内容
+    # 从环境变量中获取版本信息
     version_name = os.getenv("VERSION_NAME", "N/A")
-    commit_message = os.getenv("COMMIT_MESSAGE", "无提交信息。")
 
+    # 从 changelog.txt 文件读取更新日志
+    changelog_content = ""
+    try:
+        # 假设 changelog.txt 文件在当前工作目录下
+        with open('changelog.txt', 'r', encoding='utf-8') as f:
+            changelog_content = f.read().strip()
+    except FileNotFoundError:
+        print("提示: 未找到 changelog.txt 文件，将使用默认信息。")
+        changelog_content = "无更新日志。"
+
+    # 构建消息内容
     message = (
         f"#app #apk #facemoji\n"
         f"**版本:** `{version_name}`\n\n"
+        f"**更新日志:**\n"
+        f"```\n{changelog_content}\n```\n\n"
         f"https://github.com/Steve-Mr/EmojiFace"
     )
 
