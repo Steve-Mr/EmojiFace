@@ -267,7 +267,7 @@ fun SettingsSideSheetContent(
 }
 
 @Composable
-fun EditEmojiBottomSheetContent(
+fun EditBottomSheetContent(
     // --- 泛化后的新参数 ---
     mosaicMode: Int,
     // 直接传入瞬时状态对象
@@ -407,7 +407,7 @@ fun EditEmojiBottomSheetContent(
 }
 
 @Composable
-fun EditEmojiSideSheetContent(
+fun EditSideSheetContent(
     mosaicMode: Int,
     modifier: Modifier = Modifier,
     editingEmoji: EmojiDetection?,
@@ -572,7 +572,7 @@ fun SideSheetContent(
 
     if (isEditing) {
         // --- 调用重构后的通用编辑组件 ---
-        EditEmojiSideSheetContent(
+        EditSideSheetContent(
             mosaicMode = state.mosaicMode,
             // 传递瞬时状态
             editingEmoji = editingEmoji,

@@ -55,7 +55,7 @@ import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
-import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
+import top.maary.emojiface.ui.components.EditBottomSheetContent
 import top.maary.emojiface.ui.components.EmojiCard
 import top.maary.emojiface.ui.components.MosaicTypeBlock
 import top.maary.emojiface.ui.components.MosaicTypeToolbar
@@ -230,7 +230,7 @@ fun CompactScreenLayout(
             containerColor = containerColor
         ) {
             // 完全复用现有的 Composable
-            EditEmojiBottomSheetContent(
+            EditBottomSheetContent(
                 mosaicMode = state.mosaicMode,
                 // 传递瞬时状态
                 editingEmoji = editingEmoji,
