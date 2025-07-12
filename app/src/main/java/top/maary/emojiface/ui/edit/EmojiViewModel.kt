@@ -223,6 +223,8 @@ class EmojiViewModel @Inject constructor(
             // 如果关闭彩蛋，同时关闭 "Too Deep" 选项
             if (!enabled) {
                 preferenceRepository.updateTooDeepState(false)
+                // ✨ 新增：立刻清空UI状态中的 fakeDetections 列表
+                _uiState.update { it.copy(fakeDetections = emptyList()) }
             }
         }
     }
@@ -230,6 +232,16 @@ class EmojiViewModel @Inject constructor(
     fun setTooDeepEnabled(enabled: Boolean) {
         viewModelScope.launch {
             preferenceRepository.updateTooDeepState(enabled)
+            if (enabled) {
+                _uiState.value.displayedBitmap?.let { bitmap ->
+                    // 2. 如果有图，则立刻调用函数生成一个新的假识别框
+                    val fakeBox = generateFakeDetection(bitmap.width, bitmap.height)
+                    // 3. 更新UI状态，将新的假识别框列表应用到界面上
+                    _uiState.update { it.copy(fakeDetections = listOf(fakeBox)) }
+                }
+            } else {
+                _uiState.update { it.copy(fakeDetections = emptyList()) }
+            }
         }
     }
 
