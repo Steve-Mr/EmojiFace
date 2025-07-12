@@ -324,6 +324,11 @@ class EmojiViewModel @Inject constructor(
     }
 
     private fun calculateBlurRegions(detectionOutput: DetectionOutput) {
+        if (_uiState.value.blurRegions.isNotEmpty()) {
+            // 如果列表不为空，我们只更新处理状态，然后直接返回，不做任何破坏性操作。
+            _uiState.update { it.copy(isProcessing = false) }
+            return
+        }
         viewModelScope.launch {
             val target = _uiState.value.mosaicTarget
             calculateBlurRegionsUseCase(detectionOutput, target).fold(
