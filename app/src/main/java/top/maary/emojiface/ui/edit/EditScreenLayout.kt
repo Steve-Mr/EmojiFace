@@ -89,7 +89,7 @@ fun CompactScreenLayout(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.tertiary),
                 title = {
-                    // Compact 版本中標題為空
+                    Text(stringResource(R.string.app_name))
                 },
                 navigationIcon = {
                     IconButton(onClick = actions.onCloseClick,
