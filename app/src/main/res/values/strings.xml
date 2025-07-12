@@ -30,7 +30,7 @@
 <!--    <string name="too_deep">Deep Recognition (Too Deep)</string>-->
     <string name="too_deep">Deep Recognition</string>
     <string name="too_deep_description">(Too Deep)</string>
-    <string name="just_kidding">Just kidding</string>
+    <string name="just_kidding">Just kidding. Won\'t be saved. </string>
     <string name="mosaic_mode">Mosaic Mode</string>
     <string name="mosaic">Blur</string>
     <string name="emoji">Emoji</string>

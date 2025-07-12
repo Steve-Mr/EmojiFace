@@ -30,7 +30,7 @@
     <string name="confirm_delete_message">您确定要删除这个表情符号吗？</string>
     <string name="too_deep">深度识别</string>
     <string name="too_deep_description">（太深了）</string>
-    <string name="just_kidding">开个玩笑</string>
+    <string name="just_kidding">开个玩笑，不会保存到最终结果。</string>
     <string name="mosaic_mode">遮挡模式</string>
     <string name="mosaic">模糊</string>
     <string name="emoji">Emoji</string>
