@@ -337,7 +337,6 @@ fun LargeScreenLayout(
                 actions = actions,
                 editingEmoji = editingEmoji,
                 showSettingsSheet = showSettingsSheet,
-                onSlidingStateChange = { isSliding = it },
                 editingBlurRegion = editingBlurRegion
             )
         }

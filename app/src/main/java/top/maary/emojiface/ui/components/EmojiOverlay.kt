@@ -294,58 +294,6 @@ fun EmojiOverlay(
                         }
                         canvas.nativeCanvas.restore()
                     }
-
-//                    val regionBitmap = if (region == editingBlurRegion) {
-//                        // a. 如果是正在编辑的区域，总是重新生成
-//                        when (state.mosaicType) {
-//                            PreferenceRepository.MOSAIC_TYPE_PIXELATED -> createPixelatedRegionBitmap(sourceBitmap, region)
-//                            PreferenceRepository.MOSAIC_TYPE_HALFTONE -> createHalftoneRegionBitmap(sourceBitmap, region)
-//                            else -> createBlurredRegionBitmap(sourceBitmap, region)
-//                        }.asImageBitmap() // 转换为 Compose 使用的 ImageBitmap
-//                    } else {
-//                        // b. 如果不是正在编辑的区域，尝试从缓存获取，如果没有则生成并存入缓存
-//                        bitmapCache.getOrPut(region) {
-//                            when (state.mosaicType) {
-//                                PreferenceRepository.MOSAIC_TYPE_PIXELATED -> createPixelatedRegionBitmap(sourceBitmap, region)
-//                                PreferenceRepository.MOSAIC_TYPE_HALFTONE -> createHalftoneRegionBitmap(sourceBitmap, region)
-//                                else -> createBlurredRegionBitmap(sourceBitmap, region)
-//                            }.asImageBitmap()
-//                        }
-//                    }
-
-//                    // 3. 在 Canvas 中进行旋转和绘制
-//                    drawIntoCanvas { canvas ->
-//                        canvas.nativeCanvas.save() // 保存状态
-//
-//                        // 以目标矩形的中心为轴点进行旋转
-//                        canvas.nativeCanvas.rotate(
-//                            region.angle,
-//                            destinationRect.centerX(),
-//                            destinationRect.centerY()
-//                        )
-//
-//                        // 创建一个椭圆形的剪切路径
-//                        val ovalPath = Path().apply {
-//                            addOval(destinationRect, Path.Direction.CW)
-//                        }
-//                        // 应用剪切路径，后续的绘制只会在这个椭圆内显示
-//                        canvas.nativeCanvas.clipPath(ovalPath)
-//
-//                        // 将模糊小图绘制到被剪切的画布上
-//                        drawImage(
-//                            image = regionBitmap,
-//                            dstOffset = IntOffset(
-//                                destinationRect.left.toInt(),
-//                                destinationRect.top.toInt()
-//                            ),
-//                            dstSize = IntSize(
-//                                destinationRect.width().toInt(),
-//                                destinationRect.height().toInt()
-//                            )
-//                        )
-//
-//                        canvas.nativeCanvas.restore() // 恢复状态，移除旋转和剪切
-//                    }
                 }
             }
         }

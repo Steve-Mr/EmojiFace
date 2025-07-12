@@ -169,6 +169,10 @@ class EmojiViewModel @Inject constructor(
             }.collect { (mode, target) ->
                 _uiState.update { it.copy(isProcessing = true) }
 
+                val currentState = _uiState.value
+                val justSwitchedToBlur = mode == MOSAIC_MODE_BLUR && currentState.mosaicMode != MOSAIC_MODE_BLUR
+                val targetChangedWhileInBlur = mode == MOSAIC_MODE_BLUR && target != currentState.mosaicTarget
+
                 mosaicModeUpdateJob?.cancel()
                 mosaicModeUpdateJob = viewModelScope.launch {
                     delay(200L) // 防抖
@@ -190,8 +194,14 @@ class EmojiViewModel @Inject constructor(
                                         editingEmoji = null
                                     )
                                 }
-                                // 将 target 传递给计算函数
-                                calculateBlurRegions(currentState.detectionOutput)
+                                if (justSwitchedToBlur || targetChangedWhileInBlur) {
+                                    // 只有在满足上述条件时，才执行破坏性的重新计算
+                                    calculateBlurRegions(currentState.detectionOutput)
+                                } else {
+                                    // 在其他情况下（例如，只是切换了模糊类型），我们保留现有编辑，
+                                    // 只需结束“处理中”的状态即可。
+                                    _uiState.update { it.copy(isProcessing = false) }
+                                }
                             }
                         }
                     } else {
@@ -234,7 +244,7 @@ class EmojiViewModel @Inject constructor(
             // Reset relevant parts of the state, keep settings
             it.copy(
                 originalBitmap = null,
-                displayedBitmap = null, // 修改：同时清除 displayedBitmap
+                displayedBitmap = null,
                 selectedEmojis = emptyList(),
                 isProcessing = false,
                 isRendering = false,
@@ -242,8 +252,9 @@ class EmojiViewModel @Inject constructor(
                 successMessage = null,
                 editingEmoji = null,
                 editingEmojiIndex = null,
-                // --- START: 新增代码 ---
                 fakeDetections = emptyList(),
+                detectionOutput = null, // ✨ 必须将之前的检测结果也清空
+                blurRegions = emptyList(),
                 aspectRatio = null
             )
         }
@@ -325,11 +336,6 @@ class EmojiViewModel @Inject constructor(
     }
 
     private fun calculateBlurRegions(detectionOutput: DetectionOutput) {
-        if (_uiState.value.blurRegions.isNotEmpty()) {
-            // 如果列表不为空，我们只更新处理状态，然后直接返回，不做任何破坏性操作。
-            _uiState.update { it.copy(isProcessing = false) }
-            return
-        }
         viewModelScope.launch {
             val target = _uiState.value.mosaicTarget
             calculateBlurRegionsUseCase(detectionOutput, target).fold(

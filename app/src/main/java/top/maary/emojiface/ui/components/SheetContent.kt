@@ -566,7 +566,6 @@ fun SideSheetContent(
     editingEmoji: EmojiDetection?,
     editingBlurRegion: BlurRegion?, // 新增参数以接收正在编辑的模糊区域
     showSettingsSheet: Boolean,
-    onSlidingStateChange: (Boolean) -> Unit
 ) {
     // 首先判断当前是否处于任一编辑模式
     val isEditing = editingEmoji != null || editingBlurRegion != null
@@ -593,7 +592,7 @@ fun SideSheetContent(
             onAngleChange = actions.onAngleChange,
             onConfirm = actions.onConfirmEditing,
             onDismiss = actions.onCancelEditing,
-            onSlidingStateChange = onSlidingStateChange
+            onSlidingStateChange = actions.onSlidingStateChange
         )
 
     } else if (showSettingsSheet) {
