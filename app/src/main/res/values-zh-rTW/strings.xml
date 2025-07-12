@@ -27,8 +27,8 @@
     <string name="emoji_font">Emoji 字體</string>
     <string name="confirm_delete_title">確認刪除</string>
     <string name="confirm_delete_message">您確定要刪除這個表情符號嗎？</string>
-    <string name="too_deep">深度識別</string>
-    <string name="too_deep_description">（太深了）</string>
+    <string name="too_deep">深 度 識 別</string>
+    <string name="too_deep_description">（有夠深！）</string>
     <string name="just_kidding">開個玩笑，不會保存到最終結果。</string>
     <string name="mosaic_mode">遮蔽模式</string>
     <string name="mosaic">模糊</string>
