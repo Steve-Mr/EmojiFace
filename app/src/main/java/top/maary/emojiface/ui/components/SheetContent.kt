@@ -519,7 +519,7 @@ fun EditSideSheetContent(
                         modifier = Modifier.padding(8.dp).size(16.dp)
                     )
                 },
-                description = stringResource(R.string.emoji_size), //todo change text
+                description = stringResource(R.string.emoji_size),
                 value = currentSizeFactor, // 绑定到实时计算的值
                 onValueChange = onSizeChange, // 连接到统一的回调
                 minRange = 0.5f,
