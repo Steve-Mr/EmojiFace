@@ -23,14 +23,14 @@ keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 
 android {
     namespace = "top.maary.emojiface"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "top.maary.emojiface"
         minSdk = 30
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 2
-        versionName = "2025.06.22"
+        versionName = "2025.07.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
