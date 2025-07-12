@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.net.Uri
+import android.util.Log
 import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -43,13 +44,14 @@ import top.maary.emojiface.ui.edit.state.ShareEvent
 import top.maary.emojiface.util.Constants
 import top.maary.emojiface.util.getTypeFaceFromPath
 import top.maary.emojiface.util.loadFontFromPath
+import top.maary.emojiface.util.scaleBitmapIfNeeded
 import javax.inject.Inject
 import kotlin.random.Random
 
 // Define the UI State Data Class (can be in a separate file)
 data class EditUiState(
-    val originalBitmap: Bitmap? = null,
-    val processedBitmap: Bitmap? = null,
+    val originalBitmap: Bitmap? = null, // 新增：始终保存高分辨率原图
+    val displayedBitmap: Bitmap? = null, // 修改：这是用于UI显示和实时处理的位图（低分辨率）
     val selectedEmojis: List<EmojiDetection> = emptyList(),
     val predefinedEmojiOptions: List<String> = PreferenceRepository.DEFAULT_EMOJI_LIST, // Default
     val isAppIconHidden: Boolean = false,
@@ -73,7 +75,8 @@ data class EditUiState(
     val mosaicType: Int = PreferenceRepository.MOSAIC_TYPE_GAUSSIAN,
     val mosaicTarget: Int = PreferenceRepository.MOSAIC_TARGET_FACE,
     val blurRegions: List<BlurRegion> = emptyList(),
-    val isSliding: Boolean = false
+    val isSliding: Boolean = false,
+    val aspectRatio: Float? = null // 新增：保存原图的宽高比
 )
 
 @HiltViewModel
@@ -91,7 +94,7 @@ class EmojiViewModel @Inject constructor(
     private val updateEmojiOptionsUseCase: UpdateEmojiOptionsUseCase, // Assuming created
     private val renderMosaicOnBitmapUseCase: RenderMosaicOnBitmapUseCase, // 注入
     private val getBitmapUseCase: GetBitmapUseCase
-    ) : ViewModel() {
+) : ViewModel() {
 
     // --- State Management ---
     private val _uiState = MutableStateFlow(EditUiState())
@@ -231,7 +234,7 @@ class EmojiViewModel @Inject constructor(
             // Reset relevant parts of the state, keep settings
             it.copy(
                 originalBitmap = null,
-                processedBitmap = null, // 同时清除 processedBitmap
+                displayedBitmap = null, // 修改：同时清除 displayedBitmap
                 selectedEmojis = emptyList(),
                 isProcessing = false,
                 isRendering = false,
@@ -240,7 +243,8 @@ class EmojiViewModel @Inject constructor(
                 editingEmoji = null,
                 editingEmojiIndex = null,
                 // --- START: 新增代码 ---
-                fakeDetections = emptyList()
+                fakeDetections = emptyList(),
+                aspectRatio = null
             )
         }
     }
@@ -255,9 +259,28 @@ class EmojiViewModel @Inject constructor(
             _uiState.update { it.copy(isProcessing = true, errorMessage = null) }
 
             getBitmapUseCase(inputUri).fold(
-                onSuccess = { bitmap ->
-                    _uiState.update { it.copy( originalBitmap = bitmap)}
-                    detectFacesUseCase(bitmap).fold(
+                onSuccess = { highResBitmap ->
+                    // --- 核心修正 Start ---
+
+                    // 1. 创建一个真正用于UI显示的、低分辨率的缩略图。
+                    val displayBitmap = scaleBitmapIfNeeded(highResBitmap)
+
+                    // 2. 计算并保存原图的宽高比，这对于UI布局至关重要。
+                    val aspectRatio = if (highResBitmap.height > 0) highResBitmap.width.toFloat() / highResBitmap.height.toFloat() else 1f
+
+                    // 3. 更新State：
+                    //    - `originalBitmap` 保存高分辨率原图，以备后用。
+                    //    - `displayedBitmap` 保存低分辨率预览图，用于UI和实时计算。
+                    _uiState.update { it.copy(
+                        originalBitmap = highResBitmap,
+                        displayedBitmap = displayBitmap, // <--- 使用缩放后的图
+                        aspectRatio = aspectRatio
+                    )}
+
+                    // 4. ✨ 将低分辨率的 `displayBitmap` 传递给 DetectFacesUseCase 进行处理。
+                    //    后续所有的坐标计算都将自然地基于这张小图，从而保证坐标系的统一。
+                    detectFacesUseCase(displayBitmap).fold(
+                        // --- 核心修正 End ---
                         onSuccess = { detectionOutput ->
                             _uiState.update { it.copy(detectionOutput = detectionOutput) } // 保存结果
                             // 根据模式选择处理方式
@@ -275,8 +298,6 @@ class EmojiViewModel @Inject constructor(
                     _uiState.update { it.copy(isProcessing = false, errorMessage = "Face detection failed: ${exception.localizedMessage}") }
                 }
             )
-
-
         }
     }
 
@@ -286,10 +307,10 @@ class EmojiViewModel @Inject constructor(
             calculateEmojiPositionsUseCase(detectionOutput).fold(
                 onSuccess = { emojiDetections ->
                     _uiState.update { it.copy(selectedEmojis = emojiDetections) } // Update emojis first
-                    renderInitialBitmap(detectionOutput.originalBitmap, emojiDetections) // Proceed to render
+                    renderInitialBitmap() // 修改：不再需要传递参数
                     if (_uiState.value.isTooDeep) {
-                        val originalBitmap = detectionOutput.originalBitmap
-                        val fakeBox = generateFakeDetection(originalBitmap.width, originalBitmap.height)
+                        val sourceBitmap = detectionOutput.sourceBitmap
+                        val fakeBox = generateFakeDetection(sourceBitmap.width, sourceBitmap.height)
                         _uiState.update { it.copy(fakeDetections = listOf(fakeBox)) }
                     } else {
                         _uiState.update { it.copy(fakeDetections = emptyList()) }
@@ -307,10 +328,14 @@ class EmojiViewModel @Inject constructor(
             val target = _uiState.value.mosaicTarget
             calculateBlurRegionsUseCase(detectionOutput, target).fold(
                 onSuccess = { regions ->
+                    regions.forEachIndexed { index, region ->
+                        Log.d("MojiDebug", "[ViewModel] Generated BlurRegion[$index]: Rect=${region.rect.toShortString()}, Angle=${"%.1f".format(region.angle)}")
+                    }
                     _uiState.update {
                         it.copy(
                             blurRegions = regions,
-                            isProcessing = false // 结束处理状态
+                            isProcessing = false, // 结束处理状态
+                            displayedBitmap = it.detectionOutput?.sourceBitmap // 在模糊模式，直接显示源图（低分辨率）
                         )
                     }
                 },
@@ -325,39 +350,62 @@ class EmojiViewModel @Inject constructor(
      * 关键修改：创建一个按需渲染最终 Bitmap 的挂起函数
      */
     private suspend fun renderFinalBitmap(): Bitmap? {
-        val base = _uiState.value.originalBitmap ?: return null
+        val highResBitmap = _uiState.value.originalBitmap ?: return null
+        val displayBitmap = _uiState.value.displayedBitmap ?: return null
         val mode = _uiState.value.mosaicMode
+
+        // 计算高分辨率图相对于显示图的缩放比例
+        val scale = if (displayBitmap.width > 0) highResBitmap.width.toFloat() / displayBitmap.width.toFloat() else 1.0f
 
         return when (mode) {
             MOSAIC_MODE_EMOJI -> {
-                val emojis = _uiState.value.selectedEmojis
+                // 升格 (Upscale) Emoji 的坐标和大小
+                val scaledEmojis = _uiState.value.selectedEmojis.map {
+                    it.copy(
+                        xCenter = it.xCenter * scale,
+                        yCenter = it.yCenter * scale,
+                        diameter = it.diameter * scale
+                    )
+                }
                 val font = _uiState.value.selectedFontPath
-                renderEmojiOnBitmapUseCase(base, emojis, font).getOrNull()
+                // 在高分辨率图上渲染
+                renderEmojiOnBitmapUseCase(highResBitmap, scaledEmojis, font).getOrNull()
             }
             MOSAIC_MODE_BLUR -> {
-                val regions = _uiState.value.blurRegions
-                val type = _uiState.value.mosaicType // <-- 从 state 中获取当前类型
-                val blurType = when (type) { // <-- 将 int 转换为 BlurType
+                // 升格 (Upscale) 模糊区域的坐标和大小
+                val scaledRegions = _uiState.value.blurRegions.map {
+                    val newRect = RectF(
+                        it.rect.left * scale,
+                        it.rect.top * scale,
+                        it.rect.right * scale,
+                        it.rect.bottom * scale
+                    )
+                    it.copy(rect = newRect)
+                }
+                val type = _uiState.value.mosaicType
+                val blurType = when (type) {
                     PreferenceRepository.MOSAIC_TYPE_PIXELATED -> BlurType.Pixelated
                     PreferenceRepository.MOSAIC_TYPE_HALFTONE -> BlurType.Halftone
                     else -> BlurType.Gaussian
                 }
-                renderMosaicOnBitmapUseCase(base, regions, blurType).getOrNull()
+                // 在高分辨率图上渲染
+                renderMosaicOnBitmapUseCase(highResBitmap, scaledRegions, blurType).getOrNull()
             }
-            else -> base // 默认返回原图
+            else -> highResBitmap // 默认返回原图
         }
     }
 
     // Private helper for detect flow
-    private fun renderInitialBitmap(baseBitmap: Bitmap, emojiDetections: List<EmojiDetection>) {
+    private fun renderInitialBitmap() {
         viewModelScope.launch {
+            val baseBitmap = _uiState.value.displayedBitmap ?: return@launch
+            val emojiDetections = _uiState.value.selectedEmojis
             val selectedFont = _uiState.value.selectedFontPath
             renderEmojiOnBitmapUseCase(baseBitmap, emojiDetections, selectedFont).fold(
                 onSuccess = { renderedBitmap ->
                     _uiState.update {
                         it.copy(
-                            // originalBitmap is already set
-                            processedBitmap = renderedBitmap,
+                            displayedBitmap = renderedBitmap,
                             isProcessing = false // Entire initial process complete
                         )
                     }
@@ -478,7 +526,7 @@ class EmojiViewModel @Inject constructor(
         x: Float,
         y: Float
     ) {
-        if (state.originalBitmap == null) {
+        if (state.displayedBitmap == null) {
             _uiState.update { it.copy(errorMessage = "Cannot add emoji without an image.") }
             return
         }
@@ -511,7 +559,7 @@ class EmojiViewModel @Inject constructor(
         renderJob = viewModelScope.launch {
             _uiState.update { it.copy(isRendering = true) }
             val state = _uiState.value
-            val baseBitmap = state.originalBitmap ?: return@launch
+            val baseBitmap = state.displayedBitmap ?: return@launch
             val regions = state.blurRegions
             rerenderBlurEffect(baseBitmap, regions, state.mosaicType)
         }
@@ -524,7 +572,7 @@ class EmojiViewModel @Inject constructor(
      * (Signature matches original)
      */
     fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float) {
-        if (_uiState.value.originalBitmap == null) {
+        if (_uiState.value.displayedBitmap == null) {
             _uiState.update { it.copy(errorMessage = "Cannot add emoji without an image.") }
             return
         }
@@ -634,7 +682,7 @@ class EmojiViewModel @Inject constructor(
     }
 
     fun addNewBlurRegion(tapPositionX: Float, tapPositionY: Float) {
-        if (_uiState.value.originalBitmap == null) {
+        if (_uiState.value.displayedBitmap == null) {
             _uiState.update { it.copy(errorMessage = "Cannot add blur region without an image.") }
             return
         }
@@ -935,7 +983,7 @@ class EmojiViewModel @Inject constructor(
                     // 更新用于显示的 processedBitmap
                     _uiState.update {
                         it.copy(
-                            processedBitmap = renderedBitmap,
+                            displayedBitmap = renderedBitmap,
                             isRendering = false
                         )
                     }

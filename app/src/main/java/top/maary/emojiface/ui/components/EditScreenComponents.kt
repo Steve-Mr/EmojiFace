@@ -486,7 +486,7 @@ fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
         ) {
             // 只有在圖片已處理後才顯示分享和保存按鈕
             // (檢查 displayedBitmap 是否與 currentImage 不同，表示處理已完成)
-            if (state.displayedBitmap != null && state.displayedBitmap != state.currentImage) {
+            if (state.displayedBitmap != null) {
                 if (state.isMediumLayout) {
                     ShareButtonCompact(
                         backgroundColor = MaterialTheme.colorScheme.secondary,

@@ -25,8 +25,7 @@ import top.maary.emojiface.ui.edit.model.FakeDetection
  * @param selectedFontIndex 當前選中字體在 availableFontNames 中的索引。
  */
 data class EditScreenState(
-    val displayedBitmap: ImageBitmap?, // resultBitmap ?: currentImage Bitmap
-    val currentImage: ImageBitmap?,     // Needed for aspect ratio if displayedBitmap is null initially
+    val displayedBitmap: ImageBitmap?, // 修改：这是唯一用于显示的位图
     val aspectRatio: Float?,            // currentImage?.let { it.width.toFloat() / it.height.toFloat() }
     val emojiDetections: List<EmojiDetection>,
     val predefinedEmojiList: List<String>?,

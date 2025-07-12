@@ -149,16 +149,11 @@ fun EditScreenContentInternal(
     // --- 5. Derive UI-Specific Values from uiState ---
     // Use remember to avoid recalculating on every recomposition unless inputs change
     val displayedBitmapForUi = remember(uiState.originalBitmap) {
-        uiState.originalBitmap?.asImageBitmap()
+        uiState.displayedBitmap?.asImageBitmap()
     }
-    val currentImageForUi = remember(uiState.originalBitmap) { // Needed? Only if layout explicitly needs original
-        uiState.originalBitmap?.asImageBitmap()
-    }
-    val aspectRatio = remember(uiState.originalBitmap) {
-        uiState.originalBitmap?.let {
-            if (it.height > 0) it.width.toFloat() / it.height.toFloat() else 1f
-        } ?: 1f // Default aspect ratio
-    }
+
+    val aspectRatio = uiState.aspectRatio ?: 1f
+
     val fontNames = remember(uiState.availableFontPaths) {
         uiState.availableFontPaths.map { path ->
             when (path) {
@@ -180,7 +175,6 @@ fun EditScreenContentInternal(
     // Combine derived values, ViewModel state, and local UI state
     val stateForUiLayout = EditScreenState(
         displayedBitmap = displayedBitmapForUi,
-        currentImage = currentImageForUi, // Pass if needed by layout
         aspectRatio = aspectRatio,
         emojiDetections = uiState.selectedEmojis, // Direct from uiState
         predefinedEmojiList = uiState.predefinedEmojiOptions, // Direct from uiState
@@ -202,7 +196,7 @@ fun EditScreenContentInternal(
         blurRegions = uiState.blurRegions, // 传递 mosaicMode
         editingBlurRegionIndex = uiState.editingBlurRegionIndex,
         mosaicTarget = uiState.mosaicTarget,
-        isSliding = uiState.isSliding
+        isSliding = uiState.isSliding,
     )
 
     // --- 7. Create EditScreenActions Instance (Largely unchanged) ---

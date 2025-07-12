@@ -205,7 +205,7 @@ fun CompactScreenLayout(
         )
         val scope = rememberCoroutineScope()
 
-        val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
+//        val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
 
         var isSliding by remember { mutableStateOf(false) }
 

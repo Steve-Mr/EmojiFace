@@ -62,16 +62,14 @@ fun DisplayPane(
                                 detectTapGestures { offset ->
                                     val containerWidth = state.imageContainerSize.width
                                     val containerHeight = state.imageContainerSize.height
-                                    val originalBitmapWidth = state.currentImage?.width
-                                        ?: state.displayedBitmap.width
-                                    val originalBitmapHeight = state.currentImage?.height
-                                        ?: state.displayedBitmap.height
+                                    val displayedBitmapWidth = state.displayedBitmap.width
+                                    val displayedBitmapHeight = state.displayedBitmap.height
 
                                     if (containerWidth > 0 && containerHeight > 0) {
                                         val scaleX =
-                                            originalBitmapWidth.toFloat() / containerWidth
+                                            displayedBitmapWidth.toFloat() / containerWidth
                                         val scaleY =
-                                            originalBitmapHeight.toFloat() / containerHeight
+                                            displayedBitmapHeight.toFloat() / containerHeight
                                         val originalX = offset.x * scaleX
                                         val originalY = offset.y * scaleY
                                         actions.onImageTapToAdd(
