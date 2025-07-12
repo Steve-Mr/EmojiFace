@@ -17,7 +17,7 @@ import javax.inject.Singleton
 
 @Singleton
 class YoloPoseDetector @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : Closeable {
 
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()

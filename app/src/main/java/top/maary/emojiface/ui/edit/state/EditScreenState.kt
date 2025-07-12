@@ -12,7 +12,6 @@ import top.maary.emojiface.ui.edit.model.FakeDetection
  * 封裝 Edit Screen UI 渲染所需的所有狀態。
  *
  * @param displayedBitmap 當前應顯示在主區域的 Bitmap (可能是處理後的結果，也可能是原圖)。
- * @param currentImage 原始選擇的圖片，用於獲取寬高比等。
  * @param aspectRatio 原始圖片的寬高比，用於維持圖片顯示比例。
  * @param emojiDetections 偵測到的或使用者手動添加的表情符號列表。
  * @param predefinedEmojiList 可供選擇的預定義表情符號列表。
@@ -37,7 +36,6 @@ data class EditScreenState(
     val isAppIconHidden: Boolean,
     val availableFontNames: List<String>?, // 從 fontList (路徑) 映射過來的顯示名稱
     val selectedFontIndex: Int, // 當前選中字體在列表中的索引，方便 Dropdown 使用
-    val isMediumLayout: Boolean,
     val editingEmojiIndex: Int?,
     val editingBlurRegionIndex: Int?,
     val isEasterEggEnabled: Boolean = false,

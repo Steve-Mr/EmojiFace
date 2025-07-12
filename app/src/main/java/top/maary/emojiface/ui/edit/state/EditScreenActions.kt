@@ -62,8 +62,6 @@ data class EditScreenActions(
     // --- 設定底部工作表操作 ---
     /** 當設定底部工作表被關閉時呼叫。 */
     val onSettingsSheetDismiss: () -> Unit,
-    /** 當使用者在底部工作表點擊「編輯預定義表情」時呼叫。 */
-    val onEditPredefinedEmojisClick: () -> Unit,
     /** 當使用者在底部工作表確認預定義表情編輯時呼叫。 */
     val onPredefinedEmojisEdited: (newEmojiListString: String) -> Unit,
     /** 當「隱藏應用圖標」開關狀態改變時呼叫。 */

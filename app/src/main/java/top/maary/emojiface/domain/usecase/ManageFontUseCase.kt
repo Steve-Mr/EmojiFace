@@ -15,7 +15,7 @@ import java.io.FileOutputStream
 import javax.inject.Inject
 
 class ManageFontUseCase @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val preferenceRepository: PreferenceRepository
 ) {
     suspend fun addFont(uri: Uri): Result<Unit> = withContext(Dispatchers.IO) {

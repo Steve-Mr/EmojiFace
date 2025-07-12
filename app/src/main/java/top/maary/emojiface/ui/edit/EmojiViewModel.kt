@@ -592,27 +592,6 @@ class EmojiViewModel @Inject constructor(
     // --- Emoji Manipulation ---
 
     /**
-     * Adds a new emoji at the specified coordinates.
-     * (Signature matches original)
-     */
-    fun addEmoji(x: Float, y: Float, emoji: String, diameter: Float, angle: Float) {
-        if (_uiState.value.displayedBitmap == null) {
-            _uiState.update { it.copy(errorMessage = "Cannot add emoji without an image.") }
-            return
-        }
-        // 1. 创建新的 Emoji 检测对象
-        val newDetection = EmojiDetection(xCenter = x, yCenter = y, diameter = diameter, angle = angle, emoji = emoji)
-
-        // 2. 不将其添加到主列表，而是直接放入瞬时编辑状态
-        _uiState.update {
-            it.copy(
-                editingEmoji = newDetection,
-                editingEmojiIndex = -1 // 使用 -1 来标记这是一个“添加”操作，而非“编辑”
-            )
-        }
-    }
-
-    /**
      * Removes an emoji from the list by its index.
      */
     fun removeEmoji(index: Int) {
@@ -648,61 +627,6 @@ class EmojiViewModel @Inject constructor(
             angle = angle ?: currentEditing.angle
         )
         _uiState.update { it.copy(editingEmoji = updatedEmoji) }
-    }
-
-    fun updateEditingValueChanged(emoji: String?, diameter: Float?, rotation: Float?) {
-        val state = _uiState.value
-
-        when (state.mosaicMode) {
-            // --- Emoji 模式的逻辑保持不变 ---
-            MOSAIC_MODE_EMOJI -> {
-                if (emoji != null) {
-                    _uiState.value.editingEmoji?.let {
-                        _uiState.update { it.copy(editingEmoji = it.editingEmoji?.copy(emoji = emoji)) }
-                    }
-                }
-                if (diameter != null) {
-                    _uiState.value.editingEmoji?.let {
-                        _uiState.update { it.copy(editingEmoji = it.editingEmoji?.copy(diameter = diameter)) }
-                    }
-                }
-                if (rotation != null) {
-                    _uiState.value.editingEmoji?.let {
-                        _uiState.update { it.copy(editingEmoji = it.editingEmoji?.copy(angle = rotation)) }
-                    }
-                }
-            }
-
-            // --- 核心修改：添加 Blur 模式的处理逻辑 ---
-            MOSAIC_MODE_BLUR -> {
-                val editingRegion = state.editingBlurRegion ?: return
-                val originalRegionRect = state.blurRegions.getOrNull(state.editingBlurRegionIndex ?: -1)?.rect ?: editingRegion.rect
-
-                // 如果角度变化了
-                if (rotation != null) {
-                    _uiState.update { it.copy(editingBlurRegion = editingRegion.copy(angle = rotation)) }
-                }
-
-                // 如果大小变化了 (我们将滑块的 "diameter" 值解读为新的宽度)
-                if (diameter != null) {
-                    if (originalRegionRect.width() > 0) {
-                        // 保持原始的宽高比
-                        val aspectRatio = originalRegionRect.height() / originalRegionRect.width()
-                        val newWidth = diameter
-                        val newHeight = newWidth * aspectRatio
-
-                        // 以原始中心点为基准计算新矩形
-                        val newRect = RectF(
-                            originalRegionRect.centerX() - newWidth / 2,
-                            originalRegionRect.centerY() - newHeight / 2,
-                            originalRegionRect.centerX() + newWidth / 2,
-                            originalRegionRect.centerY() + newHeight / 2
-                        )
-                        _uiState.update { it.copy(editingBlurRegion = editingRegion.copy(rect = newRect)) }
-                    }
-                }
-            }
-        }
     }
 
     fun addNewBlurRegion(tapPositionX: Float, tapPositionY: Float) {

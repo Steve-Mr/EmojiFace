@@ -16,11 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -54,10 +52,6 @@ fun EditScreenContentInternal(
     var showBottomSheet by remember { mutableStateOf(false) }
     var isAddMode by remember { mutableStateOf(false) }
     var imageContainerSize by remember { mutableStateOf(IntSize.Zero) }
-    var selectedIndexForEdit by remember { mutableIntStateOf(-1) } // -1 for Add, >=0 for Edit index
-    var tapPositionForAdd by remember { mutableStateOf(Offset.Zero) } // Store tap position for adding
-    var isEditingEmojiListInSheet by remember { mutableStateOf(false) } // State for bottom sheet mode
-    var isMediumLayout by remember { mutableStateOf(false) } // To pass to ActionRow if needed
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var emojiIndexToDelete by remember { mutableStateOf<Int?>(null) }
 
@@ -185,7 +179,6 @@ fun EditScreenContentInternal(
         isAppIconHidden = uiState.isAppIconHidden, // Direct from uiState
         availableFontNames = fontNames, // Derived value
         selectedFontIndex = selectedFontIndex, // Derived value
-        isMediumLayout = isMediumLayout, // Pass local state if needed by ActionRow etc.
         typeface = uiState.loadedTypeface, // Direct from uiState
         editingEmojiIndex = uiState.editingEmoji?.let { uiState.selectedEmojis.indexOf(it) }, // Get index of currently editing emoji
         isEasterEggEnabled = uiState.isEasterEggEnabled,
@@ -204,8 +197,6 @@ fun EditScreenContentInternal(
     val actions = remember(viewModel) { // Remember actions instance tied to VM
         EditScreenActions(
             onImageTapToAdd = { offset ->
-                tapPositionForAdd = offset
-                selectedIndexForEdit = -1 // Mark as Add
                 isAddMode = false // Exit add mode state after tap
                 viewModel.addItemAtPosition(offset.x, offset.y)
             },
@@ -233,12 +224,9 @@ fun EditScreenContentInternal(
             // Bottom Sheet Actions
             onSettingsSheetDismiss = {
                 showBottomSheet = false
-                isEditingEmojiListInSheet = false // Reset internal sheet state
             },
-            onEditPredefinedEmojisClick = { isEditingEmojiListInSheet = true },
             onPredefinedEmojisEdited = { newEmojiListString ->
                 viewModel.updateEmojiList(newEmojiListString)
-                isEditingEmojiListInSheet = false
             },
             onHideIconToggle = { hide -> viewModel.toggleLauncherIcon(hide) },
             onFontSelected = { index -> viewModel.onFontSelected(index) },
@@ -310,27 +298,26 @@ fun EditScreenContentInternal(
     // --- 8. Layout Dispatching ---
     when {
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND) -> {
-            isMediumLayout = false // Update layout flag
             LargeScreenLayout(
                 state = stateForUiLayout,
                 actions = actions,
                 editingEmoji = uiState.editingEmoji,
                 editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
-                onDismissSettingsSheet = actions.onSettingsSheetDismiss)
+                onDismissSettingsSheet = actions.onSettingsSheetDismiss,
+                isMediumLayout = false)
         }
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) -> {
-            isMediumLayout = true // Update layout flag
             LargeScreenLayout(
                 state = stateForUiLayout,
                 actions = actions,
                 editingEmoji = uiState.editingEmoji,
                 editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
-                onDismissSettingsSheet = actions.onSettingsSheetDismiss)
+                onDismissSettingsSheet = actions.onSettingsSheetDismiss,
+                isMediumLayout = true)
         }
         else -> {
-            isMediumLayout = false // Update layout flag
             CompactScreenLayout(
                 state = stateForUiLayout,
                 actions = actions,

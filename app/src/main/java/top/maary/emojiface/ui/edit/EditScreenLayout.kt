@@ -75,7 +75,8 @@ fun CompactScreenLayout(
     editingEmoji: EmojiDetection?,
     editingBlurRegion: BlurRegion?,
     showSettingsSheet: Boolean,
-    onDismissSettingsSheet: () -> Unit
+    onDismissSettingsSheet: () -> Unit,
+    isMediumLayout: Boolean = false
 ) {
     // TopAppBar 滾動行為
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -193,7 +194,7 @@ fun CompactScreenLayout(
             }
 
             // --- 底部操作按鈕區域 ---
-            ActionRow(state = state, actions = actions)
+            ActionRow(state = state, actions = actions, isMediumLayout = isMediumLayout)
 
             Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
 
@@ -204,8 +205,6 @@ fun CompactScreenLayout(
             skipPartiallyExpanded = true,
         )
         val scope = rememberCoroutineScope()
-
-//        val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
 
         var isSliding by remember { mutableStateOf(false) }
 
@@ -301,7 +300,8 @@ fun LargeScreenLayout(
     editingEmoji: EmojiDetection?,
     editingBlurRegion: BlurRegion?,
     showSettingsSheet: Boolean,
-    onDismissSettingsSheet: () -> Unit
+    onDismissSettingsSheet: () -> Unit,
+    isMediumLayout: Boolean
 ) {
     val showSideSheet = editingEmoji != null || showSettingsSheet || editingBlurRegion != null
 
@@ -460,7 +460,7 @@ fun LargeScreenLayout(
                             }
 
                             // --- Action Buttons Area (at the bottom of the card) ---
-                            ActionRow(state = state, actions = actions)
+                            ActionRow(state = state, actions = actions, isMediumLayout = isMediumLayout)
                         }
                     }
                 }

@@ -7,7 +7,6 @@ import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
-import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.PaddingValues
@@ -54,7 +53,6 @@ fun EmojiOverlay(
 ) {
     // 获取原始图片尺寸和屏幕上容器的尺寸，用于坐标和大小的缩放
     val originalWidth = state.displayedBitmap?.width?.toFloat() ?: return
-    val originalHeight = state.displayedBitmap?.height?.toFloat() ?: return // 新增获取高度
     val containerWidth = state.imageContainerSize.width.toFloat()
     val containerHeight = state.imageContainerSize.height.toFloat()
 
@@ -62,11 +60,6 @@ fun EmojiOverlay(
 
     // 计算缩放比例
     val scale = containerWidth / originalWidth
-
-    Log.d("MojiDebug", "[Overlay-PreCalc] -- Calculation Inputs --")
-    Log.d("MojiDebug", "[Overlay-PreCalc] displayedBitmap (Low-Res) Size: ${originalWidth}x${originalHeight}")
-    Log.d("MojiDebug", "[Overlay-PreCalc] imageContainerSize (UI): ${containerWidth}x${containerHeight}")
-    Log.d("MojiDebug", "[Overlay-PreCalc] Calculated Scale Factor: $scale")
 
     val density = LocalDensity.current
     val horizontalPaddingPx = with(density) { padding.calculateLeftPadding(LayoutDirection.Ltr).toPx() }
@@ -248,7 +241,7 @@ fun EmojiOverlay(
             }
 
             PreferenceRepository.MOSAIC_MODE_BLUR -> {
-                val sourceBitmap = state.displayedBitmap?.asAndroidBitmap() ?: return@Canvas
+                val sourceBitmap = state.displayedBitmap.asAndroidBitmap()
 
                 regionsToRender.forEachIndexed { index, region ->
 
@@ -260,11 +253,6 @@ fun EmojiOverlay(
                         region.rect.right * scale,
                         region.rect.bottom * scale
                     )
-
-                    Log.d("MojiDebug", "[Overlay-Draw] Drawing Region[$index]: " +
-                            "Source Rect=${region.rect.toShortString()} " +
-                            "-> Dest Rect=${destinationRect.toShortString()}")
-
 
                     drawIntoCanvas { canvas ->
                         canvas.nativeCanvas.save()

@@ -10,7 +10,7 @@ import top.maary.emojiface.datastore.PreferenceRepository
 import javax.inject.Inject
 
 class ManageAppIconVisibilityUseCase @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val preferenceRepository: PreferenceRepository
 ) {
 

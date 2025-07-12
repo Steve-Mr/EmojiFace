@@ -72,7 +72,6 @@ fun applyStackBlur(bitmap: Bitmap, radius: Int): Bitmap {
     var p: Int
     var yp: Int
     var yi: Int
-    var yw: Int
     val vmin = IntArray(w.coerceAtLeast(h))
 
     var divsum = div + 1 shr 1
@@ -85,7 +84,7 @@ fun applyStackBlur(bitmap: Bitmap, radius: Int): Bitmap {
     }
 
     yi = 0
-    yw = yi
+    var yw: Int = yi
 
     val stack = Array(div) { IntArray(3) }
     var stackpointer: Int
@@ -278,7 +277,6 @@ fun calculateHybridCellSize(
  * 这个函数集中了模糊处理的所有逻辑，以确保各处效果一致。
  *
  * @param sourceBitmap 原始的、未经修改的完整位图。
- * @param regionRectF 需要模糊的区域，坐标基于 sourceBitmap。
  * @return 一个只包含模糊后区域的新的、小尺寸的位图。
  */
 fun createBlurredRegionBitmap(sourceBitmap: Bitmap, region: BlurRegion): Bitmap {
@@ -294,7 +292,7 @@ fun createBlurredRegionBitmap(sourceBitmap: Bitmap, region: BlurRegion): Bitmap 
         rect.height().toInt(),
         Bitmap.Config.ARGB_8888
     )
-    val canvas = android.graphics.Canvas(unblurredChunk)
+    val canvas = Canvas(unblurredChunk)
 
     // 3. 对画布进行逆向变换。我们旋转 -angle 度，以便从 sourceBitmap 中“正向”地提取内容
     canvas.rotate(-region.angle, rect.width() / 2f, rect.height() / 2f)
@@ -328,7 +326,7 @@ fun createBlurredRegionBitmap(sourceBitmap: Bitmap, region: BlurRegion): Bitmap 
  * @param region 需要处理的区域，包含位置、大小和角度信息。
  * @return 一个只包含像素化后区域的新的、小尺寸的位图。
  */
-fun createPixelatedRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface.ui.edit.model.BlurRegion): Bitmap {
+fun createPixelatedRegionBitmap(sourceBitmap: Bitmap, region: BlurRegion): Bitmap {
     // 步骤 1: 像高斯模糊一样，先提取出旋转对齐的、未经处理的区域内容。
     // 这部分代码与 createBlurredRegionBitmap 完全一致，确保了逻辑的统一。
     val rect = region.rect
@@ -375,7 +373,7 @@ fun createPixelatedRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojifac
  * @param region 需要处理的区域，包含位置、大小和角度信息。
  * @return 一个只包含半色调效果区域的新的、小尺寸的位图。
  */
-fun createHalftoneRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface.ui.edit.model.BlurRegion): Bitmap {
+fun createHalftoneRegionBitmap(sourceBitmap: Bitmap, region: BlurRegion): Bitmap {
     // 步骤 1: 提取旋转对齐的、未经处理的区域内容 (逻辑不变)。
     val rect = region.rect
     if (rect.width() <= 0 || rect.height() <= 0) return createBitmap(1, 1)
@@ -441,7 +439,7 @@ fun createHalftoneRegionBitmap(sourceBitmap: Bitmap, region: top.maary.emojiface
             val endY = (y + cellSize).coerceAtMost(unblurredChunk.height)
             for (py in y until endY) {
                 for (px in x until endX) {
-                    val pixel = unblurredChunk.getPixel(px, py)
+                    val pixel = unblurredChunk[px, py]
                     totalRed += Color.red(pixel); totalGreen += Color.green(pixel); totalBlue += Color.blue(pixel)
                     pixelCount++
                 }

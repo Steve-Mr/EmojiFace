@@ -474,7 +474,7 @@ fun SliderWithCaption(
 }
 
 @Composable
-fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
+fun ActionRow(state: EditScreenState, actions: EditScreenActions, isMediumLayout: Boolean) {
     Box(modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center // 將 Row 居中
     ) {
@@ -487,7 +487,7 @@ fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
             // 只有在圖片已處理後才顯示分享和保存按鈕
             // (檢查 displayedBitmap 是否與 currentImage 不同，表示處理已完成)
             if (state.displayedBitmap != null) {
-                if (state.isMediumLayout) {
+                if (isMediumLayout) {
                     ShareButtonCompact(
                         backgroundColor = MaterialTheme.colorScheme.secondary,
                         onClick = actions.onShareClick // 使用 action
@@ -648,7 +648,7 @@ fun MosaicTargetRow(
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.weight(1f)) // 占位符，推送文本到左侧
-        mosaicTargets.forEachIndexed { index, (target, icon, stringRes) ->
+        mosaicTargets.forEachIndexed { index, (target, _, stringRes) ->
             ToggleButton (
                 checked = selectedTarget == target,
                 onCheckedChange = { if (it) onTargetSelected(target) },

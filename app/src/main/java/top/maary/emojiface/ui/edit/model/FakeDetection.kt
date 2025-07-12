@@ -7,7 +7,6 @@ import android.graphics.RectF
  * @param box 边界框在原始图片坐标系中的位置和大小 (left, top, right, bottom)
  * @param label 标签，例如 "face"
  * @param confidence 置信度，例如 0.98f
- * @param age 年龄，例如 500
  */
 data class FakeDetection(
     val box: RectF,

@@ -1,6 +1,5 @@
 package top.maary.emojiface.ui.components
 
-import android.graphics.Color.parseColor
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -21,6 +20,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 
 @Composable
 fun GlowingCard(
@@ -60,9 +60,9 @@ fun GlowingCard(
 
                     // 定义一组渐变颜色（最后一个颜色和第一个保持一致，使渐变闭合）
                     val gradientColors = listOf(
-                        Color(parseColor("#fb9de8")),
-                        Color(parseColor("#9ea4fd")),
-                        Color(parseColor("#fb9de8")),
+                        Color("#fb9de8".toColorInt()),
+                        Color("#9ea4fd".toColorInt()),
+                        Color("#fb9de8".toColorInt()),
                         )
 
                     // 构造旋转矩阵
