@@ -201,7 +201,8 @@ fun EditScreenContentInternal(
         mosaicType = uiState.mosaicType,
         blurRegions = uiState.blurRegions, // 传递 mosaicMode
         editingBlurRegionIndex = uiState.editingBlurRegionIndex,
-        mosaicTarget = uiState.mosaicTarget
+        mosaicTarget = uiState.mosaicTarget,
+        isSliding = uiState.isSliding
     )
 
     // --- 7. Create EditScreenActions Instance (Largely unchanged) ---
@@ -274,7 +275,8 @@ fun EditScreenContentInternal(
             onAngleChange = { angle -> viewModel.updateEditingAngle(angle) },
             onBlurRegionSizeChange = { factor -> viewModel.updateEditingBlurRegionSize(factor) },
             onBlurRegionAngleChange = { angle -> viewModel.updateEditingAngle(angle) }, // 角度更新可以共用一个函数
-            onMosaicTargetSelected = { target -> viewModel.setMosaicTarget(target) }
+            onMosaicTargetSelected = { target -> viewModel.setMosaicTarget(target) },
+            onSlidingStateChange = { isSliding -> viewModel.onSlidingStateChanged(isSliding) }
         )
     }
 

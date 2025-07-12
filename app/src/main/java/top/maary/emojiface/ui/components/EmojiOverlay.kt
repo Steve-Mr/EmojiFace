@@ -137,6 +137,23 @@ fun EmojiOverlay(
         }
     }
 
+    val previewPaint = remember {
+        Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.STROKE
+            strokeWidth = 6f // 预览框边框宽度
+            color = Color.WHITE // 使用高对比度的白色
+        }
+    }
+    val previewFillPaint = remember {
+        Paint().apply {
+            isAntiAlias = true
+            style = Paint.Style.FILL
+            // 半透明填充，让用户能看到下方的图片内容
+            color = Color.argb(80, 255, 255, 255)
+        }
+    }
+
     // 使用 Canvas Composable 进行绘制
     Canvas(
         modifier = Modifier
@@ -228,25 +245,8 @@ fun EmojiOverlay(
 
                 regionsToRender.forEach { region ->
 
-                    val regionBitmap = if (region == editingBlurRegion) {
-                        // a. 如果是正在编辑的区域，总是重新生成
-                        when (state.mosaicType) {
-                            PreferenceRepository.MOSAIC_TYPE_PIXELATED -> createPixelatedRegionBitmap(sourceBitmap, region)
-                            PreferenceRepository.MOSAIC_TYPE_HALFTONE -> createHalftoneRegionBitmap(sourceBitmap, region)
-                            else -> createBlurredRegionBitmap(sourceBitmap, region)
-                        }.asImageBitmap() // 转换为 Compose 使用的 ImageBitmap
-                    } else {
-                        // b. 如果不是正在编辑的区域，尝试从缓存获取，如果没有则生成并存入缓存
-                        bitmapCache.getOrPut(region) {
-                            when (state.mosaicType) {
-                                PreferenceRepository.MOSAIC_TYPE_PIXELATED -> createPixelatedRegionBitmap(sourceBitmap, region)
-                                PreferenceRepository.MOSAIC_TYPE_HALFTONE -> createHalftoneRegionBitmap(sourceBitmap, region)
-                                else -> createBlurredRegionBitmap(sourceBitmap, region)
-                            }.asImageBitmap()
-                        }
-                    }
+                    val isPreviewing = state.isSliding && region == editingBlurRegion
 
-                    // 2. 计算在屏幕上绘制的目标位置和尺寸
                     val destinationRect = RectF(
                         region.rect.left * scale,
                         region.rect.top * scale,
@@ -254,39 +254,86 @@ fun EmojiOverlay(
                         region.rect.bottom * scale
                     )
 
-                    // 3. 在 Canvas 中进行旋转和绘制
                     drawIntoCanvas { canvas ->
-                        canvas.nativeCanvas.save() // 保存状态
+                        canvas.nativeCanvas.save()
+                        canvas.nativeCanvas.rotate(region.angle, destinationRect.centerX(), destinationRect.centerY())
 
-                        // 以目标矩形的中心为轴点进行旋转
-                        canvas.nativeCanvas.rotate(
-                            region.angle,
-                            destinationRect.centerX(),
-                            destinationRect.centerY()
-                        )
+                        val ovalPath = Path().apply { addOval(destinationRect, Path.Direction.CW) }
 
-                        // 创建一个椭圆形的剪切路径
-                        val ovalPath = Path().apply {
-                            addOval(destinationRect, Path.Direction.CW)
-                        }
-                        // 应用剪切路径，后续的绘制只会在这个椭圆内显示
-                        canvas.nativeCanvas.clipPath(ovalPath)
-
-                        // 将模糊小图绘制到被剪切的画布上
-                        drawImage(
-                            image = regionBitmap,
-                            dstOffset = IntOffset(
-                                destinationRect.left.toInt(),
-                                destinationRect.top.toInt()
-                            ),
-                            dstSize = IntSize(
-                                destinationRect.width().toInt(),
-                                destinationRect.height().toInt()
+                        if (isPreviewing) {
+                            // --- A. 如果是预览模式，绘制轻量级的预览框 ---
+                            canvas.nativeCanvas.drawPath(ovalPath, previewFillPaint) // 半透明填充
+                            canvas.nativeCanvas.drawPath(ovalPath, previewPaint)     // 白色描边
+                        } else {
+                            // --- B. 正常模式，绘制真实的模糊效果 ---
+                            val regionBitmap = bitmapCache.getOrPut(region) {
+                                when (state.mosaicType) {
+                                    PreferenceRepository.MOSAIC_TYPE_PIXELATED -> createPixelatedRegionBitmap(sourceBitmap, region)
+                                    PreferenceRepository.MOSAIC_TYPE_HALFTONE -> createHalftoneRegionBitmap(sourceBitmap, region)
+                                    else -> createBlurredRegionBitmap(sourceBitmap, region)
+                                }.asImageBitmap()
+                            }
+                            canvas.nativeCanvas.clipPath(ovalPath)
+                            drawImage(
+                                image = regionBitmap,
+                                dstOffset = IntOffset(destinationRect.left.toInt(), destinationRect.top.toInt()),
+                                dstSize = IntSize(destinationRect.width().toInt(), destinationRect.height().toInt())
                             )
-                        )
-
-                        canvas.nativeCanvas.restore() // 恢复状态，移除旋转和剪切
+                        }
+                        canvas.nativeCanvas.restore()
                     }
+
+//                    val regionBitmap = if (region == editingBlurRegion) {
+//                        // a. 如果是正在编辑的区域，总是重新生成
+//                        when (state.mosaicType) {
+//                            PreferenceRepository.MOSAIC_TYPE_PIXELATED -> createPixelatedRegionBitmap(sourceBitmap, region)
+//                            PreferenceRepository.MOSAIC_TYPE_HALFTONE -> createHalftoneRegionBitmap(sourceBitmap, region)
+//                            else -> createBlurredRegionBitmap(sourceBitmap, region)
+//                        }.asImageBitmap() // 转换为 Compose 使用的 ImageBitmap
+//                    } else {
+//                        // b. 如果不是正在编辑的区域，尝试从缓存获取，如果没有则生成并存入缓存
+//                        bitmapCache.getOrPut(region) {
+//                            when (state.mosaicType) {
+//                                PreferenceRepository.MOSAIC_TYPE_PIXELATED -> createPixelatedRegionBitmap(sourceBitmap, region)
+//                                PreferenceRepository.MOSAIC_TYPE_HALFTONE -> createHalftoneRegionBitmap(sourceBitmap, region)
+//                                else -> createBlurredRegionBitmap(sourceBitmap, region)
+//                            }.asImageBitmap()
+//                        }
+//                    }
+
+//                    // 3. 在 Canvas 中进行旋转和绘制
+//                    drawIntoCanvas { canvas ->
+//                        canvas.nativeCanvas.save() // 保存状态
+//
+//                        // 以目标矩形的中心为轴点进行旋转
+//                        canvas.nativeCanvas.rotate(
+//                            region.angle,
+//                            destinationRect.centerX(),
+//                            destinationRect.centerY()
+//                        )
+//
+//                        // 创建一个椭圆形的剪切路径
+//                        val ovalPath = Path().apply {
+//                            addOval(destinationRect, Path.Direction.CW)
+//                        }
+//                        // 应用剪切路径，后续的绘制只会在这个椭圆内显示
+//                        canvas.nativeCanvas.clipPath(ovalPath)
+//
+//                        // 将模糊小图绘制到被剪切的画布上
+//                        drawImage(
+//                            image = regionBitmap,
+//                            dstOffset = IntOffset(
+//                                destinationRect.left.toInt(),
+//                                destinationRect.top.toInt()
+//                            ),
+//                            dstSize = IntSize(
+//                                destinationRect.width().toInt(),
+//                                destinationRect.height().toInt()
+//                            )
+//                        )
+//
+//                        canvas.nativeCanvas.restore() // 恢复状态，移除旋转和剪切
+//                    }
                 }
             }
         }

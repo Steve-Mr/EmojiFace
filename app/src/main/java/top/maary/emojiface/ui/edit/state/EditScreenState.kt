@@ -47,5 +47,6 @@ data class EditScreenState(
     val mosaicMode: Int, // 马赛克模式状态
     val mosaicType: Int,
     val mosaicTarget: Int,
-    val blurRegions: List<BlurRegion>
+    val blurRegions: List<BlurRegion>,
+    val isSliding: Boolean
 )

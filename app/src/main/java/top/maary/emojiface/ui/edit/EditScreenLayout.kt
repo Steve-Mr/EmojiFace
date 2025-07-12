@@ -251,7 +251,7 @@ fun CompactScreenLayout(
                 onAngleChange = actions.onAngleChange,
                 onConfirm = actions.onConfirmEditing,
                 onDismiss = actions.onCancelEditing,
-                onSlidingStateChange = { isSliding = it },
+                onSlidingStateChange = actions.onSlidingStateChange,
             )
         }
     }

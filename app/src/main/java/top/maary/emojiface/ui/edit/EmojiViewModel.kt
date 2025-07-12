@@ -72,7 +72,8 @@ data class EditUiState(
     val mosaicMode: Int = MOSAIC_MODE_EMOJI, // 马赛克模式状态
     val mosaicType: Int = PreferenceRepository.MOSAIC_TYPE_GAUSSIAN,
     val mosaicTarget: Int = PreferenceRepository.MOSAIC_TARGET_FACE,
-    val blurRegions: List<BlurRegion> = emptyList()
+    val blurRegions: List<BlurRegion> = emptyList(),
+    val isSliding: Boolean = false
 )
 
 @HiltViewModel
@@ -493,6 +494,26 @@ class EmojiViewModel @Inject constructor(
                 editingEmoji = newDetection,
                 editingEmojiIndex = -1 // 使用 -1 标记为新增
             )
+        }
+    }
+
+    fun onSlidingStateChanged(isSliding: Boolean) {
+        _uiState.update { it.copy(isSliding = isSliding) }
+        // 如果滑动结束，并且当前在编辑 blur 模式，则触发一次重绘
+        if (!isSliding && _uiState.value.mosaicMode == MOSAIC_MODE_BLUR) {
+            triggerReRender()
+        }
+    }
+
+    private var renderJob: Job? = null
+    private fun triggerReRender() {
+        renderJob?.cancel() // 取消任何正在进行的渲染
+        renderJob = viewModelScope.launch {
+            _uiState.update { it.copy(isRendering = true) }
+            val state = _uiState.value
+            val baseBitmap = state.originalBitmap ?: return@launch
+            val regions = state.blurRegions
+            rerenderBlurEffect(baseBitmap, regions, state.mosaicType)
         }
     }
 
