@@ -283,6 +283,14 @@ class EmojiViewModel @Inject constructor(
                         // --- 核心修正 End ---
                         onSuccess = { detectionOutput ->
                             _uiState.update { it.copy(detectionOutput = detectionOutput) } // 保存结果
+                            if (_uiState.value.isTooDeep) {
+                                val sourceBitmap = detectionOutput.sourceBitmap
+                                val fakeBox = generateFakeDetection(sourceBitmap.width, sourceBitmap.height)
+                                _uiState.update { it.copy(fakeDetections = listOf(fakeBox)) }
+                            } else {
+                                // 如果选项是关闭的，确保列表是空的
+                                _uiState.update { it.copy(fakeDetections = emptyList()) }
+                            }
                             // 根据模式选择处理方式
                             when (_uiState.value.mosaicMode) {
                                 MOSAIC_MODE_EMOJI -> calculateEmojiPositions(detectionOutput)
@@ -308,13 +316,6 @@ class EmojiViewModel @Inject constructor(
                 onSuccess = { emojiDetections ->
                     _uiState.update { it.copy(selectedEmojis = emojiDetections) } // Update emojis first
                     renderInitialBitmap() // 修改：不再需要传递参数
-                    if (_uiState.value.isTooDeep) {
-                        val sourceBitmap = detectionOutput.sourceBitmap
-                        val fakeBox = generateFakeDetection(sourceBitmap.width, sourceBitmap.height)
-                        _uiState.update { it.copy(fakeDetections = listOf(fakeBox)) }
-                    } else {
-                        _uiState.update { it.copy(fakeDetections = emptyList()) }
-                    }
                 },
                 onFailure = { exception ->
                     _uiState.update { it.copy(isProcessing = false, errorMessage = "Calculating positions failed: ${exception.localizedMessage}") }
