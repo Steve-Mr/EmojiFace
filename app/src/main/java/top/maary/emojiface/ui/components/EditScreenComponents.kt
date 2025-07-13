@@ -92,7 +92,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -537,19 +536,16 @@ fun EasterEggRow(
 
 @Composable
 fun AboutRow(onEasterEggStateChanged: (Boolean) -> Unit) {
-    var clickCount by remember {
-        mutableIntStateOf(0)
-    }
-    var job by remember {
-        mutableStateOf<Job?>(null)
-    }
+    var clickCount by remember { mutableIntStateOf(0) }
+    var job by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
     Row (modifier = Modifier.fillMaxWidth()
         .combinedClickable(
             onClick = {
                 Log.e("AboutRow", "onClick: $clickCount")
                 clickCount++
                 if (clickCount == 1) {
-                    job = CoroutineScope(Dispatchers.Default).launch {
+                    job = scope.launch {
                         delay(5000) // 500 milliseconds
                         withContext(Dispatchers.Main) {
                             clickCount = 0
