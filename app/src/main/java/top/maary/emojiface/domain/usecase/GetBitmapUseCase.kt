@@ -11,7 +11,7 @@ import javax.inject.Inject
 
 
 class GetBitmapUseCase @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) {
     suspend operator fun invoke(inputUri: Uri): Result<Bitmap> = withContext(Dispatchers.IO) {
         runCatching { // 使用 runCatching 简化 try-catch 和 Result 返回

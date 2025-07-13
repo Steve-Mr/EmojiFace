@@ -16,7 +16,7 @@ import java.io.IOException
 import javax.inject.Inject
 
 class GenerateShareableUriUseCase @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     suspend operator fun invoke(bitmap: Bitmap): Result<Uri> = withContext(Dispatchers.IO) {
         runCatching {

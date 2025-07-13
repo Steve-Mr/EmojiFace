@@ -1,22 +1,52 @@
 name: Android CI
 
 on:
-  pull_request:
-    branches: [ "master" ]
+  workflow_dispatch:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # 原始权限，用于 checkout 和 create-release
+      packages: write # 如果您使用 ghcr.io
+      pull-requests: read # 如果需要读取pr信息
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - name: set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+
+      - name: Fetch all tags
+        run: git fetch --tags --force
+
+      - name: Determine Changelog Range
+        id: changelog_range
+        run: |
+          # 获取最新的稳定版 (非 prerelease) 的 tag 作为起点
+          # --repo ${{ github.repository }} 确保在 fork 的仓库里也能正确执行
+          LATEST_TAG=$(gh release list --repo ${{ github.repository }} --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName')
+
+          if [[ -z "$LATEST_TAG" ]]; then
+            # 如果没有找到任何稳定版 release，就从仓库的第一个 commit 开始
+            echo "未找到稳定版 Release, 将从最初的 commit 开始生成日志。"
+            BASE_REF=$(git rev-list --max-parents=0 HEAD)
+          else
+            echo "找到最新的稳定版 Release: $LATEST_TAG"
+            BASE_REF=$LATEST_TAG
+          fi
+
+          echo "base_ref=$BASE_REF" >> $GITHUB_OUTPUT
+          # 终点是当前触发工作流的 commit
+          echo "head_ref=${{ github.sha }}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Storing key.properties
         run: |
@@ -82,6 +112,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
+      - name: Generate Changelog
+        id: generate_changelog
+        run: |
+          git log --reverse ${{ steps.changelog_range.outputs.base_ref }}..${{ steps.changelog_range.outputs.head_ref }} --pretty=format:"* %s (%h)" > changelog.txt
+          DELIMITER=$(openssl rand -hex 16)
+          echo "changelog<<$DELIMITER" >> "$GITHUB_OUTPUT"
+          echo "## Changes" >> "$GITHUB_OUTPUT"
+          cat changelog.txt >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "$DELIMITER" >> "$GITHUB_OUTPUT"
+
+      - name: Upload changelog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog-data
+          path: changelog.txt
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -91,10 +138,7 @@ jobs:
           tag_name: release-${{ steps.date.outputs.date }}-${{ steps.release_count.outputs.count }}
           release_name: Release ${{ steps.date.outputs.date }}
           prerelease: true
-          body: |
-            ## Changes
-            ${{ github.event.pull_request.body }}
-            ${{ steps.show_pr_commits.outputs.commits }}
+          body: ${{ steps.generate_changelog.outputs.changelog }}
 
       - uses: actions/upload-release-asset@v1
         name: Upload Release APK (iconEnabled, arm64-v8a)
@@ -153,6 +197,11 @@ jobs:
         with:
           name: telegram-bot-api-binary
           path: .
+
+      - name: Download Changelog Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: changelog-data
 
       - name: find apk
         run: |

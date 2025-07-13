@@ -14,7 +14,7 @@ import java.io.IOException
 import javax.inject.Inject
 
 class SaveImageUseCase @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     suspend operator fun invoke(bitmap: Bitmap): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {

@@ -8,5 +8,6 @@ data class EmojiDetection(
     val yCenter: Float,
     val diameter: Float,
     val angle: Float,
-    val emoji: String
+    val emoji: String,
+    val originalDiameter: Float = diameter
 )

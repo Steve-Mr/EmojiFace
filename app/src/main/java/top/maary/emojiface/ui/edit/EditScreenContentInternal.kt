@@ -16,11 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -54,10 +52,6 @@ fun EditScreenContentInternal(
     var showBottomSheet by remember { mutableStateOf(false) }
     var isAddMode by remember { mutableStateOf(false) }
     var imageContainerSize by remember { mutableStateOf(IntSize.Zero) }
-    var selectedIndexForEdit by remember { mutableIntStateOf(-1) } // -1 for Add, >=0 for Edit index
-    var tapPositionForAdd by remember { mutableStateOf(Offset.Zero) } // Store tap position for adding
-    var isEditingEmojiListInSheet by remember { mutableStateOf(false) } // State for bottom sheet mode
-    var isMediumLayout by remember { mutableStateOf(false) } // To pass to ActionRow if needed
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var emojiIndexToDelete by remember { mutableStateOf<Int?>(null) }
 
@@ -149,16 +143,11 @@ fun EditScreenContentInternal(
     // --- 5. Derive UI-Specific Values from uiState ---
     // Use remember to avoid recalculating on every recomposition unless inputs change
     val displayedBitmapForUi = remember(uiState.originalBitmap) {
-        uiState.originalBitmap?.asImageBitmap()
+        uiState.displayedBitmap?.asImageBitmap()
     }
-    val currentImageForUi = remember(uiState.originalBitmap) { // Needed? Only if layout explicitly needs original
-        uiState.originalBitmap?.asImageBitmap()
-    }
-    val aspectRatio = remember(uiState.originalBitmap) {
-        uiState.originalBitmap?.let {
-            if (it.height > 0) it.width.toFloat() / it.height.toFloat() else 1f
-        } ?: 1f // Default aspect ratio
-    }
+
+    val aspectRatio = uiState.aspectRatio ?: 1f
+
     val fontNames = remember(uiState.availableFontPaths) {
         uiState.availableFontPaths.map { path ->
             when (path) {
@@ -180,7 +169,6 @@ fun EditScreenContentInternal(
     // Combine derived values, ViewModel state, and local UI state
     val stateForUiLayout = EditScreenState(
         displayedBitmap = displayedBitmapForUi,
-        currentImage = currentImageForUi, // Pass if needed by layout
         aspectRatio = aspectRatio,
         emojiDetections = uiState.selectedEmojis, // Direct from uiState
         predefinedEmojiList = uiState.predefinedEmojiOptions, // Direct from uiState
@@ -191,9 +179,17 @@ fun EditScreenContentInternal(
         isAppIconHidden = uiState.isAppIconHidden, // Direct from uiState
         availableFontNames = fontNames, // Derived value
         selectedFontIndex = selectedFontIndex, // Derived value
-        isMediumLayout = isMediumLayout, // Pass local state if needed by ActionRow etc.
         typeface = uiState.loadedTypeface, // Direct from uiState
-        editingEmojiIndex = uiState.editingEmoji?.let { uiState.selectedEmojis.indexOf(it) } // Get index of currently editing emoji
+        editingEmojiIndex = uiState.editingEmoji?.let { uiState.selectedEmojis.indexOf(it) }, // Get index of currently editing emoji
+        isEasterEggEnabled = uiState.isEasterEggEnabled,
+        isTooDeep = uiState.isTooDeep,
+        fakeDetections = uiState.fakeDetections,
+        mosaicMode = uiState.mosaicMode,
+        mosaicType = uiState.mosaicType,
+        blurRegions = uiState.blurRegions, // 传递 mosaicMode
+        editingBlurRegionIndex = uiState.editingBlurRegionIndex,
+        mosaicTarget = uiState.mosaicTarget,
+        isSliding = uiState.isSliding,
     )
 
     // --- 7. Create EditScreenActions Instance (Largely unchanged) ---
@@ -201,10 +197,8 @@ fun EditScreenContentInternal(
     val actions = remember(viewModel) { // Remember actions instance tied to VM
         EditScreenActions(
             onImageTapToAdd = { offset ->
-                tapPositionForAdd = offset
-                selectedIndexForEdit = -1 // Mark as Add
                 isAddMode = false // Exit add mode state after tap
-                viewModel.addEmoji(offset.x, offset.y, viewModel.getRandomEmoji(), 100f, 0f)
+                viewModel.addItemAtPosition(offset.x, offset.y)
             },
             onImageContainerMeasured = { size -> imageContainerSize = size },
             onPickImageClick = {
@@ -220,7 +214,7 @@ fun EditScreenContentInternal(
                 emojiIndexToDelete = index
                 showDeleteConfirmDialog = true
             },
-            onAddEmojiCardClick = { isAddMode = true }, // Enter Add Mode
+            onAddClicked = { isAddMode = true }, // Enter Add Mode
             onCloseClick = { activity?.finish() },
             // Share/Save now ignore the bitmap param internally in VM
             onShareClick = { viewModel.shareImage() },
@@ -230,12 +224,9 @@ fun EditScreenContentInternal(
             // Bottom Sheet Actions
             onSettingsSheetDismiss = {
                 showBottomSheet = false
-                isEditingEmojiListInSheet = false // Reset internal sheet state
             },
-            onEditPredefinedEmojisClick = { isEditingEmojiListInSheet = true },
             onPredefinedEmojisEdited = { newEmojiListString ->
                 viewModel.updateEmojiList(newEmojiListString)
-                isEditingEmojiListInSheet = false
             },
             onHideIconToggle = { hide -> viewModel.toggleLauncherIcon(hide) },
             onFontSelected = { index -> viewModel.onFontSelected(index) },
@@ -254,12 +245,20 @@ fun EditScreenContentInternal(
             onEditingValueChanged = { emoji, diameter, rotation ->
                 viewModel.updateEditingEmoji(emoji, diameter, rotation)
             },
-            onConfirmEditing = {
-                viewModel.confirmEditing()
-            },
-            onCancelEditing = {
-                viewModel.cancelEditing()
-            },
+            onConfirmEditing = { viewModel.confirmEditing() },
+            onCancelEditing = { viewModel.cancelEditing() },
+            onEasterEggStateChanged = { enabled -> viewModel.setEasterEggEnabled(enabled) },
+            onTooDeepStateChanged = { enabled -> viewModel.setTooDeepEnabled(enabled) },
+            onMosaicModeSelected = { mode -> viewModel.setMosaicMode(mode) },
+            onMosaicTypeSelected = { type -> viewModel.setMosaicType(type) },
+            onBlurRegionSelected = { index -> viewModel.selectBlurRegionForEditing(index) },
+            onEmojiChange = { emoji -> viewModel.updateEditingEmoji(emoji = emoji) },
+            onSizeFactorChange = { factor -> viewModel.updateEditingEmojiSize(factor) },
+            onAngleChange = { angle -> viewModel.updateEditingAngle(angle) },
+            onBlurRegionSizeChange = { factor -> viewModel.updateEditingBlurRegionSize(factor) },
+            onBlurRegionAngleChange = { angle -> viewModel.updateEditingAngle(angle) }, // 角度更新可以共用一个函数
+            onMosaicTargetSelected = { target -> viewModel.setMosaicTarget(target) },
+            onSlidingStateChange = { isSliding -> viewModel.onSlidingStateChanged(isSliding) }
         )
     }
 
@@ -299,29 +298,31 @@ fun EditScreenContentInternal(
     // --- 8. Layout Dispatching ---
     when {
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND) -> {
-            isMediumLayout = false // Update layout flag
             LargeScreenLayout(
                 state = stateForUiLayout,
                 actions = actions,
                 editingEmoji = uiState.editingEmoji,
+                editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
-                onDismissSettingsSheet = actions.onSettingsSheetDismiss)
+                onDismissSettingsSheet = actions.onSettingsSheetDismiss,
+                isMediumLayout = false)
         }
         windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND) -> {
-            isMediumLayout = true // Update layout flag
             LargeScreenLayout(
                 state = stateForUiLayout,
                 actions = actions,
                 editingEmoji = uiState.editingEmoji,
+                editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
-                onDismissSettingsSheet = actions.onSettingsSheetDismiss)
+                onDismissSettingsSheet = actions.onSettingsSheetDismiss,
+                isMediumLayout = true)
         }
         else -> {
-            isMediumLayout = false // Update layout flag
             CompactScreenLayout(
                 state = stateForUiLayout,
                 actions = actions,
                 editingEmoji = uiState.editingEmoji,
+                editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
                 onDismissSettingsSheet = actions.onSettingsSheetDismiss)
         }

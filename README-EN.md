@@ -25,10 +25,11 @@ We offer two APK variants. Please choose the one that best fits your usage style
 
 ## Features
 
-1. Automatically detects faces in images and overlays them with emoji.
-2. Add, modify, or delete emoji on images.
-3. Option to hide the app icon (In this state, the only way to launch the app is by sharing a picture to it from another application.).
-4. Import custom emoji font files.
+1. Automatically detects faces in images and applies a preset effect, with options for Emoji (default) or blur overlays.
+2. Add, modify, or delete emoji or blur regions on images.
+3. Multiple blur effects available, including Gaussian blur, pixelation, and halftone (with some deviations from standard definitions).
+4. Option to hide the app icon (In this state, the only way to launch the app is by sharing a picture to it from another application.).
+5. Import custom emoji font files.
 
 ## Notes
 

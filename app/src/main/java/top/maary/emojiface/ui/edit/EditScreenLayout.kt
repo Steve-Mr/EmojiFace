@@ -26,6 +26,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -50,13 +51,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import top.maary.emojiface.R
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
-import top.maary.emojiface.ui.components.EditEmojiBottomSheetContent
+import top.maary.emojiface.ui.components.EditBottomSheetContent
 import top.maary.emojiface.ui.components.EmojiCard
+import top.maary.emojiface.ui.components.MosaicTypeBlock
+import top.maary.emojiface.ui.components.MosaicTypeToolbar
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
 import top.maary.emojiface.ui.components.SideSheetContent
 import top.maary.emojiface.ui.components.SurfaceSideSheet
+import top.maary.emojiface.ui.edit.model.BlurRegion
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -67,8 +73,10 @@ fun CompactScreenLayout(
     state: EditScreenState,
     actions: EditScreenActions,
     editingEmoji: EmojiDetection?,
+    editingBlurRegion: BlurRegion?,
     showSettingsSheet: Boolean,
-    onDismissSettingsSheet: () -> Unit
+    onDismissSettingsSheet: () -> Unit,
+    isMediumLayout: Boolean = false
 ) {
     // TopAppBar 滾動行為
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -82,10 +90,13 @@ fun CompactScreenLayout(
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.tertiary),
                 title = {
-                    // Compact 版本中標題為空
+                    Text(stringResource(R.string.app_name))
                 },
                 navigationIcon = {
-                    IconButton(onClick = actions.onCloseClick) { // 使用 action
+                    IconButton(onClick = actions.onCloseClick,
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.secondary)) { // 使用 action
                         Icon(
                             imageVector = Icons.Outlined.Close,
                             contentDescription = stringResource(R.string.exit)
@@ -95,7 +106,10 @@ fun CompactScreenLayout(
                 actions = {
                     // 只有在有圖片加載/處理後才顯示清除按鈕
                     if (state.displayedBitmap != null) {
-                        IconButton(onClick = actions.onClearImageClick) { // 使用 action
+                        IconButton(onClick = actions.onClearImageClick,
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.secondary)) { // 使用 action
                             Icon(
                                 imageVector = Icons.Outlined.DeleteSweep,
                                 contentDescription = stringResource(R.string.clear_photo)
@@ -121,69 +135,76 @@ fun CompactScreenLayout(
                     .padding(8.dp),
                 state = state,
                 actions = actions,
-                editingEmoji = editingEmoji
+                editingEmoji = editingEmoji,
+                editingBlurRegion = editingBlurRegion
             )
 
             if (state.displayedBitmap != null) {
-                Card(
-                    modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
-                ) {
-                    // --- 偵測到的表情符號行 ---
-                    LazyRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(
-                            horizontal = 0.dp,
-                            vertical = 8.dp
-                        ) // 增加垂直 padding
+                if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
+                    Card(
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                        )
                     ) {
-                        itemsIndexed(
-                            items = state.emojiDetections,
-                            key = { _, item -> item.id } // key 使用 item 的唯一 id
-                        ) { index, detection ->
-                            Spacer(modifier = Modifier.width(8.dp))
-                            EmojiCard(
-                                modifier = Modifier.animateItem(),
-                                emoji = detection.emoji,
-                                onClick = { actions.onEmojiCardClick(index) },
-                                onLongClick = { actions.onEmojiCardLongClick(index) },
-                                fontFamily = state.fontFamily,
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                // hPadding 和 vPadding 使用 EmojiCard 的默認值或按需調整
-                            )
-                        }
-                        item {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            EmojiCard(
-                                emoji = "➕", // 或使用 Icons.Outlined.AddReaction
-                                onClick = actions.onAddEmojiCardClick, // 使用 action
-                                clickable = true,
-                                fontFamily = state.fontFamily,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
+                        // --- 偵測到的表情符號行 ---
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(
+                                horizontal = 0.dp,
+                                vertical = 8.dp
+                            ) // 增加垂直 padding
+                        ) {
+                            itemsIndexed(
+                                items = state.emojiDetections,
+                                key = { _, item -> item.id } // key 使用 item 的唯一 id
+                            ) { index, detection ->
+                                Spacer(modifier = Modifier.width(8.dp))
+                                EmojiCard(
+                                    modifier = Modifier.animateItem(),
+                                    emoji = detection.emoji,
+                                    onClick = { actions.onEmojiCardClick(index) },
+                                    onLongClick = { actions.onEmojiCardLongClick(index) },
+                                    fontFamily = state.fontFamily,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    // hPadding 和 vPadding 使用 EmojiCard 的默認值或按需調整
+                                )
+                            }
+                            item {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                EmojiCard(
+                                    emoji = "➕", // 或使用 Icons.Outlined.AddReaction
+                                    onClick = actions.onAddClicked, // 使用 action
+                                    clickable = true,
+                                    fontFamily = state.fontFamily,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
 
+                        }
                     }
+                } else {
+                    MosaicTypeToolbar(
+                        selectedType = state.mosaicType, // <-- 传递当前选中的类型
+                        onMosaicTypeSelected = actions.onMosaicTypeSelected, // <-- 传递 Action
+                        onAddBlurRegionClick = actions.onAddClicked
+                    )
                 }
             }
 
             // --- 底部操作按鈕區域 ---
-            ActionRow(state = state, actions = actions)
+            ActionRow(state = state, actions = actions, isMediumLayout = isMediumLayout)
 
             Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding()))
 
         }
     }
-    if (editingEmoji != null) {
+    if (editingEmoji != null || editingBlurRegion != null) {
         val bottomSheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = true,
         )
         val scope = rememberCoroutineScope()
-
-        val maxDiameter = state.currentImage?.let { minOf(it.width, it.height) / 3f } ?: 500f
 
         var isSliding by remember { mutableStateOf(false) }
 
@@ -209,17 +230,27 @@ fun CompactScreenLayout(
             containerColor = containerColor
         ) {
             // 完全复用现有的 Composable
-            EditEmojiBottomSheetContent(
-                initialEmoji = editingEmoji.emoji,
-                initialDiameter = editingEmoji.diameter,
-                initialRotation = editingEmoji.angle,
+            EditBottomSheetContent(
+                mosaicMode = state.mosaicMode,
+                // 传递瞬时状态
+                editingEmoji = editingEmoji,
+                editingBlurRegion = editingBlurRegion,
+                // 传递其他参数
                 availableEmojis = state.predefinedEmojiList ?: emptyList(),
                 fontFamily = state.fontFamily,
+                // 统一的回调
+                onEmojiChange = actions.onEmojiChange,
+                onSizeChange = { newFactor ->
+                    if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
+                        actions.onSizeFactorChange(newFactor)
+                    } else {
+                        actions.onBlurRegionSizeChange(newFactor)
+                    }
+                },
+                onAngleChange = actions.onAngleChange,
                 onConfirm = actions.onConfirmEditing,
                 onDismiss = actions.onCancelEditing,
-                maxDiameter = maxDiameter,
-                onValueChange = actions.onEditingValueChanged,
-                onSlidingStateChange = { isSliding = it }
+                onSlidingStateChange = actions.onSlidingStateChange,
             )
         }
     }
@@ -248,7 +279,15 @@ fun CompactScreenLayout(
                 onHideIconToggle = actions.onHideIconToggle,
                 onFontSelected = actions.onFontSelected,
                 onAddFontClick = actions.onAddFontClick,
-                onRemoveFontClick = actions.onRemoveFontClick
+                onRemoveFontClick = actions.onRemoveFontClick,
+                isEasterEggEnabled = state.isEasterEggEnabled,
+                onEasterEggStateChanged = actions.onEasterEggStateChanged,
+                isTooDeep = state.isTooDeep,
+                onTooDeepStateChanged = actions.onTooDeepStateChanged,
+                mosaicMode = state.mosaicMode,
+                onMosaicModeSelected = actions.onMosaicModeSelected,
+                mosaicTarget = state.mosaicTarget,
+                onMosaicTargetSelected = actions.onMosaicTargetSelected
             )
         }
     }
@@ -259,18 +298,22 @@ fun LargeScreenLayout(
     state: EditScreenState,
     actions: EditScreenActions,
     editingEmoji: EmojiDetection?,
+    editingBlurRegion: BlurRegion?,
     showSettingsSheet: Boolean,
-    onDismissSettingsSheet: () -> Unit
+    onDismissSettingsSheet: () -> Unit,
+    isMediumLayout: Boolean
 ) {
-    val showSideSheet = editingEmoji != null || showSettingsSheet
+    val showSideSheet = editingEmoji != null || showSettingsSheet || editingBlurRegion != null
 
     var isSliding by remember { mutableStateOf(false) }
 
     val sideSheetColor by animateColorAsState(
         targetValue = if (isSliding) {
             MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f)
-        } else {
+        } else if (editingEmoji != null){
             MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLowest
         },
         label = "SideSheetColorAnimation"
     )
@@ -294,7 +337,7 @@ fun LargeScreenLayout(
                 actions = actions,
                 editingEmoji = editingEmoji,
                 showSettingsSheet = showSettingsSheet,
-                onSlidingStateChange = { isSliding = it }
+                editingBlurRegion = editingBlurRegion
             )
         }
     ) {
@@ -350,7 +393,8 @@ fun LargeScreenLayout(
                             .fillMaxHeight(),
                         state = state,
                         actions = actions,
-                        editingEmoji = editingEmoji
+                        editingEmoji = editingEmoji,
+                        editingBlurRegion = editingBlurRegion
                     )
 
                     // --- Side Panel (Smaller Portion) ---
@@ -367,44 +411,56 @@ fun LargeScreenLayout(
                             modifier = Modifier.fillMaxHeight(), // Column fills the card height
                             verticalArrangement = Arrangement.SpaceBetween // Pushes grid up and buttons down
                         ) {
-                            // --- Emoji Grid ---
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
-                                modifier = Modifier.weight(1f) // Grid takes available space
-                            ) {
-                                itemsIndexed(
-                                    items = state.emojiDetections,
-                                    key = { _, item -> item.id } // key 使用 item 的唯一 id
-                                ) { index, detection ->
-                                    EmojiCard(
-                                        modifier = Modifier.animateItem(),
-                                        emoji = detection.emoji,
-                                        onClick = { actions.onEmojiCardClick(index) },
-                                        onLongClick = { actions.onEmojiCardLongClick(index) },
-                                        fontFamily = state.fontFamily,
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        hPadding = 8.dp,
-                                        vPadding = 8.dp
-                                    )
-                                }
-                                // Show Add button only if an image is present
-                                if (state.displayedBitmap != null) {
-                                    item {
+                            if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
+                                // --- Emoji Grid ---
+                                LazyVerticalGrid(
+                                    columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
+                                    modifier = Modifier.weight(1f) // Grid takes available space
+                                ) {
+                                    itemsIndexed(
+                                        items = state.emojiDetections,
+                                        key = { _, item -> item.id } // key 使用 item 的唯一 id
+                                    ) { index, detection ->
                                         EmojiCard(
-                                            emoji = "➕",
-                                            onClick = actions.onAddEmojiCardClick, // Use action
-                                            clickable = true,
+                                            modifier = Modifier.animateItem(),
+                                            emoji = detection.emoji,
+                                            onClick = { actions.onEmojiCardClick(index) },
+                                            onLongClick = { actions.onEmojiCardLongClick(index) },
                                             fontFamily = state.fontFamily,
                                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                             hPadding = 8.dp,
                                             vPadding = 8.dp
                                         )
                                     }
+                                    // Show Add button only if an image is present
+                                    if (state.displayedBitmap != null) {
+                                        item {
+                                            EmojiCard(
+                                                emoji = "➕",
+                                                onClick = actions.onAddClicked, // Use action
+                                                clickable = true,
+                                                fontFamily = state.fontFamily,
+                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                                hPadding = 8.dp,
+                                                vPadding = 8.dp
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (state.mosaicMode == MOSAIC_MODE_BLUR) {
+                                if (state.displayedBitmap != null) {
+                                    MosaicTypeBlock(
+                                        selectedType = state.mosaicType, // <-- 传递当前选中的类型
+                                        onMosaicTypeSelected = actions.onMosaicTypeSelected, // <-- 传递 Action
+                                        onAddBlurRegionClick = actions.onAddClicked
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
                             }
 
                             // --- Action Buttons Area (at the bottom of the card) ---
-                            ActionRow(state = state, actions = actions)
+                            ActionRow(state = state, actions = actions, isMediumLayout = isMediumLayout)
                         }
                     }
                 }

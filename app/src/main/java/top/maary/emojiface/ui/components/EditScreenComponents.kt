@@ -1,50 +1,45 @@
 package top.maary.emojiface.ui.components
 
-import android.graphics.Paint
-import android.graphics.Typeface
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.Done
-import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
-import androidx.compose.material.icons.outlined.Rotate90DegreesCw
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.TagFaces
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.rounded.SaveAlt
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -54,9 +49,13 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
@@ -65,14 +64,15 @@ import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -80,27 +80,36 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import top.maary.emojiface.BuildConfig
 import top.maary.emojiface.R
-import top.maary.emojiface.ui.edit.model.EmojiDetection
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TARGET_EYES
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TARGET_FACE
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TYPE_GAUSSIAN
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TYPE_HALFTONE
+import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TYPE_PIXELATED
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
+import top.maary.emojiface.ui.theme.Typography
 import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
 
 @Composable
@@ -298,7 +307,7 @@ fun HomeSwitchRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(modifier = Modifier.weight(1f), text = stringResource(R.string.hide_home))
+        Text(modifier = Modifier.weight(1f), text = stringResource(R.string.hide_home), color = MaterialTheme.colorScheme.onSurface)
         Tooltip(tooltipText = stringResource(R.string.hide_home_bug))
         Switch(checked = state, onCheckedChange = onCheckedChange)
     }
@@ -317,7 +326,7 @@ fun Tooltip(
         positionProvider = rememberTooltipPositionProvider(),
         tooltip = {
             RichTooltip {
-                Text(tooltipText)
+                Text(text = tooltipText, color = MaterialTheme.colorScheme.onSurface)
             }
         },
         state = tooltipState
@@ -331,7 +340,8 @@ fun Tooltip(
         } }) {
             Icon(
                 imageVector = Icons.Filled.Info,
-                contentDescription = "Show more information"
+                contentDescription = "Show more information",
+                tint = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -425,7 +435,7 @@ fun DropdownRow(
             position = position, onItemClicked = onItemClicked, onItemActionClicked = onRemoveClick
         )
         OutlinedIconButton(onClick = { onAddClick() }, modifier = Modifier.padding(8.dp)) {
-            Icon(Icons.Outlined.AttachFile, stringResource(R.string.choose_font))
+            Icon(Icons.Outlined.AttachFile, stringResource(R.string.choose_font), tint = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -464,605 +474,7 @@ fun SliderWithCaption(
 }
 
 @Composable
-fun SettingsBottomSheetContent(
-    emojiOptions: List<String>,
-    isEditingEmojiList: Boolean,
-    fontFamily: FontFamily?,
-    isAppIconHidden: Boolean,
-    availableFontNames: List<String>,
-    selectedFontIndex: Int,
-    onEditClick: () -> Unit,
-    onEditConfirm: (newEmojiListString: String) -> Unit,
-    onHideIconToggle: (hide: Boolean) -> Unit,
-    onFontSelected: (index: Int) -> Unit,
-    onAddFontClick: () -> Unit,
-    onRemoveFontClick: (index: Int) -> Unit,
-) {
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 24.dp,
-                topEnd = 24.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
-            )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-        Column {
-            Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
-                text = stringResource(R.string.emoji_list))
-            if (!isEditingEmojiList) {
-                PredefinedEmojiSettings(
-                    emojiOptions = emojiOptions,
-                    onClick = onEditClick,
-                    fontFamily = fontFamily)
-            } else {
-                EditEmojiList(
-                    emojiOptions = emojiOptions,
-                    onClick = onEditConfirm,
-                    fontFamily = fontFamily)
-            }
-        }
-    }
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 4.dp,
-                bottomStart = 4.dp,
-                bottomEnd = 4.dp
-            )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-        HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
-
-    }
-
-    Box(modifier = Modifier
-        .padding(horizontal = 8.dp, vertical = 2.dp)
-        .clip(
-            RoundedCornerShape(
-                topStart = 4.dp,
-                topEnd = 4.dp,
-                bottomStart = 24.dp,
-                bottomEnd = 24.dp
-            )
-        )
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-        DropdownRow(
-            options = availableFontNames.toMutableList(),
-            position = selectedFontIndex,
-            onItemClicked = onFontSelected,
-            onAddClick = onAddFontClick,
-            onRemoveClick = { onRemoveFontClick(it) })
-    }
-
-}
-
-@Composable
-fun SettingsSideSheetContent(
-    emojiOptions: List<String>,
-    isEditingEmojiList: Boolean,
-    fontFamily: FontFamily?,
-    isAppIconHidden: Boolean,
-    availableFontNames: List<String>,
-    selectedFontIndex: Int,
-    onEditClick: () -> Unit,
-    onEditConfirm: (newEmojiListString: String) -> Unit,
-    onHideIconToggle: (hide: Boolean) -> Unit,
-    onFontSelected: (index: Int) -> Unit,
-    onAddFontClick: () -> Unit,
-    onRemoveFontClick: (index: Int) -> Unit,
-) {
-    Column (modifier = Modifier.padding(
-        top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding(),
-        end = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(
-            layoutDirection = LayoutDirection.Ltr
-        ))) {
-        Box(modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(
-                RoundedCornerShape(
-                    topStart = 24.dp,
-                    topEnd = 24.dp,
-                    bottomStart = 4.dp,
-                    bottomEnd = 4.dp
-                )
-            )
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-            Column {
-                Text(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 0.dp),
-                    text = stringResource(R.string.emoji_list))
-                if (!isEditingEmojiList) {
-                    PredefinedEmojiSettings(
-                        emojiOptions = emojiOptions,
-                        onClick = onEditClick,
-                        fontFamily = fontFamily)
-                } else {
-                    EditEmojiList(
-                        emojiOptions = emojiOptions,
-                        onClick = onEditConfirm,
-                        fontFamily = fontFamily)
-                }
-            }
-        }
-        Box(modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(
-                RoundedCornerShape(
-                    topStart = 4.dp,
-                    topEnd = 4.dp,
-                    bottomStart = 4.dp,
-                    bottomEnd = 4.dp
-                )
-            )
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-            HomeSwitchRow(state = isAppIconHidden, onCheckedChange = { onHideIconToggle(it) })
-
-        }
-
-        Box(modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(
-                RoundedCornerShape(
-                    topStart = 4.dp,
-                    topEnd = 4.dp,
-                    bottomStart = 24.dp,
-                    bottomEnd = 24.dp
-                )
-            )
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)){
-            DropdownRow(
-                options = availableFontNames.toMutableList(),
-                position = selectedFontIndex,
-                onItemClicked = onFontSelected,
-                onAddClick = onAddFontClick,
-                onRemoveClick = { onRemoveFontClick(it) })
-        }
-
-        Spacer(Modifier.height(WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()))
-    }
-}
-
-@Composable
-fun EditEmojiBottomSheetContent(
-    initialEmoji: String,
-    initialDiameter: Float,
-    initialRotation: Float,
-    maxDiameter: Float,
-    availableEmojis: List<String>,
-    fontFamily: FontFamily?,
-    onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-    onSlidingStateChange: (Boolean) -> Unit
-){
-    val sizeInteractionSource = remember { MutableInteractionSource() }
-    val angleInteractionSource = remember { MutableInteractionSource() }
-
-    val isSizeSliderDragged by sizeInteractionSource.collectIsDraggedAsState()
-    val isAngleSliderDragged by angleInteractionSource.collectIsDraggedAsState()
-
-    LaunchedEffect(isSizeSliderDragged, isAngleSliderDragged) {
-        onSlidingStateChange(isSizeSliderDragged || isAngleSliderDragged)
-    }
-
-    Column (modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally) {
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Row (verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                modifier = Modifier.width(96.dp),
-                value = initialEmoji,
-                onValueChange = { onValueChange(it, null, null) },
-                label = { Text(stringResource(R.string.new_emoji))},
-                textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            // 预置 emoji 选择行
-            LazyRow(modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                .padding(vertical = 8.dp)) {
-                item {
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                itemsIndexed(availableEmojis) { _, emoji ->
-                    EmojiCardSmall(emoji = emoji, onClick = { onValueChange(emoji, null, null) }, fontFamily = fontFamily)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            SliderWithCaption(
-                modifier = Modifier.weight(1f),
-                leadingIcon = {
-                    Icon(imageVector = Icons.Outlined.FormatSize,
-                        contentDescription = stringResource(R.string.emoji_size),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(16.dp))
-                },
-                description = stringResource(R.string.emoji_size),
-                value = initialDiameter,
-                onValueChange = { onValueChange(null, it, null) },
-                minRange = 20f,
-                maxRange = maxDiameter,
-                interactionSource = sizeInteractionSource
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            SliderWithCaption(
-                modifier = Modifier.weight(1f),
-                leadingIcon = {
-                    Icon(imageVector = Icons.Outlined.Rotate90DegreesCw,
-                        contentDescription = stringResource(R.string.emoji_angle),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(16.dp))
-                },
-                description = stringResource(R.string.emoji_angle),
-                value = initialRotation,
-                onValueChange = { onValueChange(null, null, it) },
-                minRange = -90f,
-                maxRange = 90f,
-                interactionSource = angleInteractionSource
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            TextButton(
-                onClick = { onDismiss() }) {
-                Text(stringResource(R.string.cancel))
-            }
-            TextButton(
-                onClick = { onConfirm() }) {
-                Text(stringResource(R.string.ok))
-            }
-        }
-    }
-}
-
-@Composable
-fun EditEmojiSideSheetContent(
-    modifier: Modifier = Modifier,
-    initialEmoji: String,
-    initialDiameter: Float,
-    initialRotation: Float,
-    maxDiameter: Float,
-    availableEmojis: List<String>,
-    fontFamily: FontFamily?,
-    onValueChange: (emoji: String?, diameter: Float?, rotation: Float?) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-    onSlidingStateChange: (Boolean) -> Unit
-) {
-
-    // 1. 为两个滑块创建 interactionSource
-    val sizeInteractionSource = remember { MutableInteractionSource() }
-    val angleInteractionSource = remember { MutableInteractionSource() }
-
-    // 2. 监测两个滑块的拖动状态
-    val isSizeSliderDragged by sizeInteractionSource.collectIsDraggedAsState()
-    val isAngleSliderDragged by angleInteractionSource.collectIsDraggedAsState()
-
-    // 3. 当任一滑块被拖动时，通过回调函数通知父组件
-    LaunchedEffect(isSizeSliderDragged, isAngleSliderDragged) {
-        onSlidingStateChange(isSizeSliderDragged || isAngleSliderDragged)
-    }
-
-    LazyColumn(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(
-                top = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding(),
-                start = 16.dp,
-                end = WindowInsets.safeDrawing.asPaddingValues().calculateEndPadding(
-                    layoutDirection = LayoutDirection.Ltr
-                ) + 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TextButton(
-                    onClick = { onDismiss() }) {
-                    Text(stringResource(R.string.cancel))
-                }
-                TextButton(
-                    onClick = { onConfirm() }) {
-                    Text(stringResource(R.string.ok))
-                }
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-
-        item {
-            OutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = initialEmoji,
-            onValueChange = { onValueChange(it, null, null) },
-            label = { Text(stringResource(R.string.new_emoji)) },
-            textStyle = TextStyle(fontFamily = fontFamily, fontSize = 20.sp)
-        ) }
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-
-        }
-
-        item {
-            // 预置 emoji 选择行
-            LazyRow(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .padding(vertical = 8.dp)
-            ) {
-                item {
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                itemsIndexed(availableEmojis) { _, emoji ->
-                    EmojiCardSmall(
-                        emoji = emoji,
-                        onClick = { onValueChange(emoji, null, null) },
-                        fontFamily = fontFamily
-                    )
-                }
-            }
-        }
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        item {
-            SliderWithCaption(
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.FormatSize,
-                        contentDescription = stringResource(R.string.emoji_size),
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(16.dp)
-                    )
-                },
-                description = stringResource(R.string.emoji_size),
-                value = initialDiameter,
-                onValueChange = { onValueChange(null, it, null) },
-                minRange = 20f,
-                maxRange = maxDiameter,
-                interactionSource = sizeInteractionSource
-            )
-        }
-        item {
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        item {
-            SliderWithCaption(
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Rotate90DegreesCw,
-                        contentDescription = stringResource(R.string.emoji_angle),
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .size(16.dp)
-                    )
-                },
-                description = stringResource(R.string.emoji_angle),
-                value = initialRotation,
-                onValueChange = { onValueChange(null, null, it) },
-                minRange = -90f,
-                maxRange = 90f,
-                interactionSource = angleInteractionSource
-            )
-        }
-
-        item {
-            Spacer(Modifier.height(WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()))
-        }
-    }
-}
-
-@Composable
-fun EmojiOverlay(
-    state: EditScreenState,
-    editingEmoji: EmojiDetection?,
-    padding: PaddingValues,
-    cornerRadius: Dp,
-) {
-    // 获取原始图片尺寸和屏幕上容器的尺寸，用于坐标和大小的缩放
-    val originalWidth = state.currentImage?.width?.toFloat() ?: return
-    val containerWidth = state.imageContainerSize.width.toFloat()
-    val containerHeight = state.imageContainerSize.height.toFloat()
-
-    if (containerWidth == 0f || containerHeight == 0f) return
-
-    // 计算缩放比例
-    val scale = containerWidth / originalWidth
-
-    // 合并固定列表和正在编辑的临时状态，用于统一渲染
-    val emojisToRender = remember(state.emojiDetections, editingEmoji) {
-        val list = state.emojiDetections.toMutableList()
-
-        if (editingEmoji != null) {
-            val editingIndex = list.indexOfFirst { it.xCenter == editingEmoji.xCenter && it.yCenter == editingEmoji.yCenter }.takeIf { it != -1 }
-
-            if (editingIndex != null) {
-                // 原有逻辑：如果找到了（编辑模式），就替换它
-                list[editingIndex] = editingEmoji
-            } else {
-                // 新增逻辑：如果没找到（新增模式），就把它添加到列表末尾
-                list.add(editingEmoji)
-            }
-        }
-        list
-    }
-
-    // 创建一个可以在重组间复用的 Paint 对象
-    val paint = remember {
-        Paint().apply {
-            isAntiAlias = true
-            color = android.graphics.Color.BLACK
-            textAlign = Paint.Align.CENTER
-        }
-    }
-
-    // 使用 Canvas Composable 进行绘制
-    Canvas(modifier = Modifier
-        .fillMaxSize()
-        .padding(padding)
-        .clip(RoundedCornerShape(cornerRadius))) {
-        emojisToRender.forEach { detection ->
-            // 从 state 获取加载好的原生 Typeface
-            paint.typeface = state.typeface ?: Typeface.DEFAULT
-
-            // 实时计算缩放后的大小
-            paint.textSize = detection.diameter * scale
-
-            // 计算垂直方向的偏移，与 RenderEmojiOnBitmapUseCase 完全一致
-            val verticalOffset = (paint.descent() + paint.ascent()) / 2
-
-            // 缩放坐标
-            val centerX = detection.xCenter * scale
-            val centerY = detection.yCenter * scale
-
-            // 将所有绘制操作放在 rotate 的 lambda 块中
-            // Compose 会自动处理 save 和 restore
-            rotate(
-                degrees = detection.angle,
-                pivot = Offset(centerX, centerY)
-            ) {
-                // 在这个代码块中执行的所有绘制操作都会被旋转
-                drawContext.canvas.nativeCanvas.drawText(
-                    detection.emoji,
-                    centerX,
-                    centerY - verticalOffset,
-                    paint
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun DisplayPane(modifier: Modifier, state: EditScreenState, actions: EditScreenActions, editingEmoji: EmojiDetection?) {
-    // --- 圖片顯示區域 ---
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        if (state.displayedBitmap != null) {
-
-            val cornerRadius = 16.dp
-            val verticalPadding = 8.dp
-            val horizontalPadding = (state.aspectRatio ?: 1f) * 8f.dp
-
-            // 准备一个用于覆盖层的 Box，它的大小将和图片容器一致
-            Box(
-                modifier = Modifier
-                    .aspectRatio(state.aspectRatio ?: 1f)
-                    .fillMaxSize()
-            ) {
-
-                // 1. 将原先 Image 的特定逻辑提取到一个 Modifier 变量中
-                val imageSpecificModifier = Modifier
-                    .onGloballyPositioned { layoutCoordinates ->
-                        // 回報容器尺寸
-                        actions.onImageContainerMeasured(layoutCoordinates.size)
-                    }
-                    .then(
-                        if (state.isAddMode) {
-                            Modifier.pointerInput(Unit) { // 合并 pointerInput
-                                detectTapGestures { offset ->
-                                    val containerWidth = state.imageContainerSize.width
-                                    val containerHeight = state.imageContainerSize.height
-                                    val originalBitmapWidth = state.currentImage?.width
-                                        ?: state.displayedBitmap.width
-                                    val originalBitmapHeight = state.currentImage?.height
-                                        ?: state.displayedBitmap.height
-
-                                    if (containerWidth > 0 && containerHeight > 0) {
-                                        val scaleX =
-                                            originalBitmapWidth.toFloat() / containerWidth
-                                        val scaleY =
-                                            originalBitmapHeight.toFloat() / containerHeight
-                                        val originalX = offset.x * scaleX
-                                        val originalY = offset.y * scaleY
-                                        actions.onImageTapToAdd(
-                                            Offset(
-                                                originalX,
-                                                originalY
-                                            )
-                                        )
-                                    } else {
-                                        actions.onImageTapToAdd(offset)
-                                    }
-                                }
-                            }
-                        } else Modifier
-                    )
-
-                // 2. 使用重构后的 ResultImg
-                ResultImg(
-                    modifier = Modifier
-                        .aspectRatio(state.aspectRatio ?: 1f)
-                        .fillMaxSize(), // GlowingCard 的 Modifier
-                    bitmap = state.displayedBitmap,
-                    description = stringResource(R.string.process_result),
-                    ratio = state.aspectRatio ?: 1f,
-                    animate = state.isProcessing,
-                    imageModifier = imageSpecificModifier // 3. 将提取的 Modifier 传入
-                )
-
-                EmojiOverlay(
-                    state = state,
-                    editingEmoji = editingEmoji,
-                    padding = PaddingValues(horizontal = horizontalPadding, vertical = verticalPadding),
-                    cornerRadius = cornerRadius,
-                )
-            }
-
-        } else {
-            // 沒有圖片時顯示選擇圖片按鈕 (这部分逻辑不变)
-            ExtendedFloatingActionButton(
-                onClick = actions.onPickImageClick,
-                icon = {
-                    Icon(
-                        Icons.Outlined.AddPhotoAlternate,
-                        contentDescription = stringResource(R.string.choose_image)
-                    )
-                },
-                text = { Text(text = stringResource(R.string.choose_image)) },
-            )
-        }
-    }
-}
-
-@Composable
-fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
+fun ActionRow(state: EditScreenState, actions: EditScreenActions, isMediumLayout: Boolean) {
     Box(modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center // 將 Row 居中
     ) {
@@ -1074,8 +486,8 @@ fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
         ) {
             // 只有在圖片已處理後才顯示分享和保存按鈕
             // (檢查 displayedBitmap 是否與 currentImage 不同，表示處理已完成)
-            if (state.displayedBitmap != null && state.displayedBitmap != state.currentImage) {
-                if (state.isMediumLayout) {
+            if (state.displayedBitmap != null) {
+                if (isMediumLayout) {
                     ShareButtonCompact(
                         backgroundColor = MaterialTheme.colorScheme.secondary,
                         onClick = actions.onShareClick // 使用 action
@@ -1100,5 +512,332 @@ fun ActionRow(state: EditScreenState, actions: EditScreenActions) {
             backgroundColor = MaterialTheme.colorScheme.tertiary,
             onClick = actions.onSettingsClick // 使用 action
         )
+    }
+}
+
+@Composable
+fun EasterEggRow(
+    isTooDeep: Boolean,
+    onTooDeepStateChanged: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextContent(title = stringResource(R.string.too_deep), description = stringResource(R.string.too_deep_description))
+        Spacer(modifier = Modifier.weight(1f))
+        Tooltip(tooltipText = stringResource(R.string.just_kidding))
+        Switch(checked = isTooDeep, onCheckedChange = onTooDeepStateChanged)
+    }
+}
+
+
+@Composable
+fun AboutRow(onEasterEggStateChanged: (Boolean) -> Unit) {
+    var clickCount by remember {
+        mutableIntStateOf(0)
+    }
+    var job by remember {
+        mutableStateOf<Job?>(null)
+    }
+    Row (modifier = Modifier.fillMaxWidth()
+        .combinedClickable(
+            onClick = {
+                Log.e("AboutRow", "onClick: $clickCount")
+                clickCount++
+                if (clickCount == 1) {
+                    job = CoroutineScope(Dispatchers.Default).launch {
+                        delay(5000) // 500 milliseconds
+                        withContext(Dispatchers.Main) {
+                            clickCount = 0
+                        }
+                    }
+                } else if (clickCount == 5) {
+                    job?.cancel()
+                    clickCount = 0
+                    onEasterEggStateChanged(true)
+                    Log.e("AboutRow", "Easter egg activated!")
+                }
+            },
+            onLongClick = {  onEasterEggStateChanged(false) })
+        .padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().height(ButtonDefaults.MinHeight),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(id = R.string.app_name),
+                modifier = Modifier
+            )
+            Text(
+                BuildConfig.VERSION_NAME,
+                style = Typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
+fun TextContent(modifier: Modifier = Modifier, title: String, description: String) {
+    Column(modifier = modifier){
+        Text(
+            title,
+        )
+        Text(
+            description,
+            style = Typography.bodySmall,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun MosaicModeRow(
+    selectedMode: Int,
+    onModeSelected: (Int) -> Unit
+){
+    val options = listOf(
+        stringResource(R.string.emoji) to MOSAIC_MODE_EMOJI,
+        stringResource(R.string.mosaic) to MOSAIC_MODE_BLUR
+    )
+
+    Row (
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically){
+        Text(
+            text = stringResource(R.string.mosaic_mode),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.weight(1f)) // 占位符，推送文本到左侧
+        options.forEachIndexed { index, (label, mode) ->
+            ToggleButton (
+                checked = selectedMode == mode ,
+                onCheckedChange = { if (it) onModeSelected(mode) },
+                shapes =
+                    when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+            ) {
+                Text(text = label)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun MosaicTargetRow(
+    selectedTarget: Int,
+    onTargetSelected: (Int) -> Unit
+){
+    val mosaicTargets = listOf(
+        Triple(MOSAIC_TARGET_FACE, Icons.Outlined.TagFaces, R.string.face),
+        Triple(MOSAIC_TARGET_EYES, Icons.Outlined.Visibility, R.string.eyes),
+    )
+
+    Row (
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically){
+        Text(
+            text = stringResource(R.string.mosaic_target),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.weight(1f)) // 占位符，推送文本到左侧
+        mosaicTargets.forEachIndexed { index, (target, _, stringRes) ->
+            ToggleButton (
+                checked = selectedTarget == target,
+                onCheckedChange = { if (it) onTargetSelected(target) },
+                shapes = when (index) {
+                        0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                        mosaicTargets.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                        else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                    },
+                colors = ToggleButtonDefaults.toggleButtonColors(
+                    checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    checkedContentColor = MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                Text(text = stringResource(stringRes))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun MosaicTypeToolbar(
+    selectedType: Int,                      // <-- 接收当前选中的类型
+    onMosaicTypeSelected: (Int) -> Unit,    // <-- 接收类型选择的 Action
+    onAddBlurRegionClick: () -> Unit
+) {
+    val mosaicTypes = listOf(
+        Triple(MOSAIC_TYPE_GAUSSIAN, R.drawable.gaussian, R.string.gaussian),
+        Triple(MOSAIC_TYPE_PIXELATED, R.drawable.pixelated, R.string.pixelated),
+        Triple(MOSAIC_TYPE_HALFTONE, R.drawable.halftone, R.string.halftone)
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically) {
+        HorizontalFloatingToolbar(
+            colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
+            expanded = true,
+            content = {
+                // 使用循环来创建按钮，代码更简洁且易于扩展
+                mosaicTypes.forEachIndexed { index, (type, iconRes, stringRes) ->
+                    // 根据是否被选中来决定按钮的外观
+                    val isSelected = selectedType == type
+                    val containerColor = if (isSelected) {
+                        FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContentColor
+                    } else {
+                        FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContainerColor
+                    }
+
+                    val contentColor = if (isSelected) {
+                        FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContainerColor
+                    } else {
+                        FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContentColor
+                    }
+
+                    FilledIconButton(
+                        onClick = { onMosaicTypeSelected(type) }, // <-- 调用 Action
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = containerColor,
+                            contentColor = contentColor
+                        ),
+                    ) {
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = stringResource(id = stringRes)
+                        )
+                    }
+                }
+            },
+            floatingActionButton = {
+                FloatingToolbarDefaults.VibrantFloatingActionButton(onClick = onAddBlurRegionClick) {
+                    Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.add))
+                }
+            }
+        )
+    }
+
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun MosaicTypeBlock(
+    selectedType: Int,                      // <-- 接收当前选中的类型
+    onMosaicTypeSelected: (Int) -> Unit,    // <-- 接收类型选择的 Action
+    onAddBlurRegionClick: () -> Unit
+) {
+    val mosaicTypes = listOf(
+        Triple(MOSAIC_TYPE_GAUSSIAN, R.drawable.gaussian, R.string.gaussian),
+        Triple(MOSAIC_TYPE_PIXELATED, R.drawable.pixelated, R.string.pixelated),
+        Triple(MOSAIC_TYPE_HALFTONE, R.drawable.halftone, R.string.halftone)
+    )
+    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .width(IntrinsicSize.Max)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Transparent)
+                .padding(8.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+
+            ) {
+
+            // 使用循环来创建按钮，代码更简洁且易于扩展
+            mosaicTypes.forEachIndexed { index, (type, iconRes, stringRes) ->
+                // 根据是否被选中来决定按钮的外观
+                val isSelected = selectedType == type
+                val containerColor = if (isSelected) {
+                    FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContentColor
+                } else {
+                    FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContainerColor
+                }
+
+                val contentColor = if (isSelected) {
+                    FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContainerColor
+                } else {
+                    FloatingToolbarDefaults.standardFloatingToolbarColors().toolbarContentColor
+                }
+
+                Button(
+                    onClick = { onMosaicTypeSelected(type) }, // <-- 调用 Action
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = containerColor,
+                        contentColor = contentColor
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = stringResource(id = stringRes)
+                    )
+                    Text(stringResource(stringRes))
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            ExtendedFloatingActionButton(
+                onClick = onAddBlurRegionClick,
+                containerColor = FloatingToolbarDefaults.vibrantFloatingToolbarColors().fabContainerColor,
+                contentColor = FloatingToolbarDefaults.vibrantFloatingToolbarColors().fabContentColor
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.add))
+                Text(stringResource(R.string.add))
+            }
+        }
+    }
+}
+
+enum class GroupPosition {
+    TOP,    // 顶部
+    MIDDLE, // 中间
+    BOTTOM, // 底部
+    SINGLE  // 独立，自成一组
+}
+
+@Composable
+fun SettingsItem(
+    position: GroupPosition,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLow,
+    content: @Composable () -> Unit
+) {
+    // 根据 position 决定圆角形状
+    val shape = when (position) {
+        GroupPosition.TOP -> RoundedCornerShape(
+            topStart = 24.dp,
+            topEnd = 24.dp,
+            bottomStart = 4.dp,
+            bottomEnd = 4.dp
+        )
+
+        GroupPosition.MIDDLE -> RoundedCornerShape(4.dp)
+        GroupPosition.BOTTOM -> RoundedCornerShape(
+            topStart = 4.dp,
+            topEnd = 4.dp,
+            bottomStart = 24.dp,
+            bottomEnd = 24.dp
+        )
+
+        GroupPosition.SINGLE -> RoundedCornerShape(24.dp) // 上下都是大圆角
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(shape) // 动态应用形状
+            .background(containerColor),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
     }
 }
