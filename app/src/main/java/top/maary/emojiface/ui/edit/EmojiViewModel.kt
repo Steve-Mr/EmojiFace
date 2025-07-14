@@ -337,8 +337,10 @@ class EmojiViewModel @Inject constructor(
         viewModelScope.launch {
             calculateEmojiPositionsUseCase(detectionOutput).fold(
                 onSuccess = { emojiDetections ->
-                    _uiState.update { it.copy(selectedEmojis = emojiDetections) } // Update emojis first
-                    renderInitialBitmap() // 修改：不再需要传递参数
+                    _uiState.update {
+                        it.copy(
+                            selectedEmojis = emojiDetections,
+                            isProcessing = false) } // Update emojis first
                 },
                 onFailure = { exception ->
                     _uiState.update { it.copy(isProcessing = false, errorMessage = "Calculating positions failed: ${exception.localizedMessage}") }
@@ -419,28 +421,6 @@ class EmojiViewModel @Inject constructor(
         }
     }
 
-    // Private helper for detect flow
-    private fun renderInitialBitmap() {
-        viewModelScope.launch {
-            val baseBitmap = _uiState.value.displayedBitmap ?: return@launch
-            val emojiDetections = _uiState.value.selectedEmojis
-            val selectedFont = _uiState.value.selectedFontPath
-            renderEmojiOnBitmapUseCase(baseBitmap, emojiDetections, selectedFont).fold(
-                onSuccess = { renderedBitmap ->
-                    _uiState.update {
-                        it.copy(
-                            displayedBitmap = renderedBitmap,
-                            isProcessing = false // Entire initial process complete
-                        )
-                    }
-                },
-                onFailure = { exception ->
-                    _uiState.update { it.copy(isProcessing = false, errorMessage = "Rendering failed: ${exception.localizedMessage}") }
-                }
-            )
-        }
-    }
-
     /**
      * Shares the processed image.
      * (Signature matches original, but bitmap parameter is ignored)
@@ -470,8 +450,7 @@ class EmojiViewModel @Inject constructor(
                                 message = it,
                                 status = Constants.STATUS_SHARE
                             )
-                        }
-                            ?.let { _shareEvent.emit(it) }
+                        }?.let { _shareEvent.emit(it) }
                     }
                 )
             } finally {
