@@ -5,11 +5,12 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
+import androidx.core.graphics.withRotation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import top.maary.emojiface.ui.edit.model.EmojiDetection
 import top.maary.emojiface.util.Constants
-import top.maary.emojiface.util.getTypeFaceFromPath // 需要这个工具函数
+import top.maary.emojiface.util.getTypeFaceFromPath
 import javax.inject.Inject
 
 class RenderEmojiOnBitmapUseCase @Inject constructor() { // 字体加载工具可以不注入，直接调用
@@ -55,11 +56,10 @@ class RenderEmojiOnBitmapUseCase @Inject constructor() { // 字体加载工具�
     ) {
         paint.textSize = diameter
         paint.typeface = typeface // 设置字体
-        canvas.save()
-        canvas.rotate(rotationAngle, centerX, centerY)
-        // 调整 baseline 使 emoji 垂直居中
-        val verticalOffset = (paint.descent() + paint.ascent()) / 2
-        canvas.drawText(emoji, centerX, centerY - verticalOffset, paint)
-        canvas.restore()
+        canvas.withRotation(rotationAngle, centerX, centerY) {
+            // 调整 baseline 使 emoji 垂直居中
+            val verticalOffset = (paint.descent() + paint.ascent()) / 2
+            drawText(emoji, centerX, centerY - verticalOffset, paint)
+        }
     }
 }

@@ -30,7 +30,7 @@ android {
         minSdk = 30
         targetSdk = 36
         versionCode = 2
-        versionName = "2025.07.12"
+        versionName = "2025.07.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -140,7 +140,6 @@ dependencies {
 
     implementation(libs.material3)
 
-    implementation(libs.androidx.material)
 }
 
 kapt {

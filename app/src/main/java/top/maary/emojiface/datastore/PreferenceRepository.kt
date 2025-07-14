@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import top.maary.emojiface.BuildConfig
@@ -50,7 +51,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
             // 反序列化，如果失败则返回 null
             runCatching { Json.decodeFromString<EmojiList>(jsonString) }.getOrNull()?.emojis
         } ?: DEFAULT_EMOJI_LIST
-    }
+    }.distinctUntilChanged()
 
     // 更新 DataStore 中的 emoji 列表
     suspend fun updateEmojiOptions(newOptions: List<String>) {
@@ -63,7 +64,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
 
     val isIconHide: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[IS_ICON_HIDE] ?: !BuildConfig.ICON_ENABLED
-    }
+    }.distinctUntilChanged()
 
     suspend fun updateIconState(state: Boolean) {
         dataStore.edit { preferences ->
@@ -106,7 +107,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
             ?.filter { it.isNotEmpty() }
             ?: listOf()
         listOf(DEFAULT_FONT_MARKER) + storedFonts
-    }
+    }.distinctUntilChanged()
 
     // 当前选中的字体 Flow，默认值为 DEFAULT_FONT_MARKER
     val selectedFont: Flow<String> = dataStore.data.map { prefs ->
@@ -115,11 +116,11 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
         }else {
             DEFAULT_FONT_MARKER
         }
-    }
+    }.distinctUntilChanged()
 
     val isEasterEggEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
         prefs[EASTER_EGG] ?: false
-    }
+    }.distinctUntilChanged()
 
     suspend fun updateEasterEggState(state: Boolean) {
         dataStore.edit { prefs ->
@@ -131,7 +132,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
         val deepState = prefs[IS_TOO_DEEP] ?: false
         val easterEggState = prefs[EASTER_EGG] ?: false
         deepState and easterEggState
-    }
+    }.distinctUntilChanged()
 
     suspend fun updateTooDeepState(state: Boolean) {
         dataStore.edit { prefs ->
@@ -141,7 +142,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
 
     val mosaicMode: Flow<Int> = dataStore.data.map { prefs ->
         prefs[MOSAIC_MODE] ?: MOSAIC_MODE_EMOJI
-    }
+    }.distinctUntilChanged()
 
     suspend fun setMosaicMode(mode: Int) {
         if (mode == MOSAIC_MODE_EMOJI || mode == MOSAIC_MODE_BLUR) {
@@ -156,7 +157,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
 
     val mosaicType: Flow<Int> = dataStore.data.map { prefs ->
         prefs[MOSAIC_TYPE] ?: MOSAIC_TYPE_GAUSSIAN
-    }
+    }.distinctUntilChanged()
 
     suspend fun setMosaicType(type: Int) {
         if (type == MOSAIC_TYPE_GAUSSIAN || type == MOSAIC_TYPE_PIXELATED || type == MOSAIC_TYPE_HALFTONE) {
@@ -171,7 +172,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
 
     val mosaicTarget: Flow<Int> = dataStore.data.map { prefs ->
         prefs[MOSAIC_TARGET] ?: MOSAIC_TARGET_FACE
-    }
+    }.distinctUntilChanged()
 
     suspend fun setMosaicTarget(target: Int) {
         if (target == MOSAIC_TARGET_FACE || target == MOSAIC_TARGET_EYES) {
