@@ -55,6 +55,8 @@ fun EditScreenContentInternal(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var emojiIndexToDelete by remember { mutableStateOf<Int?>(null) }
 
+    var pickerLaunchedOnMain by remember { mutableStateOf(false) }
+
     // --- 3. Implement Launchers (No changes needed here) ---
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -66,6 +68,34 @@ fun EditScreenContentInternal(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let { viewModel.copyFontToInternal(it) } // Call VM method
+    }
+
+    val getContentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.detect(it) }
+    }
+
+    LaunchedEffect(activity, uiState.originalBitmap, pickerLaunchedOnMain) {
+        val intent = activity?.intent
+        // 检查三个条件：
+        // 1. 是不是从桌面启动 (ACTION_MAIN)
+        // 2. 当前是不是还没有图片 (originalBitmap == null)
+        // 3. 是不是还没有触发过这个逻辑 (pickerLaunchedOnMain == false)
+        if (intent?.action == Intent.ACTION_MAIN && uiState.originalBitmap == null && !pickerLaunchedOnMain) {
+            // 标记为已触发，防止重组时再次执行
+            pickerLaunchedOnMain = true
+            // 启动图片选择器
+            if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(context)) {
+                // 如果可用，启动现代 PhotoPicker
+                photoPicker.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            } else {
+                // 如果不可用，启动回退方案
+                getContentLauncher.launch("image/*")
+            }
+        }
     }
 
     // --- 4. Implement Effects ---
@@ -202,9 +232,15 @@ fun EditScreenContentInternal(
             },
             onImageContainerMeasured = { size -> imageContainerSize = size },
             onPickImageClick = {
-                photoPicker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
+                if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(context)) {
+                    // 如果可用，启动现代 PhotoPicker
+                    photoPicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                } else {
+                    // 如果不可用，启动回退方案
+                    getContentLauncher.launch("image/*")
+                }
             },
             onClearImageClick = { viewModel.clearImage() },
             onEmojiCardClick = { index ->
