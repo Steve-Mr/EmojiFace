@@ -85,8 +85,17 @@ export function postprocess(
 ): Detection[] {
   const boxes: Detection[] = [];
   const numAnchors = 8400;
-  // output is [1, 20, 8400] flattened
-  // index(channel, anchor) = channel * numAnchors + anchor
+
+  // Calculate channel count based on total output size
+  const totalElements = output.length;
+  const numChannels = Math.floor(totalElements / numAnchors);
+
+  // Supported formats:
+  // 5 channels: cx, cy, w, h, score
+  // 15 channels: cx, cy, w, h, score, [x,y]*5
+  // 20 channels: cx, cy, w, h, score, [x,y,conf]*5
+
+  const hasKeypoints = numChannels >= 15;
 
   for (let i = 0; i < numAnchors; i++) {
     const score = output[4 * numAnchors + i];
@@ -106,16 +115,19 @@ export function postprocess(
     const height = h / scale;
 
     const keypoints: Point[] = [];
-    // 5 keypoints, each has 3 values (x, y, conf)
-    for (let k = 0; k < 5; k++) {
-        const kx = output[(5 + k * 3) * numAnchors + i];
-        const ky = output[(5 + k * 3 + 1) * numAnchors + i];
-        // const kconf = output[(5 + k * 3 + 2) * numAnchors + i];
 
-        keypoints.push({
-            x: (kx - xPadding) / scale,
-            y: (ky - yPadding) / scale
-        });
+    if (hasKeypoints) {
+        const kptStep = numChannels === 20 ? 3 : 2;
+        // 5 keypoints
+        for (let k = 0; k < 5; k++) {
+            const kx = output[(5 + k * kptStep) * numAnchors + i];
+            const ky = output[(5 + k * kptStep + 1) * numAnchors + i];
+
+            keypoints.push({
+                x: (kx - xPadding) / scale,
+                y: (ky - yPadding) / scale
+            });
+        }
     }
 
     boxes.push({

@@ -18,14 +18,12 @@ Web-based re-implementation of the FaceMoji Android app using React, TypeScript,
    npm install
    ```
 
-2. Download the required Model:
-   The app requires `yolov8n-face.onnx`.
-   See instructions in `public/models/README.md`.
-
-3. Run Development Server:
+2. Run Development Server:
    ```bash
    npm run dev
    ```
+
+   *Note*: The model file `yolov8n-face.onnx` is included in `public/models/`. It is a 5-channel output version (bbox + score, no keypoints).
 
 ## Building for Production
 
@@ -38,8 +36,3 @@ Web-based re-implementation of the FaceMoji Android app using React, TypeScript,
    ```bash
    npm run preview
    ```
-
-## Deployment
-
-The `dist/` folder is ready to be deployed to Vercel, Netlify, or GitHub Pages.
-Ensure proper headers for SharedArrayBuffer (COOP/COEP) are set if using multi-threaded WASM (though this project uses default WASM backend which should work broadly).
