@@ -1,0 +1,78 @@
+import React, { useRef, useEffect, useState } from 'react';
+import { useEditorStore } from '../store/editorStore';
+import { canvasRenderer } from '../rendering/CanvasRenderer';
+
+export const CanvasView: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { image, masks, detections, selectMask } = useEditorStore();
+
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (image && containerRef.current) {
+        const containerW = containerRef.current.clientWidth;
+        const containerH = containerRef.current.clientHeight;
+        const imgRatio = image.width / image.height;
+        const containerRatio = containerW / containerH;
+
+        let w, h;
+        if (imgRatio > containerRatio) {
+            w = containerW;
+            h = containerW / imgRatio;
+        } else {
+            h = containerH;
+            w = containerH * imgRatio;
+        }
+        setDimensions({ width: w, height: h });
+    }
+  }, [image]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas && image) {
+      canvas.width = image.width;
+      canvas.height = image.height;
+
+      canvasRenderer.render(canvas, image, masks, detections);
+    }
+  }, [image, masks, detections, dimensions]);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!canvasRef.current || !image) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const scaleX = image.width / rect.width;
+    const scaleY = image.height / rect.height;
+
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+
+    const clickedMask = [...masks].reverse().find(mask => {
+       const detection = detections.find(d => d.id === mask.detectionId);
+       if (!detection) return false;
+       const box = detection.box;
+       return x >= box.x && x <= box.x + box.width &&
+              y >= box.y && y <= box.y + box.height;
+    });
+
+    selectMask(clickedMask ? clickedMask.id : null);
+  };
+
+  if (!image) return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">
+        <p>No image loaded. Share an image or upload one.</p>
+      </div>
+  );
+
+  return (
+    <div ref={containerRef} className="flex-1 flex items-center justify-center overflow-hidden bg-gray-100 w-full h-full p-4 relative">
+      <canvas
+        ref={canvasRef}
+        style={{ width: dimensions.width, height: dimensions.height, touchAction: 'none' }}
+        onPointerDown={handlePointerDown}
+        className="shadow-lg max-w-full max-h-full object-contain"
+      />
+    </div>
+  );
+};
