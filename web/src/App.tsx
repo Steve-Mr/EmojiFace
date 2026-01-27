@@ -4,6 +4,7 @@ import { ServiceProvider } from './services/ServiceContext';
 import { CanvasView } from './components/CanvasView';
 import { Toolbar } from './components/Toolbar';
 import { useEditorStore } from './store/editorStore';
+import { DebugConsole } from './components/debug/DebugConsole';
 
 const AppContent = () => {
   const isProcessing = useEditorStore(state => state.isProcessing);
@@ -45,6 +46,7 @@ const AppContent = () => {
       </main>
 
       <Toolbar />
+      <DebugConsole />
     </div>
   );
 };

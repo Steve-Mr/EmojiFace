@@ -2,62 +2,83 @@ import * as ort from 'onnxruntime-web';
 import type { Detection } from '../domain/types';
 import type { FaceDetector } from './FaceDetector';
 import { preprocess, postprocess, MODEL_INPUT_SIZE } from './imageUtils';
+import { useDebugStore } from '../components/debug/debugStore';
 
-// Configure ONNX Runtime Web
-// Try to enable multi-threading for WASM backend (requires COOP/COEP headers)
-// If headers are missing, the browser might ignore this or warn.
+// Default configuration (Will be overridden by configure())
 ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
 ort.env.wasm.simd = true;
 
 export class OnnxFaceDetector implements FaceDetector {
   private session: ort.InferenceSession | null = null;
   private modelPath: string;
+  private backend: 'webgpu' | 'wasm-mt' | 'wasm-st' = 'webgpu';
 
   constructor(modelPath: string = '/models/yolov8n-face.onnx') {
     this.modelPath = modelPath;
   }
 
-  setModelPath(path: string) {
-      if (this.modelPath !== path) {
+  configure(path: string, backend?: 'webgpu' | 'wasm-mt' | 'wasm-st') {
+      let needsReload = false;
+      if (path && this.modelPath !== path) {
           this.modelPath = path;
-          this.session = null; // Force reload
+          needsReload = true;
+      }
+      if (backend && this.backend !== backend) {
+          this.backend = backend;
+          needsReload = true;
+      }
+      if (needsReload) {
+          this.session = null; // Force reload on next detect call
+          useDebugStore.getState().addLog('info', `Config changed: ${(backend || this.backend).toUpperCase()} | ${path}`);
       }
   }
 
   async load(): Promise<void> {
     if (this.session) return;
-    try {
-      // Priority: WebGPU -> WASM (Multi-threaded)
-      this.session = await ort.InferenceSession.create(this.modelPath, {
-        executionProviders: ['webgpu', 'wasm'],
-        graphOptimizationLevel: 'all'
-      });
-      console.log('Face Detector Model Loaded');
-    } catch (e) {
-      console.error('Failed to load model with WebGPU/WASM-MT', e);
 
-      // Fallback 1: WASM Single-threaded (for environments without COOP/COEP)
-      try {
-          console.warn('Retrying with WASM Single-threaded...');
-          ort.env.wasm.numThreads = 1;
-          this.session = await ort.InferenceSession.create(this.modelPath, {
-            executionProviders: ['wasm'],
-            graphOptimizationLevel: 'all'
-          });
-      } catch (e2) {
-          // Fallback 2: No SIMD
-          try {
-              console.warn('Retrying with SIMD disabled...');
-              ort.env.wasm.simd = false;
-              this.session = await ort.InferenceSession.create(this.modelPath, {
-                executionProviders: ['wasm'],
-                graphOptimizationLevel: 'basic'
-              });
-              console.log('Face Detector Model Loaded (No SIMD)');
-          } catch (retryError) {
-              console.error('Failed to load model even without SIMD', retryError);
-              throw retryError;
-          }
+    const logger = useDebugStore.getState().addLog;
+    logger('info', `Loading model... Path: ${this.modelPath}, Backend: ${this.backend}`);
+
+    const options: ort.InferenceSession.SessionOptions = {
+        graphOptimizationLevel: 'all'
+    };
+
+    // Configure backend specific environment
+    if (this.backend === 'wasm-st') {
+        ort.env.wasm.numThreads = 1;
+        ort.env.wasm.simd = true;
+        options.executionProviders = ['wasm'];
+    } else if (this.backend === 'wasm-mt') {
+        ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
+        ort.env.wasm.simd = true;
+        options.executionProviders = ['wasm'];
+    } else {
+        // webgpu (auto)
+        options.executionProviders = ['webgpu', 'wasm'];
+    }
+
+    try {
+      const start = performance.now();
+      this.session = await ort.InferenceSession.create(this.modelPath, options);
+      const end = performance.now();
+      logger('info', `Model loaded successfully in ${(end - start).toFixed(0)}ms`);
+    } catch (e: any) {
+      logger('error', `Load failed: ${e.message}`);
+
+      // Auto-fallback logic if explicit selection fails?
+      // For now, respect user choice, but if it was 'webgpu' (auto), we can try fallback.
+      if (this.backend === 'webgpu') {
+           logger('warn', 'WebGPU failed, falling back to WASM-MT...');
+           try {
+               options.executionProviders = ['wasm'];
+               this.session = await ort.InferenceSession.create(this.modelPath, options);
+               logger('info', 'Fallback to WASM-MT successful');
+           } catch(e2: any) {
+               logger('error', `Fallback failed: ${e2.message}`);
+               throw e2;
+           }
+      } else {
+          throw e;
       }
     }
   }
@@ -81,7 +102,11 @@ export class OnnxFaceDetector implements FaceDetector {
     const feeds: Record<string, ort.Tensor> = {};
     feeds[this.session.inputNames[0]] = inputTensor;
 
+    const start = performance.now();
     const results = await this.session.run(feeds);
+    const end = performance.now();
+
+    useDebugStore.getState().addLog('info', `Inference time: ${(end - start).toFixed(1)}ms`);
 
     const outputName = this.session.outputNames[0];
     const outputTensor = results[outputName];

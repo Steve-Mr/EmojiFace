@@ -49,7 +49,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ currentModelType: type });
       // Update the detector path
       const path = type === 'int8' ? '/models/yolov8n-face-int8.onnx' : '/models/yolov8n-face.onnx';
-      faceDetector.setModelPath(path);
+      // We don't have direct access to debug config here, so we assume a default or let the detector keep its backend
+      // Ideally, editorStore and debugStore should be synced, but for now we just update the path.
+      // Since faceDetector remembers backend, we can just pass a dummy backend or refactor configure.
+      // Better approach: Let DebugStore handle the configuration, EditorStore just holds the state.
+
+      // Just update path, keep backend as is (undefined)
+      faceDetector.configure(path);
+
       // Re-run detection if image exists
       const { image } = get();
       if (image) {
@@ -61,6 +68,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   currentFont: '',
 
   loadFonts: async () => {
+      if (typeof document === 'undefined') return;
+
       const fonts = await fontRepo.getAllFonts();
       const names = fonts.map(f => f.name);
       for (const f of fonts) {
@@ -76,6 +85,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   uploadFont: async (file: File) => {
+      if (typeof document === 'undefined') return;
+
       const name = file.name.replace(/\.[^/.]+$/, "");
       const buffer = await file.arrayBuffer();
       await fontRepo.saveFont(name, buffer);
