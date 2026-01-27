@@ -3,6 +3,12 @@ import type { Detection } from '../domain/types';
 import type { FaceDetector } from './FaceDetector';
 import { preprocess, postprocess, MODEL_INPUT_SIZE } from './imageUtils';
 
+// Configure ONNX Runtime Web
+// Try to enable multi-threading for WASM backend (requires COOP/COEP headers)
+// If headers are missing, the browser might ignore this or warn.
+ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
+ort.env.wasm.simd = true;
+
 export class OnnxFaceDetector implements FaceDetector {
   private session: ort.InferenceSession | null = null;
   private modelPath: string;
@@ -11,17 +17,48 @@ export class OnnxFaceDetector implements FaceDetector {
     this.modelPath = modelPath;
   }
 
+  setModelPath(path: string) {
+      if (this.modelPath !== path) {
+          this.modelPath = path;
+          this.session = null; // Force reload
+      }
+  }
+
   async load(): Promise<void> {
     if (this.session) return;
     try {
+      // Priority: WebGPU -> WASM (Multi-threaded)
       this.session = await ort.InferenceSession.create(this.modelPath, {
-        executionProviders: ['wasm'],
+        executionProviders: ['webgpu', 'wasm'],
         graphOptimizationLevel: 'all'
       });
       console.log('Face Detector Model Loaded');
     } catch (e) {
-      console.error('Failed to load model', e);
-      throw e;
+      console.error('Failed to load model with WebGPU/WASM-MT', e);
+
+      // Fallback 1: WASM Single-threaded (for environments without COOP/COEP)
+      try {
+          console.warn('Retrying with WASM Single-threaded...');
+          ort.env.wasm.numThreads = 1;
+          this.session = await ort.InferenceSession.create(this.modelPath, {
+            executionProviders: ['wasm'],
+            graphOptimizationLevel: 'all'
+          });
+      } catch (e2) {
+          // Fallback 2: No SIMD
+          try {
+              console.warn('Retrying with SIMD disabled...');
+              ort.env.wasm.simd = false;
+              this.session = await ort.InferenceSession.create(this.modelPath, {
+                executionProviders: ['wasm'],
+                graphOptimizationLevel: 'basic'
+              });
+              console.log('Face Detector Model Loaded (No SIMD)');
+          } catch (retryError) {
+              console.error('Failed to load model even without SIMD', retryError);
+              throw retryError;
+          }
+      }
     }
   }
 

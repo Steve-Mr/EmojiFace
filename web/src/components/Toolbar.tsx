@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEditorStore } from '../store/editorStore';
-import { ImagePlus, Download, Sparkles, Smile, Type } from 'lucide-react';
+import { ImagePlus, Download, Sparkles, Smile, Type, Cpu } from 'lucide-react';
 import { exportImage } from '../utils/exporter';
 
 export const Toolbar: React.FC = () => {
@@ -26,6 +26,23 @@ export const Toolbar: React.FC = () => {
     <div className="bg-white border-t border-gray-200 p-4 pb-8 flex flex-col gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10">
       {/* Settings Row */}
       <div className="flex flex-col gap-3 min-h-[60px]">
+         {/* Model Selector */}
+         <div className="flex items-center gap-3 absolute top-[-40px] right-4 bg-white/90 p-2 rounded-lg shadow-sm text-xs">
+            <Cpu className="w-4 h-4 text-gray-600" />
+            <span className="font-medium text-gray-600">Model:</span>
+            <div className="flex rounded overflow-hidden border border-gray-300">
+                <button
+                    onClick={() => store.setModelType('fp32')}
+                    className={`px-2 py-1 ${store.currentModelType === 'fp32' ? 'bg-blue-100 text-blue-700 font-bold' : 'bg-white text-gray-600'}`}
+                >FP32</button>
+                <div className="w-[1px] bg-gray-300"></div>
+                <button
+                    onClick={() => store.setModelType('int8')}
+                    className={`px-2 py-1 ${store.currentModelType === 'int8' ? 'bg-blue-100 text-blue-700 font-bold' : 'bg-white text-gray-600'}`}
+                >INT8</button>
+            </div>
+         </div>
+
          {store.currentMaskType === 'emoji' && (
              <>
              <div className="flex items-center gap-3">

@@ -14,6 +14,10 @@ export interface EditorState {
   currentEmoji: string;
   currentBlurType: BlurType;
 
+  // Model Selection
+  currentModelType: 'fp32' | 'int8';
+  setModelType: (type: 'fp32' | 'int8') => void;
+
   availableFonts: string[];
   currentFont: string;
 
@@ -39,6 +43,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   currentMaskType: 'emoji',
   currentEmoji: '😊',
   currentBlurType: 'gaussian',
+
+  currentModelType: 'fp32',
+  setModelType: (type) => {
+      set({ currentModelType: type });
+      // Update the detector path
+      const path = type === 'int8' ? '/models/yolov8n-face-int8.onnx' : '/models/yolov8n-face.onnx';
+      faceDetector.setModelPath(path);
+      // Re-run detection if image exists
+      const { image } = get();
+      if (image) {
+          get().processImage();
+      }
+  },
 
   availableFonts: [],
   currentFont: '',
