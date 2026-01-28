@@ -238,6 +238,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
 
     if (state.image) {
+        lastSavedImageBlob = state.image; // Sync last saved image
         const bitmap = await createImageBitmap(state.image);
         set({
             image: bitmap,
@@ -314,21 +315,47 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
 // Subscription for persistence
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSavedImageBlob: Blob | null = null;
+
+const performSave = (state: EditorState) => {
+    // Only save image if it has changed
+    const imageToSave = state.imageBlob !== lastSavedImageBlob ? state.imageBlob : undefined;
+
+    // Update reference if we are saving a new image
+    if (imageToSave !== undefined) {
+        lastSavedImageBlob = imageToSave;
+    }
+
+    persistenceRepo.saveState(
+        imageToSave,
+        state.detections,
+        state.masks,
+        {
+            randomEmojiList: state.randomEmojiList,
+            currentMaskType: state.currentMaskType,
+            currentBlurType: state.currentBlurType,
+            currentEmoji: state.currentEmoji,
+            currentFont: state.currentFont
+        }
+    );
+};
 
 useEditorStore.subscribe((state) => {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-        persistenceRepo.saveState(
-            state.imageBlob,
-            state.detections,
-            state.masks,
-            {
-                randomEmojiList: state.randomEmojiList,
-                currentMaskType: state.currentMaskType,
-                currentBlurType: state.currentBlurType,
-                currentEmoji: state.currentEmoji,
-                currentFont: state.currentFont
-            }
-        );
+        saveTimer = null;
+        performSave(state);
     }, 500);
 });
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            if (saveTimer) {
+                clearTimeout(saveTimer);
+                saveTimer = null;
+                performSave(useEditorStore.getState());
+            }
+        }
+    });
+}
