@@ -21,7 +21,7 @@ class PersistenceRepository {
   }
 
   async saveState(
-    image: Blob | null,
+    image: Blob | null | undefined,
     detections: Detection[],
     masks: Mask[],
     settings: Partial<AppSettings> | any // Using any for now to store generic settings like randomEmojiList
@@ -29,15 +29,17 @@ class PersistenceRepository {
     const db = await this.getDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
 
-    // We save items individually to allow partial updates if needed,
-    // but for now we just save everything at once.
-    await Promise.all([
-      tx.store.put(image, 'image'),
+    const promises: Promise<unknown>[] = [
       tx.store.put(detections, 'detections'),
       tx.store.put(masks, 'masks'),
       tx.store.put(settings, 'settings'),
-      tx.done
-    ]);
+    ];
+
+    if (image !== undefined) {
+      promises.push(tx.store.put(image, 'image'));
+    }
+
+    await Promise.all([...promises, tx.done]);
   }
 
   async loadState() {
