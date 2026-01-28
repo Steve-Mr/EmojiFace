@@ -5,6 +5,7 @@ import { CanvasView } from './components/CanvasView';
 import { Toolbar } from './components/Toolbar';
 import { useEditorStore } from './store/editorStore';
 import { DebugConsole } from './components/debug/DebugConsole';
+import { faceDetector } from './ai/OnnxFaceDetector';
 
 const AppContent = () => {
   const isProcessing = useEditorStore(state => state.isProcessing);
@@ -12,6 +13,9 @@ const AppContent = () => {
   const loadFonts = useEditorStore(state => state.loadFonts);
 
   useEffect(() => {
+    // Start loading and warming up the model immediately
+    faceDetector.load().catch(console.error);
+
     loadFonts();
     const params = new URLSearchParams(window.location.search);
     if (params.get('shared') === 'true') {

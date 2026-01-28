@@ -5,19 +5,19 @@ import { preprocess, postprocess, MODEL_INPUT_SIZE } from './imageUtils';
 import { useDebugStore } from '../components/debug/debugStore';
 
 // Default configuration (Will be overridden by configure())
-ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
+ort.env.wasm.numThreads = 1;
 ort.env.wasm.simd = true;
 
 export class OnnxFaceDetector implements FaceDetector {
   private session: ort.InferenceSession | null = null;
   private modelPath: string;
-  private backend: 'webgpu' | 'wasm-mt' | 'wasm-st' = 'webgpu';
+  private backend: 'wasm-st' = 'wasm-st';
 
   constructor(modelPath: string = '/models/yolov8n-face.onnx') {
     this.modelPath = modelPath;
   }
 
-  configure(path: string, backend?: 'webgpu' | 'wasm-mt' | 'wasm-st') {
+  configure(path: string, backend?: 'wasm-st') {
       let needsReload = false;
       if (path && this.modelPath !== path) {
           this.modelPath = path;
@@ -40,46 +40,33 @@ export class OnnxFaceDetector implements FaceDetector {
     logger('info', `Loading model... Path: ${this.modelPath}, Backend: ${this.backend}`);
 
     const options: ort.InferenceSession.SessionOptions = {
-        graphOptimizationLevel: 'all'
+        graphOptimizationLevel: 'all',
+        executionProviders: ['wasm']
     };
 
-    // Configure backend specific environment
-    if (this.backend === 'wasm-st') {
-        ort.env.wasm.numThreads = 1;
-        ort.env.wasm.simd = true;
-        options.executionProviders = ['wasm'];
-    } else if (this.backend === 'wasm-mt') {
-        ort.env.wasm.numThreads = navigator.hardwareConcurrency || 4;
-        ort.env.wasm.simd = true;
-        options.executionProviders = ['wasm'];
-    } else {
-        // webgpu (auto)
-        options.executionProviders = ['webgpu', 'wasm'];
-    }
+    // Force single thread
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.simd = true;
 
     try {
       const start = performance.now();
       this.session = await ort.InferenceSession.create(this.modelPath, options);
       const end = performance.now();
       logger('info', `Model loaded successfully in ${(end - start).toFixed(0)}ms`);
+
+      // Warmup
+      logger('info', 'Warming up model...');
+      const warmupStart = performance.now();
+      const zeroTensor = new ort.Tensor('float32', new Float32Array(1 * 3 * MODEL_INPUT_SIZE * MODEL_INPUT_SIZE), [1, 3, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE]);
+      const feeds: Record<string, ort.Tensor> = {};
+      feeds[this.session.inputNames[0]] = zeroTensor;
+      await this.session.run(feeds);
+      const warmupEnd = performance.now();
+      logger('info', `Warmup completed in ${(warmupEnd - warmupStart).toFixed(0)}ms`);
+
     } catch (e: any) {
       logger('error', `Load failed: ${e.message}`);
-
-      // Auto-fallback logic if explicit selection fails?
-      // For now, respect user choice, but if it was 'webgpu' (auto), we can try fallback.
-      if (this.backend === 'webgpu') {
-           logger('warn', 'WebGPU failed, falling back to WASM-MT...');
-           try {
-               options.executionProviders = ['wasm'];
-               this.session = await ort.InferenceSession.create(this.modelPath, options);
-               logger('info', 'Fallback to WASM-MT successful');
-           } catch(e2: any) {
-               logger('error', `Fallback failed: ${e2.message}`);
-               throw e2;
-           }
-      } else {
-          throw e;
-      }
+      throw e;
     }
   }
 

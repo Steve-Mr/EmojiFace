@@ -5,6 +5,6 @@ export interface LogEntry {
 }
 
 export interface InferenceConfig {
-  backend: 'webgpu' | 'wasm-mt' | 'wasm-st';
+  backend: 'wasm-st';
   model: 'fp32' | 'int8';
 }

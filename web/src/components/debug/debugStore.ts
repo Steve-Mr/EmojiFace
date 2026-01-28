@@ -17,7 +17,7 @@ export const useDebugStore = create<DebugState>((set, get) => ({
   logs: [],
   isOpen: false,
   config: {
-    backend: 'webgpu', // Default to auto/webgpu
+    backend: 'wasm-st',
     model: 'fp32'
   },
 
