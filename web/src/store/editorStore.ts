@@ -224,10 +224,30 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectMask: (id) => set({ selectedMaskId: id }),
 
   restoreState: async () => {
+    // 1. Try to restore settings from localStorage first (most reliable for settings)
+    try {
+        const localSettings = localStorage.getItem('facemoji-settings');
+        if (localSettings) {
+            const parsed = JSON.parse(localSettings);
+            set({
+                randomEmojiList: parsed.randomEmojiList || get().randomEmojiList,
+                currentMaskType: parsed.currentMaskType || get().currentMaskType,
+                currentBlurType: parsed.currentBlurType || get().currentBlurType,
+                currentEmoji: parsed.currentEmoji || get().currentEmoji,
+                currentFont: parsed.currentFont || get().currentFont,
+            });
+        }
+    } catch (e) {
+        console.warn('Failed to restore settings from localStorage', e);
+    }
+
+    // 2. Load heavy state (image, masks) and fallback settings from IndexedDB
     const state = await persistenceRepo.loadState();
 
-    // Always restore settings
-    if (state.settings) {
+    // If localStorage was empty, or we trust DB more?
+    // Actually, we should merge. If local settings exist, we used them above.
+    // But if DB has settings and localStorage didn't, we can use DB as fallback.
+    if (state.settings && !localStorage.getItem('facemoji-settings')) {
         set({
             randomEmojiList: state.settings.randomEmojiList || get().randomEmojiList,
             currentMaskType: state.settings.currentMaskType || get().currentMaskType,
@@ -316,18 +336,41 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 const saveStateImmediate = (state: EditorState) => {
-    persistenceRepo.saveState(
-        state.imageBlob,
-        state.detections,
-        state.masks,
-        {
+    // 1. Save settings to localStorage (Synchronous, reliable for small data)
+    try {
+        const settings = {
             randomEmojiList: state.randomEmojiList,
             currentMaskType: state.currentMaskType,
             currentBlurType: state.currentBlurType,
             currentEmoji: state.currentEmoji,
             currentFont: state.currentFont
-        }
-    );
+        };
+        localStorage.setItem('facemoji-settings', JSON.stringify(settings));
+    } catch (e) {
+        console.warn('Failed to save settings to localStorage', e);
+    }
+
+    // 2. Save full state to IndexedDB (Asynchronous, best effort)
+    // We catch errors here to prevent "UnknownError" on Android Firefox during unload
+    // from crashing the app or causing issues.
+    try {
+        persistenceRepo.saveState(
+            state.imageBlob,
+            state.detections,
+            state.masks,
+            {
+                randomEmojiList: state.randomEmojiList,
+                currentMaskType: state.currentMaskType,
+                currentBlurType: state.currentBlurType,
+                currentEmoji: state.currentEmoji,
+                currentFont: state.currentFont
+            }
+        ).catch(e => {
+            console.warn('Failed to save state to IndexedDB', e);
+        });
+    } catch (e) {
+        console.warn('Failed to initiate IndexedDB save', e);
+    }
 };
 
 useEditorStore.subscribe((state) => {
@@ -339,15 +382,16 @@ useEditorStore.subscribe((state) => {
 
 // Ensure state is saved before unload
 if (typeof window !== 'undefined') {
-    window.addEventListener('pagehide', () => {
+    const handleUnload = () => {
         if (saveTimer) clearTimeout(saveTimer);
         saveStateImmediate(useEditorStore.getState());
-    });
+    };
+
+    window.addEventListener('pagehide', handleUnload);
 
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
-            if (saveTimer) clearTimeout(saveTimer);
-            saveStateImmediate(useEditorStore.getState());
+            handleUnload();
         }
     });
 }
