@@ -10,6 +10,7 @@ ort.env.wasm.simd = true;
 
 export class OnnxFaceDetector implements FaceDetector {
   private session: ort.InferenceSession | null = null;
+  private loadingPromise: Promise<void> | null = null;
   private modelPath: string;
   private backend: 'wasm-st' = 'wasm-st';
 
@@ -35,39 +36,46 @@ export class OnnxFaceDetector implements FaceDetector {
 
   async load(): Promise<void> {
     if (this.session) return;
+    if (this.loadingPromise) return this.loadingPromise;
 
-    const logger = useDebugStore.getState().addLog;
-    logger('info', `Loading model... Path: ${this.modelPath}, Backend: ${this.backend}`);
+    this.loadingPromise = (async () => {
+        const logger = useDebugStore.getState().addLog;
+        logger('info', `Loading model... Path: ${this.modelPath}, Backend: ${this.backend}`);
 
-    const options: ort.InferenceSession.SessionOptions = {
-        graphOptimizationLevel: 'all',
-        executionProviders: ['wasm']
-    };
+        const options: ort.InferenceSession.SessionOptions = {
+            graphOptimizationLevel: 'all',
+            executionProviders: ['wasm']
+        };
 
-    // Force single thread
-    ort.env.wasm.numThreads = 1;
-    ort.env.wasm.simd = true;
+        // Force single thread
+        ort.env.wasm.numThreads = 1;
+        ort.env.wasm.simd = true;
 
-    try {
-      const start = performance.now();
-      this.session = await ort.InferenceSession.create(this.modelPath, options);
-      const end = performance.now();
-      logger('info', `Model loaded successfully in ${(end - start).toFixed(0)}ms`);
+        try {
+          const start = performance.now();
+          this.session = await ort.InferenceSession.create(this.modelPath, options);
+          const end = performance.now();
+          logger('info', `Model loaded successfully in ${(end - start).toFixed(0)}ms`);
 
-      // Warmup
-      logger('info', 'Warming up model...');
-      const warmupStart = performance.now();
-      const zeroTensor = new ort.Tensor('float32', new Float32Array(1 * 3 * MODEL_INPUT_SIZE * MODEL_INPUT_SIZE), [1, 3, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE]);
-      const feeds: Record<string, ort.Tensor> = {};
-      feeds[this.session.inputNames[0]] = zeroTensor;
-      await this.session.run(feeds);
-      const warmupEnd = performance.now();
-      logger('info', `Warmup completed in ${(warmupEnd - warmupStart).toFixed(0)}ms`);
+          // Warmup
+          logger('info', 'Warming up model...');
+          const warmupStart = performance.now();
+          const zeroTensor = new ort.Tensor('float32', new Float32Array(1 * 3 * MODEL_INPUT_SIZE * MODEL_INPUT_SIZE), [1, 3, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE]);
+          const feeds: Record<string, ort.Tensor> = {};
+          feeds[this.session.inputNames[0]] = zeroTensor;
+          await this.session.run(feeds);
+          const warmupEnd = performance.now();
+          logger('info', `Warmup completed in ${(warmupEnd - warmupStart).toFixed(0)}ms`);
 
-    } catch (e: any) {
-      logger('error', `Load failed: ${e.message}`);
-      throw e;
-    }
+        } catch (e: any) {
+          logger('error', `Load failed: ${e.message}`);
+          throw e;
+        } finally {
+          this.loadingPromise = null;
+        }
+    })();
+
+    return this.loadingPromise;
   }
 
   isLoaded(): boolean {
