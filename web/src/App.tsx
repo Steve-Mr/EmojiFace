@@ -7,7 +7,6 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { MaskControls } from './components/MaskControls';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { useEditorStore } from './store/editorStore';
-import { DebugConsole } from './components/debug/DebugConsole';
 import { faceDetector } from './ai/OnnxFaceDetector';
 import { useTranslation } from './i18n/TranslationContext';
 
@@ -83,8 +82,6 @@ const AppContent = () => {
         onConfirm={handleClearConfirm}
         onCancel={() => setShowClearDialog(false)}
       />
-
-      <DebugConsole />
     </div>
   );
 };

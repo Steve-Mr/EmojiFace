@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useEditorStore } from '../store/editorStore';
-import { Smile, Sparkles, Type, Upload, Github, Moon, Sun, Monitor } from 'lucide-react';
+import { useDebugStore } from './debug/debugStore';
+import { Smile, Sparkles, Type, Upload, Github, Moon, Sun, Monitor, Terminal, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTranslation } from '../i18n/TranslationContext';
 import { useTheme } from './ThemeProvider';
 
@@ -11,8 +12,19 @@ interface SettingsPanelProps {
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
     const store = useEditorStore();
+    const debugStore = useDebugStore();
     const { t, locale, setLocale } = useTranslation();
     const { theme, setTheme } = useTheme();
+
+    const [isDebugExpanded, setIsDebugExpanded] = useState(false);
+    const logsEndRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll logs
+    useEffect(() => {
+        if (isDebugExpanded) {
+            logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [debugStore.logs, isDebugExpanded]);
 
     // Handlers
     const handleFontUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,6 +212,65 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         </section>
                     </div>
                 )}
+
+                {/* Debug Section */}
+                <section className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <button
+                        onClick={() => setIsDebugExpanded(!isDebugExpanded)}
+                        className="flex items-center justify-between w-full text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Terminal className="w-4 h-4" />
+                            <span>Debug & Logs</span>
+                        </div>
+                        {isDebugExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+
+                    {isDebugExpanded && (
+                        <div className="space-y-3 animate-fade-in rounded-lg bg-gray-50 dark:bg-gray-950 p-3 border border-gray-200 dark:border-gray-800">
+                             {/* Settings */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs text-gray-500 dark:text-gray-400">Model:</label>
+                                    <div className="flex rounded overflow-hidden border border-gray-300 dark:border-gray-700">
+                                        <button
+                                            onClick={() => debugStore.setConfig({ model: 'fp32' })}
+                                            className={`px-2 py-1 text-[10px] font-medium ${debugStore.config.model === 'fp32' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}
+                                        >FP32</button>
+                                        <button
+                                            onClick={() => debugStore.setConfig({ model: 'int8' })}
+                                            className={`px-2 py-1 text-[10px] font-medium ${debugStore.config.model === 'int8' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}
+                                        >INT8</button>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs text-gray-500 dark:text-gray-400">Backend:</label>
+                                    <span className="text-[10px] text-gray-400 dark:text-gray-500">WASM (Single-Threaded)</span>
+                                </div>
+                            </div>
+
+                             {/* Logs Header */}
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-800">
+                                <span className="text-xs font-medium text-gray-500">Logs</span>
+                                <button onClick={debugStore.clearLogs} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-800 rounded text-gray-500 transition-colors" title="Clear Logs">
+                                    <Trash2 size={12} />
+                                </button>
+                            </div>
+
+                            {/* Logs */}
+                            <div className="h-40 overflow-y-auto p-2 bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-800 font-mono text-[10px] leading-tight space-y-1">
+                                {debugStore.logs.length === 0 && <div className="text-gray-400 italic text-center py-4">No logs yet...</div>}
+                                {debugStore.logs.map((log, i) => (
+                                    <div key={i} className={`flex gap-2 break-all ${log.level === 'error' ? 'text-red-500' : log.level === 'warn' ? 'text-yellow-500' : 'text-green-600 dark:text-green-400'}`}>
+                                        <span className="text-gray-400 shrink-0 opacity-50">[{log.timestamp}]</span>
+                                        <span>{log.message}</span>
+                                    </div>
+                                ))}
+                                <div ref={logsEndRef} />
+                            </div>
+                        </div>
+                    )}
+                </section>
 
                  {/* About Section */}
                  <section className="pt-4 border-t border-gray-100 dark:border-gray-800">

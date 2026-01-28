@@ -22,7 +22,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'FaceMoji Web',
+        name: 'FaceMoji',
         short_name: 'FaceMoji',
         description: 'Face privacy protection with Emojis and Blur',
         theme_color: '#ffffff',
@@ -55,17 +55,17 @@ export default defineConfig({
         ],
         screenshots: [
           {
-            src: 'screenshot-desktop.png',
-            sizes: '1280x800',
+            src: 'screenshot-mobile.png',
+            sizes: '375x812',
             type: 'image/png',
-            form_factor: 'wide',
-            label: 'Desktop Editor'
+            label: 'Mobile Editor'
           },
           {
             src: 'screenshot-desktop.png',
             sizes: '1280x800',
             type: 'image/png',
-            label: 'Editor View'
+            form_factor: 'wide',
+            label: 'Desktop Editor'
           }
         ],
         share_target: {
