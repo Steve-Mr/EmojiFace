@@ -2,9 +2,11 @@ import { create } from 'zustand';
 import type { Detection, Mask, MaskType, BlurType } from '../domain/types';
 import { faceDetector } from '../ai/OnnxFaceDetector';
 import { fontRepo } from '../infrastructure/FontRepository';
+import { persistenceRepo } from '../infrastructure/PersistenceRepository';
 
 export interface EditorState {
   image: ImageBitmap | HTMLImageElement | null;
+  imageBlob: Blob | null;
   detections: Detection[];
   masks: Mask[];
   selectedMaskId: string | null;
@@ -13,6 +15,9 @@ export interface EditorState {
   currentMaskType: MaskType;
   currentEmoji: string;
   currentBlurType: BlurType;
+
+  randomEmojiList: string[];
+  isManualAddMode: boolean;
 
   // Model Selection
   currentModelType: 'fp32' | 'int8';
@@ -32,10 +37,30 @@ export interface EditorState {
   setBlurType: (type: BlurType) => void;
   setEmoji: (emoji: string) => void;
   selectMask: (id: string | null) => void;
+
+  restoreState: () => Promise<void>;
+  clearWorkspace: () => Promise<void>;
+  setRandomEmojiList: (list: string[]) => void;
+  setIsManualAddMode: (val: boolean) => void;
+  addManualMask: (x: number, y: number) => void;
+  deleteMask: (id: string) => void;
 }
+
+const calculateRotation = (keypoints: {x: number, y: number}[]) => {
+    if (!keypoints || keypoints.length < 2) return 0;
+    const leftEye = keypoints[0];
+    const rightEye = keypoints[1];
+    if (!leftEye || !rightEye) return 0;
+
+    // Calculate angle in radians and convert to degrees
+    const deltaY = rightEye.y - leftEye.y;
+    const deltaX = rightEye.x - leftEye.x;
+    return Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+};
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   image: null,
+  imageBlob: null,
   detections: [],
   masks: [],
   selectedMaskId: null,
@@ -44,20 +69,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   currentEmoji: '😊',
   currentBlurType: 'gaussian',
 
+  randomEmojiList: ['😂', '😎', '😆', '😋', '🫡', '😊', '😜', '🤠'],
+  isManualAddMode: false,
+
   currentModelType: 'fp32',
   setModelType: (type) => {
       set({ currentModelType: type });
-      // Update the detector path
       const path = type === 'int8' ? '/models/yolov8n-face-int8.onnx' : '/models/yolov8n-face.onnx';
-      // We don't have direct access to debug config here, so we assume a default or let the detector keep its backend
-      // Ideally, editorStore and debugStore should be synced, but for now we just update the path.
-      // Since faceDetector remembers backend, we can just pass a dummy backend or refactor configure.
-      // Better approach: Let DebugStore handle the configuration, EditorStore just holds the state.
-
-      // Just update path, keep backend as is (undefined)
       faceDetector.configure(path);
 
-      // Re-run detection if image exists
       const { image } = get();
       if (image) {
           get().processImage();
@@ -113,12 +133,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setImage: async (file: File | Blob) => {
     const bitmap = await createImageBitmap(file);
-    set({ image: bitmap, detections: [], masks: [], selectedMaskId: null });
+    set({ image: bitmap, imageBlob: file, detections: [], masks: [], selectedMaskId: null });
     get().processImage();
   },
 
   processImage: async () => {
-    const { image, currentEmoji, currentBlurType, currentMaskType, currentFont } = get();
+    const { image, currentBlurType, currentMaskType, currentFont, randomEmojiList } = get();
     if (!image) return;
 
     set({ isProcessing: true });
@@ -128,18 +148,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
       const detections = await faceDetector.detect(image);
 
-      const masks: Mask[] = detections.map(d => ({
-        id: crypto.randomUUID(),
-        type: currentMaskType,
-        detectionId: d.id,
-        config: {
-          emoji: currentEmoji,
-          blurType: currentBlurType,
-          scale: 1.2,
-          rotation: 0,
-          fontFamily: currentFont || undefined
-        }
-      }));
+      const masks: Mask[] = detections.map(d => {
+        const emoji = randomEmojiList.length > 0
+            ? randomEmojiList[Math.floor(Math.random() * randomEmojiList.length)]
+            : '😊';
+
+        return {
+            id: crypto.randomUUID(),
+            type: currentMaskType,
+            detectionId: d.id,
+            config: {
+                emoji: emoji,
+                blurType: currentBlurType,
+                scale: 1.2,
+                rotation: calculateRotation(d.keypoints),
+                fontFamily: currentFont || undefined
+            }
+        };
+      });
 
       set({ detections, masks, isProcessing: false });
     } catch (e) {
@@ -158,6 +184,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setMaskType: (type) => {
     set(state => {
+        // When changing mask type globally, we update all masks to this new type?
+        // Or just the "current" setting for NEW masks?
+        // The original logic updated ALL masks.
+        // But for "Manual Control", the user might want mixed masks.
+        // However, the prompt says "Select emoji or blur mode...".
+        // If I change mode, usually it re-applies to everything in this simple app context.
+        // But let's stick to the existing behavior: update all.
         const newMasks = state.masks.map(m => ({ ...m, type }));
         return { currentMaskType: type, masks: newMasks };
     });
@@ -184,4 +217,107 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   selectMask: (id) => set({ selectedMaskId: id }),
+
+  restoreState: async () => {
+    const state = await persistenceRepo.loadState();
+    if (state.image) {
+        const bitmap = await createImageBitmap(state.image);
+        set({
+            image: bitmap,
+            imageBlob: state.image,
+            detections: state.detections,
+            masks: state.masks,
+            randomEmojiList: state.settings?.randomEmojiList || get().randomEmojiList,
+            currentMaskType: state.settings?.currentMaskType || get().currentMaskType,
+            currentBlurType: state.settings?.currentBlurType || get().currentBlurType,
+            currentEmoji: state.settings?.currentEmoji || get().currentEmoji,
+        });
+    }
+  },
+
+  clearWorkspace: async () => {
+    set({ image: null, imageBlob: null, detections: [], masks: [], selectedMaskId: null });
+    await persistenceRepo.clearState();
+  },
+
+  setRandomEmojiList: (list) => set({ randomEmojiList: list }),
+  setIsManualAddMode: (val) => set({ isManualAddMode: val }),
+
+  addManualMask: (x, y) => {
+      const { image, currentMaskType, currentBlurType, randomEmojiList, currentFont } = get();
+      if (!image) return;
+
+      // Default size: 15% of min dimension
+      const w = 'width' in image ? image.width : (image as HTMLImageElement).naturalWidth;
+      const h = 'height' in image ? image.height : (image as HTMLImageElement).naturalHeight;
+      const size = Math.min(w, h) * 0.15;
+
+      const detectionId = `manual-${crypto.randomUUID()}`;
+      const newDetection: Detection = {
+          id: detectionId,
+          score: 1.0,
+          box: { x: x - size/2, y: y - size/2, width: size, height: size },
+          keypoints: []
+      };
+
+      const emoji = randomEmojiList.length > 0
+          ? randomEmojiList[Math.floor(Math.random() * randomEmojiList.length)]
+          : '😊';
+
+      const newMask: Mask = {
+          id: crypto.randomUUID(),
+          type: currentMaskType,
+          detectionId: detectionId,
+          config: {
+              emoji: emoji,
+              blurType: currentBlurType,
+              scale: 1.0,
+              rotation: 0,
+              fontFamily: currentFont || undefined
+          }
+      };
+
+      set(state => ({
+          detections: [...state.detections, newDetection],
+          masks: [...state.masks, newMask],
+          isManualAddMode: false
+      }));
+  },
+
+  deleteMask: (id) => {
+      const state = get();
+      const mask = state.masks.find(m => m.id === id);
+      if (!mask) return;
+
+      const newMasks = state.masks.filter(m => m.id !== id);
+
+      let newDetections = state.detections;
+      if (mask.detectionId.startsWith('manual-')) {
+          newDetections = state.detections.filter(d => d.id !== mask.detectionId);
+      }
+
+      set({ masks: newMasks, detections: newDetections, selectedMaskId: null });
+  },
 }));
+
+// Subscription for persistence
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+useEditorStore.subscribe((state) => {
+    if (!state.imageBlob) return;
+
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+        persistenceRepo.saveState(
+            state.imageBlob,
+            state.detections,
+            state.masks,
+            {
+                randomEmojiList: state.randomEmojiList,
+                currentMaskType: state.currentMaskType,
+                currentBlurType: state.currentBlurType,
+                currentEmoji: state.currentEmoji
+            }
+        );
+    }, 1000);
+});
