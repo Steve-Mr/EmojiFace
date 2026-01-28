@@ -56,15 +56,7 @@ export const DebugConsole: React.FC = () => {
         </div>
         <div className="flex items-center justify-between">
             <label className="text-gray-400">Backend:</label>
-            <select
-                value={config.backend}
-                onChange={(e) => setConfig({ backend: e.target.value as any })}
-                className="bg-gray-700 border-gray-600 text-white text-xs rounded p-1"
-            >
-                <option value="webgpu">WebGPU (Auto)</option>
-                <option value="wasm-mt">WASM (Multi-Threaded)</option>
-                <option value="wasm-st">WASM (Single-Threaded)</option>
-            </select>
+            <span className="text-xs text-gray-300">WASM (Single-Threaded)</span>
         </div>
       </div>
 
