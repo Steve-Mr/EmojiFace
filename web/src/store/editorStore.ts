@@ -315,22 +315,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 // Subscription for persistence
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-// Only save when specific fields change to avoid unnecessary writes,
-// though zustand subscribe triggers on any state change.
-// The previous logic was fine, but we need to ensure all settings are captured.
 useEditorStore.subscribe((state) => {
-    // We only auto-save if there is an image loaded (active workspace) OR if settings changed.
-    // However, saving settings without image is also good. But the persistenceRepo structure
-    // puts everything in one object or separate keys?
-    // Our PersistenceRepository saves all at once.
-    // So we should just debounce save everything.
-
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-        // Even if imageBlob is null, we might want to save settings?
-        // But restoreState checks for image.
-        // Let's keep it simple: Save everything.
-        // If imageBlob is null, it just saves null.
         persistenceRepo.saveState(
             state.imageBlob,
             state.detections,
@@ -343,5 +330,5 @@ useEditorStore.subscribe((state) => {
                 currentFont: state.currentFont
             }
         );
-    }, 1000);
+    }, 500);
 });

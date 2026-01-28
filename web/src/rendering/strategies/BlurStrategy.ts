@@ -38,7 +38,9 @@ export class BlurStrategy implements MaskStrategy {
     ctx.clip();
 
     if (blurType === 'pixelate') {
-      const pixelSize = 15;
+      // Dynamic pixel size: 5% of face width (min 4px)
+      const pixelSize = Math.max(4, drawDstW * 0.05);
+
       const tempCanvas = document.createElement('canvas');
       const smallW = Math.max(1, Math.floor(drawDstW / pixelSize));
       const smallH = Math.max(1, Math.floor(drawDstH / pixelSize));
@@ -55,7 +57,9 @@ export class BlurStrategy implements MaskStrategy {
         ctx.drawImage(tempCanvas, drawDstX, drawDstY, drawDstW, drawDstH);
       }
     } else {
-        ctx.filter = 'blur(12px)';
+        // Dynamic blur radius: 5% of face width (min 2px)
+        const blurRadius = Math.max(2, drawDstW * 0.05);
+        ctx.filter = `blur(${blurRadius}px)`;
         ctx.drawImage(originalImage, drawSrcX, drawSrcY, drawSrcW, drawSrcH, drawDstX, drawDstY, drawDstW, drawDstH);
         ctx.filter = 'none';
     }

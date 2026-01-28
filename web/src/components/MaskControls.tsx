@@ -16,7 +16,7 @@ export const MaskControls: React.FC = () => {
 
     return (
         <div className="
-            fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 mx-4 z-30
+            fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 right-4 z-30
             bg-white rounded-xl shadow-lg border border-gray-200 p-4
             flex flex-col gap-4 animate-slide-up
             md:absolute md:bottom-20 md:left-1/2 md:transform md:-translate-x-1/2 md:w-[400px] md:mx-0
