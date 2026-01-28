@@ -11,6 +11,7 @@ export interface EditorState {
   masks: Mask[];
   selectedMaskId: string | null;
   isProcessing: boolean;
+  fontsLoaded: boolean; // Add flag to track if fonts are ready
 
   currentMaskType: MaskType;
   currentEmoji: string;
@@ -65,6 +66,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   masks: [],
   selectedMaskId: null,
   isProcessing: false,
+  fontsLoaded: false,
   currentMaskType: 'emoji',
   currentEmoji: '😊',
   currentBlurType: 'gaussian',
@@ -101,7 +103,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
               console.error(`Failed to load font ${f.name}`, e);
           }
       }
-      set({ availableFonts: names });
+      // Force update to trigger re-render if masks already exist
+      set({ availableFonts: names, fontsLoaded: true });
   },
 
   uploadFont: async (file: File) => {
@@ -115,10 +118,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       await face.load();
       document.fonts.add(face);
 
-      set(state => ({
-          availableFonts: [...state.availableFonts, name],
-          currentFont: name
-      }));
+      // Update available fonts AND current font AND update all masks
+      set(state => {
+           const newMasks = state.masks.map(m => ({
+              ...m,
+              config: { ...m.config, fontFamily: name }
+          }));
+
+          return {
+            availableFonts: [...state.availableFonts, name],
+            currentFont: name,
+            masks: newMasks
+          };
+      });
   },
 
   setCurrentFont: (name) => {
@@ -184,13 +196,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setMaskType: (type) => {
     set(state => {
-        // When changing mask type globally, we update all masks to this new type?
-        // Or just the "current" setting for NEW masks?
-        // The original logic updated ALL masks.
-        // But for "Manual Control", the user might want mixed masks.
-        // However, the prompt says "Select emoji or blur mode...".
-        // If I change mode, usually it re-applies to everything in this simple app context.
-        // But let's stick to the existing behavior: update all.
         const newMasks = state.masks.map(m => ({ ...m, type }));
         return { currentMaskType: type, masks: newMasks };
     });
@@ -220,6 +225,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   restoreState: async () => {
     const state = await persistenceRepo.loadState();
+
+    // Always restore settings
+    if (state.settings) {
+        set({
+            randomEmojiList: state.settings.randomEmojiList || get().randomEmojiList,
+            currentMaskType: state.settings.currentMaskType || get().currentMaskType,
+            currentBlurType: state.settings.currentBlurType || get().currentBlurType,
+            currentEmoji: state.settings.currentEmoji || get().currentEmoji,
+            currentFont: state.settings.currentFont || get().currentFont,
+        });
+    }
+
     if (state.image) {
         const bitmap = await createImageBitmap(state.image);
         set({
@@ -227,11 +244,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             imageBlob: state.image,
             detections: state.detections,
             masks: state.masks,
-            randomEmojiList: state.settings?.randomEmojiList || get().randomEmojiList,
-            currentMaskType: state.settings?.currentMaskType || get().currentMaskType,
-            currentBlurType: state.settings?.currentBlurType || get().currentBlurType,
-            currentEmoji: state.settings?.currentEmoji || get().currentEmoji,
-            currentFont: state.settings?.currentFont || get().currentFont,
         });
     }
   },
@@ -248,7 +260,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const { image, currentMaskType, currentBlurType, randomEmojiList, currentFont } = get();
       if (!image) return;
 
-      // Default size: 15% of min dimension
       const w = 'width' in image ? image.width : (image as HTMLImageElement).naturalWidth;
       const h = 'height' in image ? image.height : (image as HTMLImageElement).naturalHeight;
       const size = Math.min(w, h) * 0.15;
@@ -304,11 +315,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 // Subscription for persistence
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+// Only save when specific fields change to avoid unnecessary writes,
+// though zustand subscribe triggers on any state change.
+// The previous logic was fine, but we need to ensure all settings are captured.
 useEditorStore.subscribe((state) => {
-    if (!state.imageBlob) return;
+    // We only auto-save if there is an image loaded (active workspace) OR if settings changed.
+    // However, saving settings without image is also good. But the persistenceRepo structure
+    // puts everything in one object or separate keys?
+    // Our PersistenceRepository saves all at once.
+    // So we should just debounce save everything.
 
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
+        // Even if imageBlob is null, we might want to save settings?
+        // But restoreState checks for image.
+        // Let's keep it simple: Save everything.
+        // If imageBlob is null, it just saves null.
         persistenceRepo.saveState(
             state.imageBlob,
             state.detections,

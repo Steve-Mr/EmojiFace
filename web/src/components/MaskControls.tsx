@@ -8,8 +8,19 @@ export const MaskControls: React.FC = () => {
 
     if (!mask) return null;
 
+    // Mobile layout: Fixed bottom sheet
+    // Desktop layout: Floating card (same as before or adjusted)
+    // We'll use a responsive design: md:absolute md:bottom-20 ... but for mobile: fixed bottom-[60px] ...
+    // Toolbar is roughly 60px-80px tall + safe area.
+    // Let's position it just above the toolbar on mobile.
+
     return (
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-white rounded-xl shadow-lg border border-gray-200 p-4 flex flex-col gap-4 w-[calc(100%-2rem)] max-w-md z-30 animate-slide-up">
+        <div className="
+            fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 mx-4 z-30
+            bg-white rounded-xl shadow-lg border border-gray-200 p-4
+            flex flex-col gap-4 animate-slide-up
+            md:absolute md:bottom-20 md:left-1/2 md:transform md:-translate-x-1/2 md:w-[400px] md:mx-0
+        ">
             <div className="flex justify-between items-center border-b pb-2">
                 <span className="text-sm font-semibold text-gray-700">Edit Mask</span>
                 <button

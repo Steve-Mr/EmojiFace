@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEditorStore } from '../store/editorStore';
-import { Cpu, Smile, Sparkles, Type, Upload } from 'lucide-react';
+import { Smile, Sparkles, Type, Upload, Github } from 'lucide-react';
 
 interface SettingsPanelProps {
     isOpen: boolean;
@@ -43,30 +43,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-
-                {/* Model Selection */}
-                <section>
-                    <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-700">
-                        <Cpu className="w-4 h-4" />
-                        Model
-                    </div>
-                    <div className="flex rounded-lg border border-gray-200 p-1 bg-gray-50">
-                        <button
-                            onClick={() => store.setModelType('fp32')}
-                            className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${store.currentModelType === 'fp32' ? 'bg-white shadow-sm text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            FP32
-                        </button>
-                        <button
-                            onClick={() => store.setModelType('int8')}
-                            className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${store.currentModelType === 'int8' ? 'bg-white shadow-sm text-blue-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
-                        >
-                            INT8
-                        </button>
-                    </div>
-                </section>
-
-                <hr className="border-gray-100" />
 
                 {/* Mask Mode */}
                 <section>
@@ -157,6 +133,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         </section>
                     </div>
                 )}
+
+                 {/* About Section */}
+                 <section className="pt-4 border-t border-gray-100">
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">About</h3>
+                    <a
+                        href="https://github.com/maary/FaceMoji"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                        <Github className="w-5 h-5" />
+                        <span>Visit Repository</span>
+                    </a>
+                </section>
             </div>
 
             <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t bg-gray-50 text-xs text-center text-gray-400">

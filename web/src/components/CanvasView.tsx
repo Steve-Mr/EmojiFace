@@ -5,7 +5,7 @@ import { canvasRenderer } from '../rendering/CanvasRenderer';
 export const CanvasView: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { image, masks, detections, selectMask, isManualAddMode, addManualMask } = useEditorStore();
+  const { image, masks, detections, selectMask, isManualAddMode, addManualMask, fontsLoaded } = useEditorStore();
 
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -41,7 +41,7 @@ export const CanvasView: React.FC = () => {
 
       canvasRenderer.render(canvas, image, masks, detections);
     }
-  }, [image, masks, detections, dimensions]);
+  }, [image, masks, detections, dimensions, fontsLoaded]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!canvasRef.current || !image) return;
