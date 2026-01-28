@@ -1,11 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import { canvasRenderer } from '../rendering/CanvasRenderer';
+import { useTranslation } from '../i18n/TranslationContext';
 
 export const CanvasView: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { image, masks, detections, selectMask, isManualAddMode, addManualMask, fontsLoaded } = useEditorStore();
+  const { t } = useTranslation();
 
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -71,16 +73,16 @@ export const CanvasView: React.FC = () => {
   };
 
   if (!image) return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50 text-gray-400">
+      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 transition-colors">
         <div className="text-center">
-            <p className="text-lg font-medium mb-2">No Image Loaded</p>
-            <p className="text-sm">Click Open below to start</p>
+            <p className="text-lg font-medium mb-2">{t.noImageLoaded}</p>
+            <p className="text-sm">{t.clickToStart}</p>
         </div>
       </div>
   );
 
   return (
-    <div ref={containerRef} className="flex-1 flex items-center justify-center overflow-hidden bg-gray-100 w-full h-full p-4 relative">
+    <div ref={containerRef} className="flex-1 flex items-center justify-center overflow-hidden bg-gray-100 dark:bg-gray-950 w-full h-full p-4 relative transition-colors">
       <canvas
         ref={canvasRef}
         style={{ width: dimensions.width, height: dimensions.height, touchAction: 'none' }}

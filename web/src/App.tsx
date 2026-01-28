@@ -9,6 +9,7 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { useEditorStore } from './store/editorStore';
 import { DebugConsole } from './components/debug/DebugConsole';
 import { faceDetector } from './ai/OnnxFaceDetector';
+import { useTranslation } from './i18n/TranslationContext';
 
 const AppContent = () => {
   const isProcessing = useEditorStore(state => state.isProcessing);
@@ -19,6 +20,7 @@ const AppContent = () => {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     faceDetector.load().catch(console.error);
@@ -44,22 +46,22 @@ const AppContent = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-50 overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-50 dark:bg-black overflow-hidden transition-colors duration-300">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative h-full min-w-0">
-          <header className="bg-white p-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm z-20 flex justify-center border-b border-gray-200 md:hidden">
-            <h1 className="font-bold text-gray-800 text-lg">FaceMoji Web</h1>
+          <header className="bg-white dark:bg-gray-900 p-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm z-20 flex justify-center border-b border-gray-200 dark:border-gray-800 md:hidden transition-colors">
+            <h1 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{t.appTitle}</h1>
           </header>
 
-          <main className="flex-1 relative bg-gray-100 flex flex-col overflow-hidden">
+          <main className="flex-1 relative bg-gray-100 dark:bg-gray-950 flex flex-col overflow-hidden transition-colors">
             <CanvasView />
             <MaskControls />
 
             {isProcessing && (
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-30">
-                 <div className="bg-white p-4 rounded-lg shadow-xl flex items-center gap-3">
+              <div className="absolute inset-0 bg-black/30 dark:bg-black/50 flex items-center justify-center z-30">
+                 <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl flex items-center gap-3">
                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                   <span className="font-medium text-gray-800">Detecting faces...</span>
+                   <span className="font-medium text-gray-800 dark:text-gray-200">{t.detectingFaces}</span>
                  </div>
               </div>
             )}
@@ -76,8 +78,8 @@ const AppContent = () => {
 
       <ConfirmDialog
         isOpen={showClearDialog}
-        title="Remove Image?"
-        message="Your image has been saved. Do you want to remove it from the workspace?"
+        title={t.removeImageTitle}
+        message={t.removeImageMessage}
         onConfirm={handleClearConfirm}
         onCancel={() => setShowClearDialog(false)}
       />

@@ -1,0 +1,38 @@
+export type TranslationKeys = {
+    settings: string;
+    maskMode: string;
+    emoji: string;
+    blur: string;
+    randomEmojiList: string;
+    commaSeparated: string;
+    font: string;
+    systemDefault: string;
+    uploadFont: string;
+    blurType: string;
+    about: string;
+    visitRepo: string;
+    open: string;
+    add: string;
+    adding: string;
+    save: string;
+    editMask: string;
+    deleteMask: string;
+    gaussian: string;
+    pixelate: string;
+    language: string;
+    theme: string;
+    light: string;
+    dark: string;
+    system: string;
+    footer: string;
+    appTitle: string;
+    detectingFaces: string;
+    removeImageTitle: string;
+    removeImageMessage: string;
+    keepIt: string;
+    clearIt: string;
+    noImageLoaded: string;
+    clickToStart: string;
+};
+
+export type Locale = 'en' | 'zh';
