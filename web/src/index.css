@@ -9,6 +9,10 @@
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
+  .animate-slide-up-sheet {
+    animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
   .animate-zoom-in {
     animation: zoomIn 0.2s ease-out forwards;
   }
@@ -22,6 +26,11 @@
 @keyframes slideUp {
   from { transform: translate(-50%, 20px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 @keyframes zoomIn {

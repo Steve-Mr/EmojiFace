@@ -26,17 +26,20 @@ export default defineConfig({
         short_name: 'FaceMoji',
         description: 'Face privacy protection with Emojis and Blur',
         theme_color: '#ffffff',
+        start_url: '/',
         display: 'standalone',
         icons: [
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ],
         share_target: {

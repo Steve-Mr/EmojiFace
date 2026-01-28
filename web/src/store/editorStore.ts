@@ -330,5 +330,5 @@ useEditorStore.subscribe((state) => {
                 currentFont: state.currentFont
             }
         );
-    }, 500);
+    }, 50);
 });

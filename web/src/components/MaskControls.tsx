@@ -16,10 +16,11 @@ export const MaskControls: React.FC = () => {
 
     return (
         <div className="
-            fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 right-4 z-30
-            bg-white rounded-xl shadow-lg border border-gray-200 p-4
-            flex flex-col gap-4 animate-slide-up
-            md:absolute md:bottom-20 md:left-1/2 md:transform md:-translate-x-1/2 md:w-[400px] md:mx-0
+            fixed bottom-0 left-0 right-0 z-30
+            bg-white rounded-t-xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200
+            p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]
+            flex flex-col gap-4 animate-slide-up-sheet md:animate-slide-up
+            md:absolute md:bottom-20 md:left-1/2 md:transform md:-translate-x-1/2 md:w-[400px] md:mx-0 md:rounded-xl md:border md:pb-4 md:shadow-lg
         ">
             <div className="flex justify-between items-center border-b pb-2">
                 <span className="text-sm font-semibold text-gray-700">Edit Mask</span>
