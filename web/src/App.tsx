@@ -44,10 +44,10 @@ const AppContent = () => {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-50 overflow-hidden">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col relative h-full min-w-0">
-          <header className="bg-white p-3 shadow-sm z-20 flex justify-center border-b border-gray-200 md:hidden">
+          <header className="bg-white p-3 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-sm z-20 flex justify-center border-b border-gray-200 md:hidden">
             <h1 className="font-bold text-gray-800 text-lg">FaceMoji Web</h1>
           </header>
 

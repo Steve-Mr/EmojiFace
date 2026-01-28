@@ -18,6 +18,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     };
 
     return (
+        <>
+        {/* Backdrop for mobile */}
+        {isOpen && (
+            <div
+                className="fixed inset-0 bg-black/20 z-30 md:hidden animate-fade-in"
+                onClick={onClose}
+            />
+        )}
+
         <div className={`
             fixed inset-y-0 right-0 w-80 bg-white shadow-xl z-40
             transition-all duration-300 ease-in-out
@@ -26,7 +35,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             flex flex-col
         `}>
             {/* Header */}
-            <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+            <div className="p-4 pt-[calc(1rem+env(safe-area-inset-top))] border-b flex justify-between items-center bg-gray-50">
                 <h2 className="font-semibold text-gray-800">Settings</h2>
                 <button onClick={onClose} className="md:hidden text-gray-500 hover:text-gray-700">
                     ✕
@@ -150,9 +159,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                 )}
             </div>
 
-            <div className="p-4 border-t bg-gray-50 text-xs text-center text-gray-400">
+            <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t bg-gray-50 text-xs text-center text-gray-400">
                 FaceMoji Web Editor
             </div>
         </div>
+        </>
     );
 };

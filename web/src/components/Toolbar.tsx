@@ -23,7 +23,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToggleSettings, onExportComp
     };
 
     return (
-        <div className="bg-white border-t border-gray-200 p-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 flex justify-between items-center md:justify-center md:gap-8">
+        <div className="bg-white border-t border-gray-200 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 flex justify-between items-center md:justify-center md:gap-8">
 
             <label className="flex flex-col items-center gap-1 cursor-pointer text-gray-600 hover:text-blue-600 transition-colors">
                 <div className="p-2 bg-gray-100 rounded-full">
@@ -35,7 +35,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToggleSettings, onExportComp
 
             <button
                 onClick={() => store.setIsManualAddMode(!store.isManualAddMode)}
-                className={`flex flex-col items-center gap-1 transition-colors ${store.isManualAddMode ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}
+                disabled={!store.image}
+                className={`flex flex-col items-center gap-1 transition-colors ${!store.image ? 'opacity-50 cursor-not-allowed text-gray-400' : (store.isManualAddMode ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600')}`}
             >
                 <div className={`p-2 rounded-full ${store.isManualAddMode ? 'bg-blue-100' : 'bg-gray-100'}`}>
                     <Plus className="w-6 h-6" />

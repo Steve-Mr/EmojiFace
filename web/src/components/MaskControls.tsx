@@ -9,7 +9,7 @@ export const MaskControls: React.FC = () => {
     if (!mask) return null;
 
     return (
-        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-white rounded-xl shadow-lg border border-gray-200 p-4 flex flex-col gap-4 w-[90%] max-w-md z-30 animate-slide-up">
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-white rounded-xl shadow-lg border border-gray-200 p-4 flex flex-col gap-4 w-[calc(100%-2rem)] max-w-md z-30 animate-slide-up">
             <div className="flex justify-between items-center border-b pb-2">
                 <span className="text-sm font-semibold text-gray-700">Edit Mask</span>
                 <button
@@ -51,12 +51,12 @@ export const MaskControls: React.FC = () => {
 
                 {mask.type === 'emoji' && (
                     <div className="flex items-center gap-3 pt-1">
-                        <span className="text-xs font-medium text-gray-500">Emoji</span>
+                        <span className="text-xs font-medium text-gray-500 w-8">Emoji</span>
                         <input
                             type="text"
                             value={mask.config.emoji || ''}
                             onChange={(e) => store.updateMask(mask.id, { emoji: e.target.value })}
-                            className="flex-1 border border-gray-300 rounded px-2 py-1 text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-center focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                     </div>
                 )}

@@ -13,16 +13,21 @@ export const CanvasView: React.FC = () => {
     if (image && containerRef.current) {
         const containerW = containerRef.current.clientWidth;
         const containerH = containerRef.current.clientHeight;
+
+        // Ensure at least 20px padding
+        const maxW = containerW - 40;
+        const maxH = containerH - 40;
+
         const imgRatio = image.width / image.height;
-        const containerRatio = containerW / containerH;
+        const containerRatio = maxW / maxH;
 
         let w, h;
         if (imgRatio > containerRatio) {
-            w = containerW;
-            h = containerW / imgRatio;
+            w = maxW;
+            h = maxW / imgRatio;
         } else {
-            h = containerH;
-            w = containerH * imgRatio;
+            h = maxH;
+            w = maxH * imgRatio;
         }
         setDimensions({ width: w, height: h });
     }

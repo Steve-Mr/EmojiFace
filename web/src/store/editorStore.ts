@@ -231,6 +231,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             currentMaskType: state.settings?.currentMaskType || get().currentMaskType,
             currentBlurType: state.settings?.currentBlurType || get().currentBlurType,
             currentEmoji: state.settings?.currentEmoji || get().currentEmoji,
+            currentFont: state.settings?.currentFont || get().currentFont,
         });
     }
   },
@@ -316,7 +317,8 @@ useEditorStore.subscribe((state) => {
                 randomEmojiList: state.randomEmojiList,
                 currentMaskType: state.currentMaskType,
                 currentBlurType: state.currentBlurType,
-                currentEmoji: state.currentEmoji
+                currentEmoji: state.currentEmoji,
+                currentFont: state.currentFont
             }
         );
     }, 1000);
