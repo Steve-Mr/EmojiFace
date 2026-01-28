@@ -315,20 +315,39 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 // Subscription for persistence
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+const saveStateImmediate = (state: EditorState) => {
+    persistenceRepo.saveState(
+        state.imageBlob,
+        state.detections,
+        state.masks,
+        {
+            randomEmojiList: state.randomEmojiList,
+            currentMaskType: state.currentMaskType,
+            currentBlurType: state.currentBlurType,
+            currentEmoji: state.currentEmoji,
+            currentFont: state.currentFont
+        }
+    );
+};
+
 useEditorStore.subscribe((state) => {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-        persistenceRepo.saveState(
-            state.imageBlob,
-            state.detections,
-            state.masks,
-            {
-                randomEmojiList: state.randomEmojiList,
-                currentMaskType: state.currentMaskType,
-                currentBlurType: state.currentBlurType,
-                currentEmoji: state.currentEmoji,
-                currentFont: state.currentFont
-            }
-        );
+        saveStateImmediate(state);
     }, 50);
 });
+
+// Ensure state is saved before unload
+if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', () => {
+        if (saveTimer) clearTimeout(saveTimer);
+        saveStateImmediate(useEditorStore.getState());
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            if (saveTimer) clearTimeout(saveTimer);
+            saveStateImmediate(useEditorStore.getState());
+        }
+    });
+}
