@@ -8,6 +8,17 @@ Reads images selected within the app or shared from other apps, detects faces in
 
 ## Get
 
+### Web Version
+
+No installation needed, ready to use. All processing is done locally, ensuring privacy. Supports PWA installation.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSteve-Mr%2FEmojiFace&root-directory=web&project-name=facemoji-web)
+
+> Deployment Note: Click the button above to deploy to Vercel. If deploying manually, ensure the **Root Directory** is set to `web`.
+> [See Web Version Documentation](./web/README-EN.md)
+
+### Android App
+
 [<img src="assets/README/get-it-on-github.png"
     alt="Get it on GitHub"
     height="80">](https://github.com/Steve-Mr/EmojiFace/releases/latest)
@@ -36,6 +47,7 @@ We offer two APK variants. Please choose the one that best fits your usage style
 1. This application is "**provided AS IS**", without warranty of any kind.
 2. The face recognition model has limitations and may occasionally misidentify or fail to detect faces.
 3. All image processing is done **offline**.
+4. The Web version was entirely generated using Jules (Vibe Coding). While functional, the code quality and stability are not guaranteed.
 
 ## Acknowledgements
 

@@ -10,6 +10,17 @@
 
 ## 获取
 
+### 网页版 (Web)
+
+无需安装，即点即用。所有处理均在本地进行，隐私安全。支持 PWA 安装。
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSteve-Mr%2FEmojiFace&root-directory=web&project-name=facemoji-web)
+
+> 部署说明：点击上方按钮可快速部署到 Vercel。如果手动部署，请确保 **Root Directory** 设置为 `web`。
+> [查看 Web 版详细文档](./web/README.md)
+
+### Android 客户端
+
 [<img src="assets/README/get-it-on-github.png"
     alt="Get it on GitHub"
     height="80">](https://github.com/Steve-Mr/EmojiFace/releases/latest)
@@ -41,6 +52,7 @@
 1. 本应用「**按原样提供**」，不附带任何形式的担保。
 2. 本应用所使用的人脸识别模型存在其性能限制，某些情况下可能存在误识别/未识别的情况。
 3. 本应用所有处理均**离线**进行。
+4. Web 版本完全由 Jules (Vibe Coding) 生成。目前整体可用，但代码质量及稳定性不作保证。
 
 ## 鸣谢
 
