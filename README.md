@@ -10,6 +10,17 @@
 
 ## 获取
 
+### 网页版 (Web)
+
+无需安装，即点即用。所有处理均在本地进行，隐私安全。支持 PWA 安装。
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSteve-Mr%2FEmojiFace&root-directory=web&project-name=facemoji-web)
+
+> 部署说明：点击上方按钮可快速部署到 Vercel。如果手动部署，请确保 **Root Directory** 设置为 `web`。
+> [查看 Web 版详细文档](./web/README.md)
+
+### Android 客户端
+
 [<img src="assets/README/get-it-on-github.png"
     alt="Get it on GitHub"
     height="80">](https://github.com/Steve-Mr/EmojiFace/releases/latest)
