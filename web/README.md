@@ -1,38 +1,46 @@
 # FaceMoji Web
 
-Web-based re-implementation of the FaceMoji Android app using React, TypeScript, and ONNX Runtime Web.
+基于 React、TypeScript 和 ONNX Runtime Web 对 FaceMoji Android 应用的 Web 版重写。
 
-## Features
+## 功能特点
 
-- **Local AI**: Uses YOLOv8n-face via ONNX Runtime Web (WASM) running entirely in the browser.
-- **Privacy First**: All processing happens on your device. No images are uploaded to any server.
-- **PWA Support**: Installable on Android/iOS/Desktop.
-- **Share Target**: On Android, you can share images directly from other apps to FaceMoji Web.
-- **Masking**: Supports Emoji and Blur (Gaussian, Pixelate) masking.
-- **Custom Fonts**: Infrastructure ready for custom font support.
+- **本地 AI**：通过 ONNX Runtime Web (WASM) 在浏览器中完全运行 YOLOv8n-face 模型。
+- **隐私优先**：所有处理均在您的设备上进行。没有任何图片会上传到服务器。
+- **支持 PWA**：可安装在 Android/iOS/桌面端。
+- **分享目标**：在 Android 上，您可以直接从其他应用将图片分享到 FaceMoji Web。
+- **遮罩效果**：支持 Emoji 和模糊（高斯模糊、像素化）遮罩。
+- **自定义字体**：已准备好自定义字体支持的基础架构。
 
-## Setup
+## 设置与运行
 
-1. Install dependencies:
+1. 安装依赖：
    ```bash
    npm install
    ```
 
-2. Run Development Server:
+2. 运行开发服务器：
    ```bash
    npm run dev
    ```
 
-   *Note*: The model file `yolov8n-face.onnx` is included in `public/models/`. It is a 5-channel output version (bbox + score, no keypoints).
+   *注意*：模型文件 `yolov8n-face.onnx` 包含在 `public/models/` 中。这是一个 5 通道输出版本（边界框 + 分数，无关键点）。
 
-## Building for Production
+## 构建生产版本
 
-1. Build the app:
+1. 构建应用：
    ```bash
    npm run build
    ```
 
-2. Preview the build (to test PWA service worker):
+2. 预览构建（用于测试 PWA Service Worker）：
    ```bash
    npm run preview
    ```
+
+## 部署
+
+部署您自己的 FaceMoji Web 实例的最简单方法是使用 Vercel。
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSteve-Mr%2FEmojiFace&root-directory=web&project-name=facemoji-web)
+
+**注意**：部署时，Vercel 应会自动检测设置。如果您手动配置，请确保 **Root Directory（根目录）** 设置为 `web`。
