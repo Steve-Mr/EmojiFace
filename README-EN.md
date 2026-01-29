@@ -47,6 +47,7 @@ We offer two APK variants. Please choose the one that best fits your usage style
 1. This application is "**provided AS IS**", without warranty of any kind.
 2. The face recognition model has limitations and may occasionally misidentify or fail to detect faces.
 3. All image processing is done **offline**.
+4. The Web version was entirely generated using Jules (Vibe Coding). While functional, the code quality and stability are not guaranteed.
 
 ## Acknowledgements
 

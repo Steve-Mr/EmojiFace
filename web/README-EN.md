@@ -2,6 +2,8 @@
 
 Web-based re-implementation of the FaceMoji Android app using React, TypeScript, and ONNX Runtime Web.
 
+> **Note**: This Web application was entirely generated using Jules (Vibe Coding). While functional, the code quality and stability are not guaranteed.
+
 ## Features
 
 - **Local AI**: Uses YOLOv8n-face via ONNX Runtime Web (WASM) running entirely in the browser.

@@ -2,6 +2,8 @@
 
 基于 React、TypeScript 和 ONNX Runtime Web 对 FaceMoji Android 应用的 Web 版重写。
 
+> **注意**：本 Web 应用完全由 Jules (Vibe Coding) 生成。目前整体可用，但代码质量及稳定性不作保证。
+
 ## 功能特点
 
 - **本地 AI**：通过 ONNX Runtime Web (WASM) 在浏览器中完全运行 YOLOv8n-face 模型。
