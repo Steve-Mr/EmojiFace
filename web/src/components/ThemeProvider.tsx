@@ -47,6 +47,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return () => mediaQuery.removeEventListener('change', listener);
     }, [theme]);
 
+    useEffect(() => {
+        const color = isDark ? '#000000' : '#ffffff';
+        const metaTags = document.querySelectorAll('meta[name="theme-color"]');
+        metaTags.forEach((tag) => {
+            tag.setAttribute('content', color);
+            tag.removeAttribute('media');
+        });
+
+        if (metaTags.length === 0) {
+            const meta = document.createElement('meta');
+            meta.name = 'theme-color';
+            meta.content = color;
+            document.head.appendChild(meta);
+        }
+    }, [isDark]);
+
     return (
         <ThemeContext.Provider value={{ theme, setTheme, isDark }}>
             {children}
