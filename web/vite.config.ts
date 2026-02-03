@@ -29,25 +29,25 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: 'pwa-192x192.webp',
+            src: 'pwa-192x192-v2.webp',
             sizes: '192x192',
             type: 'image/webp',
             purpose: 'any'
           },
           {
-            src: 'pwa-192x192.webp',
+            src: 'pwa-192x192-v2.webp',
             sizes: '192x192',
             type: 'image/webp',
             purpose: 'maskable'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-512x512-v2.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-512x512-v2.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable'
