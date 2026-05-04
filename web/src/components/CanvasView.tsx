@@ -73,7 +73,7 @@ export const CanvasView: React.FC = () => {
   };
 
   if (!image) return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 transition-colors">
+      <div className="flex-1 flex items-center justify-center bg-white text-gray-500 transition-colors">
         <div className="text-center">
             <p className="text-lg font-medium mb-2">{t.noImageLoaded}</p>
             <p className="text-sm">{t.clickToStart}</p>
