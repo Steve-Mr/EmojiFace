@@ -6,12 +6,12 @@ export class EmojiStrategy implements MaskStrategy {
     if (!mask.config.emoji) return;
 
     const { box } = detection;
-    const { scale, rotation, emoji, fontFamily } = mask.config;
+    const { scale, rotation, emoji, fontFamily, paddingScale } = mask.config;
 
     const cx = (box.x + box.width / 2) * imageScale;
     const cy = (box.y + box.height / 2) * imageScale;
 
-    const diameter = Math.max(box.width, box.height) * imageScale * scale;
+    const diameter = Math.max(box.width, box.height) * imageScale * scale * (paddingScale ?? 1);
 
     ctx.save();
     ctx.translate(cx, cy);

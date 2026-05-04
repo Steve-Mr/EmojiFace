@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useEditorStore } from '../store/editorStore';
 import { useDebugStore } from './debug/debugStore';
-import { Smile, Sparkles, Type, Upload, Github, Moon, Sun, Monitor, Terminal, Trash2, ChevronRight, ChevronDown } from 'lucide-react';
+import { Smile, Sparkles, Type, Upload, Github, Moon, Sun, Monitor, Terminal, Trash2, ChevronRight, ChevronDown, ShieldCheck } from 'lucide-react';
 import { useTranslation } from '../i18n/TranslationContext';
 import { useTheme } from './ThemeProvider';
+import type { BlurType, PrivacyExportFormat } from '../domain/types';
 
 interface SettingsPanelProps {
     isOpen: boolean;
@@ -191,7 +192,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                         <section>
                             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t.blurType}</h3>
                             <div className="flex flex-col gap-2">
-                                {['gaussian', 'pixelate'].map((type) => (
+                                {['solid', 'pixelate', 'gaussian'].map((type) => (
                                     <label key={type} className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors
                                         ${store.currentBlurType === type
                                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-500'
@@ -202,16 +203,91 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                                             name="blurType"
                                             value={type}
                                             checked={store.currentBlurType === type}
-                                            onChange={() => store.setBlurType(type as any)}
+                                            onChange={() => store.setBlurType(type as BlurType)}
                                             className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
                                         />
-                                        <span className="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">{type === 'gaussian' ? t.gaussian : t.pixelate}</span>
+                                        <span className="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
+                                            {type === 'solid' ? t.solid : type === 'gaussian' ? t.gaussian : t.pixelate}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
                         </section>
                     </div>
                 )}
+
+                {/* Privacy Enhancement */}
+                <section className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <ShieldCheck className="w-4 h-4" />
+                        {t.privacyEnhancement}
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-xs text-gray-500 dark:text-gray-400">{t.maskPadding}</label>
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{store.privacyPaddingScale.toFixed(2)}x</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="1"
+                                max="2"
+                                step="0.05"
+                                value={store.privacyPaddingScale}
+                                onChange={(e) => store.setPrivacyPaddingScale(parseFloat(e.target.value))}
+                                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-2">{t.exportFormat}</label>
+                            <select
+                                value={store.privacyExportSettings.format}
+                                onChange={(e) => store.setExportFormat(e.target.value as PrivacyExportFormat)}
+                                className="w-full p-2.5 rounded-lg border border-gray-300 bg-white text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+                            >
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                                <option value="jpeg">JPEG</option>
+                            </select>
+                        </div>
+
+                        {store.privacyExportSettings.format !== 'png' && (
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="text-xs text-gray-500 dark:text-gray-400">{t.exportQuality}</label>
+                                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                                        {Math.round(store.privacyExportSettings.quality * 100)}%
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="1"
+                                    step="0.05"
+                                    value={store.privacyExportSettings.quality}
+                                    onChange={(e) => store.setExportQuality(parseFloat(e.target.value))}
+                                    className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                />
+                            </div>
+                        )}
+
+                        <label className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t.preserveTransparency}</span>
+                            <input
+                                type="checkbox"
+                                checked={store.privacyExportSettings.preserveTransparency}
+                                onChange={(e) => store.setPreserveTransparency(e.target.checked)}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                        </label>
+
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-green-200 bg-green-50 text-green-700 dark:border-green-900/60 dark:bg-green-900/20 dark:text-green-300">
+                            <span className="text-sm font-medium">{t.stripMetadata}</span>
+                            <span className="text-xs font-semibold">ON</span>
+                        </div>
+                    </div>
+                </section>
 
                 {/* Debug Section */}
                 <section className="pt-4 border-t border-gray-100 dark:border-gray-800">

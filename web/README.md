@@ -1,6 +1,6 @@
-# FaceMoji Web
+# FaceMoji Privacy Edition Web
 
-基于 React、TypeScript 和 ONNX Runtime Web 对 FaceMoji Android 应用的 Web 版重写。
+基于 React、TypeScript 和 ONNX Runtime Web 的端侧图片隐私脱敏 Web/PWA。此版本基于 [Steve-Mr/EmojiFace](https://github.com/Steve-Mr/EmojiFace) 二次开发，第一阶段聚焦更强的人脸遮挡和导出元数据清理。
 
 > **注意**：本 Web 应用完全由 Jules (Vibe Coding) 生成。目前整体可用，但代码质量及稳定性不作保证。
 
@@ -8,9 +8,11 @@
 
 - **本地 AI**：通过 ONNX Runtime Web (WASM) 在浏览器中完全运行 YOLOv8n-face 模型。
 - **隐私优先**：所有处理均在您的设备上进行。没有任何图片会上传到服务器。
+- **隐私增强导出**：导出时通过 canvas 重新编码为 PNG / WebP / JPEG，默认清理 EXIF/GPS 等原图元数据。
+- **强遮挡默认值**：默认使用纯色遮挡并扩大人脸覆盖范围，减少边缘漏出。
 - **支持 PWA**：可安装在 Android/iOS/桌面端。
 - **分享目标**：在 Android 上，您可以直接从其他应用将图片分享到 FaceMoji Web。
-- **遮罩效果**：支持 Emoji 和模糊（高斯模糊、像素化）遮罩。
+- **遮罩效果**：支持 Emoji 和模糊（纯色遮挡、高斯模糊、像素化）遮罩。
 - **自定义字体**：已准备好自定义字体支持的基础架构。
 
 ## 设置与运行

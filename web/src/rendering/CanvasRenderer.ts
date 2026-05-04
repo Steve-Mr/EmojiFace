@@ -15,13 +15,19 @@ export class CanvasRenderer {
     canvas: HTMLCanvasElement,
     image: HTMLImageElement | ImageBitmap,
     masks: Mask[],
-    detections: Detection[]
+    detections: Detection[],
+    options?: { backgroundColor?: string }
   ) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (options?.backgroundColor) {
+      ctx.fillStyle = options.backgroundColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     // Draw original image to fill the canvas
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);

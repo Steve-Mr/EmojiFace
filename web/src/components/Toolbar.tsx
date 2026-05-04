@@ -20,7 +20,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onToggleSettings, onExportComp
     };
 
     const handleExport = async () => {
-        await exportImage(store);
+        await exportImage(store, store.privacyExportSettings);
         onExportComplete();
     };
 

@@ -19,12 +19,22 @@ export interface Detection {
 
 export type MaskType = 'emoji' | 'blur';
 
-export type BlurType = 'gaussian' | 'pixelate';
+export type BlurType = 'gaussian' | 'pixelate' | 'solid';
+
+export type PrivacyExportFormat = 'png' | 'jpeg' | 'webp';
+
+export interface PrivacyExportSettings {
+  format: PrivacyExportFormat;
+  quality: number;
+  stripMetadata: true;
+  preserveTransparency: boolean;
+}
 
 export interface MaskConfig {
   emoji?: string;
   blurType?: BlurType;
   scale: number; // Scale factor relative to the detection box
+  paddingScale?: number; // Extra privacy padding around the detected face box
   rotation: number; // Degrees
   fontFamily?: string;
 }
@@ -39,6 +49,8 @@ export interface Mask {
 export interface AppSettings {
   defaultEmoji: string;
   defaultBlurType: BlurType;
+  privacyPaddingScale?: number;
+  privacyExportSettings?: PrivacyExportSettings;
 }
 
 export interface FontMetadata {

@@ -19,6 +19,13 @@ export type TranslationKeys = {
     deleteMask: string;
     gaussian: string;
     pixelate: string;
+    solid: string;
+    privacyEnhancement: string;
+    maskPadding: string;
+    exportFormat: string;
+    exportQuality: string;
+    preserveTransparency: string;
+    stripMetadata: string;
     language: string;
     theme: string;
     light: string;

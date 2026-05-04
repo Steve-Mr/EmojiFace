@@ -1,6 +1,6 @@
-# FaceMoji
+# FaceMoji Privacy Edition
 
-Reads images selected within the app or shared from other apps, detects faces in the images, and overlays them with emoji.
+An on-device image privacy redaction edition based on [Steve-Mr/EmojiFace](https://github.com/Steve-Mr/EmojiFace). Phase 1 focuses on the Web/PWA app: stronger face masking, local-only processing, and metadata-stripping exports.
 
 [<img src="assets/README/rec1_.png"
     alt="Featured on sspai"
@@ -10,7 +10,7 @@ Reads images selected within the app or shared from other apps, detects faces in
 
 ### Web Version
 
-No installation needed, ready to use. All processing is done locally, ensuring privacy. Supports PWA installation.
+No installation needed, ready to use. The privacy edition defaults to stronger irreversible face redaction and re-encodes exported images to strip EXIF/GPS metadata. Supports PWA installation.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSteve-Mr%2FEmojiFace&root-directory=web&project-name=facemoji-web)
 
@@ -36,9 +36,12 @@ We offer two APK variants. Please choose the one that best fits your usage style
 
 ## Features
 
-1. Automatically detects faces in images and applies a preset effect, with options for Emoji (default) or blur overlays.
+1. Automatically detects faces in images and applies a privacy preset.
+    - Privacy Edition defaults to solid redaction.
+    - Face coverage is expanded by default to include edge areas around the detected face.
+    - Emoji, Gaussian blur, and pixelation are still available.
 2. Add, modify, or delete emoji or blur regions on images.
-3. Multiple blur effects available, including Gaussian blur, pixelation, and halftone (with some deviations from standard definitions).
+3. Export as PNG / WebP / JPEG through canvas re-encoding, stripping original image metadata by default.
 4. Option to hide the app icon (In this state, the only way to launch the app is by sharing a picture to it from another application.).
 5. Import custom emoji font files.
 
@@ -47,7 +50,7 @@ We offer two APK variants. Please choose the one that best fits your usage style
 1. This application is "**provided AS IS**", without warranty of any kind.
 2. The face recognition model has limitations and may occasionally misidentify or fail to detect faces.
 3. All image processing is done **offline**.
-4. The Web version was entirely generated using Jules (Vibe Coding). While functional, the code quality and stability are not guaranteed.
+4. This modified edition keeps the upstream GPL-3.0 license and attribution while adding privacy-focused changes.
 
 ## Acknowledgements
 

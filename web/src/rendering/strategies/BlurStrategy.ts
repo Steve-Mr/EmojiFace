@@ -5,10 +5,11 @@ export class BlurStrategy implements MaskStrategy {
     if (!detection) return;
 
     const { box } = detection;
-    const { scale, blurType, rotation } = mask.config;
+    const { scale, blurType, rotation, paddingScale } = mask.config;
+    const privacyScale = scale * (paddingScale ?? 1);
 
-    const dstW = box.width * imageScale * scale;
-    const dstH = box.height * imageScale * scale;
+    const dstW = box.width * imageScale * privacyScale;
+    const dstH = box.height * imageScale * privacyScale;
     const cx = (box.x + box.width / 2) * imageScale;
     const cy = (box.y + box.height / 2) * imageScale;
 
@@ -37,9 +38,12 @@ export class BlurStrategy implements MaskStrategy {
     ctx.ellipse(cx, cy, dstW / 2, dstH / 2, rad, 0, 2 * Math.PI);
     ctx.clip();
 
-    if (blurType === 'pixelate') {
-      // Dynamic pixel size: 5% of face width (min 4px)
-      const pixelSize = Math.max(4, drawDstW * 0.05);
+    if (blurType === 'solid') {
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(drawDstX, drawDstY, drawDstW, drawDstH);
+    } else if (blurType === 'pixelate') {
+      // Coarse mosaic blocks are intentionally stronger than a preview blur.
+      const pixelSize = Math.max(8, drawDstW * 0.12);
 
       const tempCanvas = document.createElement('canvas');
       const smallW = Math.max(1, Math.floor(drawDstW / pixelSize));
@@ -57,8 +61,8 @@ export class BlurStrategy implements MaskStrategy {
         ctx.drawImage(tempCanvas, drawDstX, drawDstY, drawDstW, drawDstH);
       }
     } else {
-        // Dynamic blur radius: 5% of face width (min 2px)
-        const blurRadius = Math.max(2, drawDstW * 0.05);
+        // Dynamic blur radius: privacy edition defaults to a stronger blur.
+        const blurRadius = Math.max(8, drawDstW * 0.12);
         ctx.filter = `blur(${blurRadius}px)`;
         ctx.drawImage(originalImage, drawSrcX, drawSrcY, drawSrcW, drawSrcH, drawDstX, drawDstY, drawDstW, drawDstH);
         ctx.filter = 'none';

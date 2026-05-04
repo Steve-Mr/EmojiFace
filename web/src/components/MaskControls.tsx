@@ -35,6 +35,20 @@ export const MaskControls: React.FC = () => {
                     <ZoomIn className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     <input
                         type="range"
+                        min="1"
+                        max="2"
+                        step="0.05"
+                        value={mask.config.paddingScale ?? store.privacyPaddingScale}
+                        onChange={(e) => store.updateMask(mask.id, { paddingScale: parseFloat(e.target.value) })}
+                        className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                    <span className="text-xs text-gray-500 dark:text-gray-400 w-10 text-right">{(mask.config.paddingScale ?? store.privacyPaddingScale).toFixed(2)}x</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <ZoomIn className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    <input
+                        type="range"
                         min="0.5"
                         max="3"
                         step="0.1"

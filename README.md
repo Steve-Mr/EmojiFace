@@ -1,8 +1,8 @@
-# FaceMoji
+# FaceMoji Privacy Edition
 
 简体中文 / [English](./README-EN.md)
 
-通过在应用选取或从其他应用分享的方式读取图片，识别图片中的人脸并以 Emoji 表情覆盖。  
+基于 [Steve-Mr/EmojiFace](https://github.com/Steve-Mr/EmojiFace) 的二次开发版本，第一阶段聚焦 Web/PWA 端侧图片隐私脱敏。图片、人脸检测、遮罩渲染和导出均在本地设备完成，不上传到服务器。  
 
 [<img src="assets/README/rec1_.png"
     alt="派评推荐"
@@ -12,7 +12,7 @@
 
 ### 网页版 (Web)
 
-无需安装，即点即用。所有处理均在本地进行，隐私安全。支持 PWA 安装。
+无需安装，即点即用。默认使用更强的不可逆人脸遮挡，导出时通过 canvas 重新编码图片以清理 EXIF/GPS 等原始元数据。支持 PWA 安装。
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSteve-Mr%2FEmojiFace&root-directory=web&project-name=facemoji-web)
 
@@ -40,10 +40,11 @@
 ## 功能
 
 1. 自动识别图片人脸并应用预设效果
-    - 默认效果为将人脸覆盖为 Emoji 表情
-    - 可在设置中选择模糊效果
+    - Privacy Edition 默认使用纯色强遮挡
+    - 默认扩大人脸覆盖范围，覆盖额头、耳侧、下巴等边缘区域
+    - 可在设置中切换 Emoji、高斯模糊、马赛克等效果
 2. 在图片上添加、修改、删除 Emoji / 模糊区域
-3. 提供高斯模糊、像素化、半色调网点（与标准定义存在一定差异）等多种模糊效果
+3. 导出时重新编码为 PNG / WebP / JPEG，默认清理原图元数据
 4. 隐藏应用图标（此状态下只能通过从其他应用将图片分享到本应用的方式来启动本应用）
 5. 导入自定义 Emoji 字体文件
 
@@ -52,7 +53,7 @@
 1. 本应用「**按原样提供**」，不附带任何形式的担保。
 2. 本应用所使用的人脸识别模型存在其性能限制，某些情况下可能存在误识别/未识别的情况。
 3. 本应用所有处理均**离线**进行。
-4. Web 版本完全由 Jules (Vibe Coding) 生成。目前整体可用，但代码质量及稳定性不作保证。
+4. 本二创版本保留上游 GPL-3.0 许可证和来源说明，并在此基础上增加隐私增强改动。
 
 ## 鸣谢
 

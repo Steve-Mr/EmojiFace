@@ -1,6 +1,6 @@
-# FaceMoji Web
+# FaceMoji Privacy Edition Web
 
-Web-based re-implementation of the FaceMoji Android app using React, TypeScript, and ONNX Runtime Web.
+An on-device image privacy redaction Web/PWA built with React, TypeScript, and ONNX Runtime Web. This edition is based on [Steve-Mr/EmojiFace](https://github.com/Steve-Mr/EmojiFace) and focuses first on stronger face masking plus metadata-stripping exports.
 
 > **Note**: This Web application was entirely generated using Jules (Vibe Coding). While functional, the code quality and stability are not guaranteed.
 
@@ -8,9 +8,11 @@ Web-based re-implementation of the FaceMoji Android app using React, TypeScript,
 
 - **Local AI**: Uses YOLOv8n-face via ONNX Runtime Web (WASM) running entirely in the browser.
 - **Privacy First**: All processing happens on your device. No images are uploaded to any server.
+- **Privacy Export**: Re-encodes exports through canvas as PNG / WebP / JPEG, stripping original EXIF/GPS metadata by default.
+- **Stronger Defaults**: Uses solid redaction and expanded face coverage by default to reduce edge leakage.
 - **PWA Support**: Installable on Android/iOS/Desktop.
 - **Share Target**: On Android, you can share images directly from other apps to FaceMoji Web.
-- **Masking**: Supports Emoji and Blur (Gaussian, Pixelate) masking.
+- **Masking**: Supports Emoji and Blur (Solid Cover, Gaussian, Pixelate) masking.
 - **Custom Fonts**: Infrastructure ready for custom font support.
 
 ## Setup

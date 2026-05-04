@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Detection, Mask, MaskType, BlurType } from '../domain/types';
+import type { Detection, Mask, MaskType, BlurType, PrivacyExportSettings, PrivacyExportFormat } from '../domain/types';
 import { faceDetector } from '../ai/OnnxFaceDetector';
 import { fontRepo } from '../infrastructure/FontRepository';
 import { persistenceRepo } from '../infrastructure/PersistenceRepository';
@@ -16,6 +16,8 @@ export interface EditorState {
   currentMaskType: MaskType;
   currentEmoji: string;
   currentBlurType: BlurType;
+  privacyPaddingScale: number;
+  privacyExportSettings: PrivacyExportSettings;
 
   randomEmojiList: string[];
   isManualAddMode: boolean;
@@ -36,6 +38,10 @@ export interface EditorState {
   updateMask: (id: string, updates: Partial<Mask['config']>) => void;
   setMaskType: (type: MaskType) => void;
   setBlurType: (type: BlurType) => void;
+  setPrivacyPaddingScale: (scale: number) => void;
+  setExportFormat: (format: PrivacyExportFormat) => void;
+  setExportQuality: (quality: number) => void;
+  setPreserveTransparency: (preserve: boolean) => void;
   setEmoji: (emoji: string) => void;
   selectMask: (id: string | null) => void;
 
@@ -67,9 +73,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedMaskId: null,
   isProcessing: false,
   fontsLoaded: false,
-  currentMaskType: 'emoji',
+  currentMaskType: 'blur',
   currentEmoji: '😊',
-  currentBlurType: 'gaussian',
+  currentBlurType: 'solid',
+  privacyPaddingScale: 1.35,
+  privacyExportSettings: {
+    format: 'png',
+    quality: 0.92,
+    stripMetadata: true,
+    preserveTransparency: true,
+  },
 
   randomEmojiList: ['😂', '😎', '😆', '😋', '🫡', '😊', '😜', '🤠'],
   isManualAddMode: false,
@@ -150,7 +163,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   processImage: async () => {
-    const { image, currentBlurType, currentMaskType, currentFont, randomEmojiList } = get();
+    const { image, currentBlurType, currentMaskType, currentFont, randomEmojiList, privacyPaddingScale } = get();
     if (!image) return;
 
     set({ isProcessing: true });
@@ -172,7 +185,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             config: {
                 emoji: emoji,
                 blurType: currentBlurType,
-                scale: 1.2,
+                scale: 1.0,
+                paddingScale: privacyPaddingScale,
                 rotation: calculateRotation(d.keypoints),
                 fontFamily: currentFont || undefined
             }
@@ -211,6 +225,34 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       });
   },
 
+  setPrivacyPaddingScale: (scale) => {
+      set(state => ({
+          privacyPaddingScale: scale,
+          masks: state.masks.map(m => ({
+              ...m,
+              config: { ...m.config, paddingScale: scale }
+          }))
+      }));
+  },
+
+  setExportFormat: (format) => {
+      set(state => ({
+          privacyExportSettings: { ...state.privacyExportSettings, format }
+      }));
+  },
+
+  setExportQuality: (quality) => {
+      set(state => ({
+          privacyExportSettings: { ...state.privacyExportSettings, quality }
+      }));
+  },
+
+  setPreserveTransparency: (preserve) => {
+      set(state => ({
+          privacyExportSettings: { ...state.privacyExportSettings, preserveTransparency: preserve }
+      }));
+  },
+
   setEmoji: (emoji) => {
       set(state => {
           const newMasks = state.masks.map(m => ({
@@ -234,17 +276,30 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             currentBlurType: state.settings.currentBlurType || get().currentBlurType,
             currentEmoji: state.settings.currentEmoji || get().currentEmoji,
             currentFont: state.settings.currentFont || get().currentFont,
+            privacyPaddingScale: state.settings.privacyPaddingScale || get().privacyPaddingScale,
+            privacyExportSettings: {
+                ...get().privacyExportSettings,
+                ...(state.settings.privacyExportSettings || {}),
+                stripMetadata: true
+            },
         });
     }
 
     if (state.image) {
         lastSavedImageBlob = state.image; // Sync last saved image
         const bitmap = await createImageBitmap(state.image);
+        const privacyPaddingScale = get().privacyPaddingScale;
         set({
             image: bitmap,
             imageBlob: state.image,
             detections: state.detections,
-            masks: state.masks,
+            masks: state.masks.map((mask: Mask) => ({
+                ...mask,
+                config: {
+                    ...mask.config,
+                    paddingScale: mask.config.paddingScale ?? privacyPaddingScale
+                }
+            })),
         });
     }
   },
@@ -258,7 +313,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setIsManualAddMode: (val) => set({ isManualAddMode: val }),
 
   addManualMask: (x, y) => {
-      const { image, currentMaskType, currentBlurType, randomEmojiList, currentFont } = get();
+      const { image, currentMaskType, currentBlurType, randomEmojiList, currentFont, privacyPaddingScale } = get();
       if (!image) return;
 
       const w = 'width' in image ? image.width : (image as HTMLImageElement).naturalWidth;
@@ -285,6 +340,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
               emoji: emoji,
               blurType: currentBlurType,
               scale: 1.0,
+              paddingScale: privacyPaddingScale,
               rotation: 0,
               fontFamily: currentFont || undefined
           }
@@ -335,7 +391,9 @@ const performSave = (state: EditorState) => {
             currentMaskType: state.currentMaskType,
             currentBlurType: state.currentBlurType,
             currentEmoji: state.currentEmoji,
-            currentFont: state.currentFont
+            currentFont: state.currentFont,
+            privacyPaddingScale: state.privacyPaddingScale,
+            privacyExportSettings: state.privacyExportSettings
         }
     );
 };
