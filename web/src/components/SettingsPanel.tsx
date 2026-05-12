@@ -285,7 +285,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                  <section className="pt-4 border-t border-gray-100 dark:border-gray-800">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t.about}</h3>
                     <a
-                        href="https://github.com/maary/FaceMoji"
+                        href="https://github.com/Steve-Mr/EmojiFace"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors dark:text-gray-400 dark:hover:text-blue-400"
