@@ -14,6 +14,7 @@ export const en: TranslationKeys = {
     about: 'About',
     visitRepo: 'Visit Repository',
     open: 'Open',
+    remove: 'Remove',
     add: 'Add',
     adding: 'Adding...',
     save: 'Save',

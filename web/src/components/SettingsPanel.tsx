@@ -17,6 +17,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     const { theme, setTheme } = useTheme();
 
     const [isDebugExpanded, setIsDebugExpanded] = useState(false);
+    const [randomEmojiText, setRandomEmojiText] = useState(() => store.randomEmojiList.join(', '));
     const logsEndRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll logs
@@ -25,6 +26,22 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [debugStore.logs, isDebugExpanded]);
+
+    useEffect(() => {
+        const storeList = store.randomEmojiList;
+        // 解析当前文本框里的内容
+        const currentList = randomEmojiText.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        
+        // 比较两边的数组是否不同
+        const isDifferent = storeList.length !== currentList.length || 
+                            storeList.some((item, index) => item !== currentList[index]);
+
+        // 只有在发生实质性变化时，才同步 store 的值到文本框
+        // 这样可以避免用户输入逗号/空格等中间状态时被强制重置覆盖
+        if (isDifferent) {
+            setRandomEmojiText(storeList.join(', '));
+        }
+    }, [store.randomEmojiList, randomEmojiText]);
 
     // Handlers
     const handleFontUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,10 +163,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                                 <span className="text-xs text-gray-400">{t.commaSeparated}</span>
                             </div>
                             <textarea
-                                value={store.randomEmojiList.join(', ')}
+                                value={randomEmojiText}
                                 onChange={(e) => {
-                                    const list = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
-                                    store.setRandomEmojiList(list);
+                                    const nextValue = e.target.value;
+                                    const nextList = nextValue.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                                    setRandomEmojiText(nextValue);
+
+                                    const currentList = store.randomEmojiList;
+                                    const hasChanged =
+                                        nextList.length !== currentList.length ||
+                                        nextList.some((item, index) => item !== currentList[index]);
+
+                                    if (hasChanged) {
+                                        store.setRandomEmojiList(nextList);
+                                    }
                                 }}
                                 className="w-full h-24 p-3 rounded-lg border border-gray-300 text-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none
                                     bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:focus:border-blue-500"
@@ -276,7 +303,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                  <section className="pt-4 border-t border-gray-100 dark:border-gray-800">
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">{t.about}</h3>
                     <a
-                        href="https://github.com/maary/FaceMoji"
+                        href="https://github.com/Steve-Mr/EmojiFace"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors dark:text-gray-400 dark:hover:text-blue-400"

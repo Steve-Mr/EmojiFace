@@ -250,7 +250,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   clearWorkspace: async () => {
-    set({ image: null, imageBlob: null, detections: [], masks: [], selectedMaskId: null });
+    set({ image: null, imageBlob: null, detections: [], masks: [], selectedMaskId: null, isManualAddMode: false });
     await persistenceRepo.clearState();
   },
 

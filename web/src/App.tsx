@@ -69,6 +69,7 @@ const AppContent = () => {
           <Toolbar
             onToggleSettings={() => setIsSettingsOpen(!isSettingsOpen)}
             onExportComplete={() => setShowClearDialog(true)}
+            onRemoveImage={() => setShowClearDialog(true)}
           />
       </div>
 
