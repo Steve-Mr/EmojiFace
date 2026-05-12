@@ -17,6 +17,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     const { theme, setTheme } = useTheme();
 
     const [isDebugExpanded, setIsDebugExpanded] = useState(false);
+    const [randomEmojiText, setRandomEmojiText] = useState(() => store.randomEmojiList.join(', '));
     const logsEndRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll logs
@@ -25,6 +26,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
             logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
     }, [debugStore.logs, isDebugExpanded]);
+
+    useEffect(() => {
+        if (isOpen) {
+            setRandomEmojiText(store.randomEmojiList.join(', '));
+        }
+    }, [isOpen]);
 
     // Handlers
     const handleFontUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,9 +153,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                                 <span className="text-xs text-gray-400">{t.commaSeparated}</span>
                             </div>
                             <textarea
-                                value={store.randomEmojiList.join(', ')}
+                                value={randomEmojiText}
                                 onChange={(e) => {
-                                    const list = e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                                    const nextValue = e.target.value;
+                                    const list = nextValue.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                                    setRandomEmojiText(nextValue);
                                     store.setRandomEmojiList(list);
                                 }}
                                 className="w-full h-24 p-3 rounded-lg border border-gray-300 text-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none
