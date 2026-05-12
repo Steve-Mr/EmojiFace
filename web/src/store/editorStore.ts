@@ -160,9 +160,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
       const detections = await faceDetector.detect(image);
 
-      const masks: Mask[] = detections.map(d => {
-        const emoji = randomEmojiList.length > 0
-            ? randomEmojiList[Math.floor(Math.random() * randomEmojiList.length)]
+      const shuffledEmojis = [...randomEmojiList];
+      for (let i = shuffledEmojis.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledEmojis[i], shuffledEmojis[j]] = [shuffledEmojis[j], shuffledEmojis[i]];
+      }
+
+      const masks: Mask[] = detections.map((d, index) => {
+        const emoji = shuffledEmojis.length > 0
+            ? shuffledEmojis[index % shuffledEmojis.length]
             : '😊';
 
         return {
@@ -273,8 +279,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           keypoints: []
       };
 
-      const emoji = randomEmojiList.length > 0
-          ? randomEmojiList[Math.floor(Math.random() * randomEmojiList.length)]
+      const usedEmojis = new Set(get().masks.map(m => m.config.emoji));
+      const availableEmojis = randomEmojiList.filter(e => !usedEmojis.has(e));
+      const pool = availableEmojis.length > 0 ? availableEmojis : randomEmojiList;
+
+      const emoji = pool.length > 0
+          ? pool[Math.floor(Math.random() * pool.length)]
           : '😊';
 
       const newMask: Mask = {
