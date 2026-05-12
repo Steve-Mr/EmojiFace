@@ -156,9 +156,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
                                 value={randomEmojiText}
                                 onChange={(e) => {
                                     const nextValue = e.target.value;
-                                    const list = nextValue.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                                    const nextList = nextValue.split(',').map(s => s.trim()).filter(s => s.length > 0);
                                     setRandomEmojiText(nextValue);
-                                    store.setRandomEmojiList(list);
+
+                                    const currentList = store.randomEmojiList;
+                                    const hasChanged =
+                                        nextList.length !== currentList.length ||
+                                        nextList.some((item, index) => item !== currentList[index]);
+
+                                    if (hasChanged) {
+                                        store.setRandomEmojiList(nextList);
+                                    }
                                 }}
                                 className="w-full h-24 p-3 rounded-lg border border-gray-300 text-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none
                                     bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:focus:border-blue-500"
