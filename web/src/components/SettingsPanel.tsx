@@ -28,10 +28,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose })
     }, [debugStore.logs, isDebugExpanded]);
 
     useEffect(() => {
-        if (isOpen) {
-            setRandomEmojiText(store.randomEmojiList.join(', '));
+        const storeList = store.randomEmojiList;
+        // 解析当前文本框里的内容
+        const currentList = randomEmojiText.split(',').map(s => s.trim()).filter(s => s.length > 0);
+        
+        // 比较两边的数组是否不同
+        const isDifferent = storeList.length !== currentList.length || 
+                            storeList.some((item, index) => item !== currentList[index]);
+
+        // 只有在发生实质性变化时，才同步 store 的值到文本框
+        // 这样可以避免用户输入逗号/空格等中间状态时被强制重置覆盖
+        if (isDifferent) {
+            setRandomEmojiText(storeList.join(', '));
         }
-    }, [isOpen]);
+    }, [store.randomEmojiList, randomEmojiText]);
 
     // Handlers
     const handleFontUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
