@@ -12,6 +12,7 @@ export type TranslationKeys = {
     about: string;
     visitRepo: string;
     open: string;
+    remove: string;
     add: string;
     adding: string;
     save: string;

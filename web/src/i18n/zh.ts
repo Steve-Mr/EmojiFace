@@ -14,6 +14,7 @@ export const zh: TranslationKeys = {
     about: '关于',
     visitRepo: '访问仓库',
     open: '打开',
+    remove: '移除',
     add: '添加',
     adding: '添加中...',
     save: '保存',
