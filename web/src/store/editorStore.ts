@@ -47,6 +47,15 @@ export interface EditorState {
   deleteMask: (id: string) => void;
 }
 
+const shuffleArray = <T>(array: T[]): T[] => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+};
+
 const calculateRotation = (keypoints: {x: number, y: number}[]) => {
     if (!keypoints || keypoints.length < 2) return 0;
     const leftEye = keypoints[0];
@@ -160,11 +169,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
       const detections = await faceDetector.detect(image);
 
-      const shuffledEmojis = [...randomEmojiList];
-      for (let i = shuffledEmojis.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffledEmojis[i], shuffledEmojis[j]] = [shuffledEmojis[j], shuffledEmojis[i]];
-      }
+      const shuffledEmojis = shuffleArray(randomEmojiList);
 
       const masks: Mask[] = detections.map((d, index) => {
         const emoji = shuffledEmojis.length > 0
@@ -279,7 +284,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           keypoints: []
       };
 
-      const usedEmojis = new Set(get().masks.map(m => m.config.emoji));
+      const usedEmojis = new Set(get().masks.map(m => m.config.emoji).filter((e): e is string => !!e));
       const availableEmojis = randomEmojiList.filter(e => !usedEmojis.has(e));
       const pool = availableEmojis.length > 0 ? availableEmojis : randomEmojiList;
 
