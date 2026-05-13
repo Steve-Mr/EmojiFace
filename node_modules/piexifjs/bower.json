@@ -1,0 +1,20 @@
+{
+  "name": "piexifjs",
+  "description": "Read and write exif.",
+  "main": "piexif.js",
+  "authors": [
+    "hMatoba"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "jpeg",
+    "exif"
+  ],
+  "homepage": "https://github.com/hMatoba/piexifjs",
+  "moduleType": [],
+  "ignore": [
+    "**/*",
+    "!piexif.js",
+    "!bower.json"
+  ]
+}
