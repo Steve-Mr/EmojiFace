@@ -36,23 +36,20 @@ export async function exportImage(state: EditorState): Promise<void> {
         // Try to inject EXIF if it's a JPEG
         if (mimeType === 'image/jpeg' && imageBlob) {
             try {
-                const originalDataUrl = await blobToDataURL(imageBlob);
+                const originalBinaryStr = await blobToBinaryString(imageBlob);
 
-                const exifObj = piexif.load(originalDataUrl);
-
-                // Reset Orientation to avoid double rotation since canvas handles initial rotation
-                if (exifObj && exifObj["0th"]) {
-                    exifObj["0th"][piexif.ImageIFD.Orientation] = 1;
-                }
-
-                const exifStr = piexif.dump(exifObj);
+                const exifObj = piexif.load(originalBinaryStr);
 
                 // If original has EXIF, inject it into the new image
-                if (exifStr && exifStr !== 'Exif\x00\x00MM\x00*\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00') {
-                     const newDataUrl = await blobToDataURL(blob);
+                if (exifObj && exifObj["0th"] && Object.keys(exifObj["0th"]).length > 0) {
+                     // Reset Orientation to avoid double rotation since canvas handles initial rotation
+                     exifObj["0th"][piexif.ImageIFD.Orientation] = 1;
 
-                     const finalDataUrl = piexif.insert(exifStr, newDataUrl);
-                     finalBlob = dataURLToBlob(finalDataUrl);
+                     const exifStr = piexif.dump(exifObj);
+                     const newBinaryStr = await blobToBinaryString(blob);
+
+                     const finalBinaryStr = piexif.insert(exifStr, newBinaryStr);
+                     finalBlob = await dataURLToBlob(`data:image/jpeg;base64,${window.btoa(finalBinaryStr)}`);
                 }
             } catch (e) {
                 console.error('Failed to copy EXIF data:', e);
@@ -84,24 +81,16 @@ export async function exportImage(state: EditorState): Promise<void> {
     }, mimeType, quality);
 }
 
-function blobToDataURL(blob: Blob): Promise<string> {
+function blobToBinaryString(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(blob);
+        reader.readAsBinaryString(blob);
     });
 }
 
-function dataURLToBlob(dataurl: string): Blob {
-    const arr = dataurl.split(',');
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    const mime = mimeMatch ? mimeMatch[1] : '';
-    const bstr = window.atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
+async function dataURLToBlob(dataurl: string): Promise<Blob> {
+    const res = await fetch(dataurl);
+    return await res.blob();
 }
