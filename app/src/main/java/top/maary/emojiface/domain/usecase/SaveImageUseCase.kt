@@ -3,6 +3,7 @@ package top.maary.emojiface.domain.usecase
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.exifinterface.media.ExifInterface
@@ -10,13 +11,14 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import top.maary.emojiface.R
+import top.maary.emojiface.util.ExifCopier
 import java.io.IOException
 import javax.inject.Inject
 
 class SaveImageUseCase @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) {
-    suspend operator fun invoke(bitmap: Bitmap): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend operator fun invoke(bitmap: Bitmap, originalUri: Uri? = null): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
                 // 使用 MediaStore API 保存到公共目录
                 val folderName = "FaceMoji"
@@ -40,6 +42,14 @@ class SaveImageUseCase @Inject constructor(
 
                 resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
                     val exifInterface = ExifInterface(pfd.fileDescriptor)
+
+                    if (originalUri != null) {
+                        resolver.openInputStream(originalUri)?.use { inputStream ->
+                            val oldExif = ExifInterface(inputStream)
+                            ExifCopier.copyExif(oldExif, exifInterface)
+                        }
+                    }
+
                     exifInterface.setAttribute(ExifInterface.TAG_SOFTWARE, context.getString(R.string.app_name))
                     exifInterface.setAttribute(ExifInterface.TAG_USER_COMMENT, context.getString(R.string.created_by))
                     exifInterface.saveAttributes()

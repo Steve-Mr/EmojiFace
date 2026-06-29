@@ -10,6 +10,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import top.maary.emojiface.R
+import top.maary.emojiface.util.ExifCopier
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -18,7 +19,7 @@ import javax.inject.Inject
 class GenerateShareableUriUseCase @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) {
-    suspend operator fun invoke(bitmap: Bitmap): Result<Uri> = withContext(Dispatchers.IO) {
+    suspend operator fun invoke(bitmap: Bitmap, originalUri: Uri? = null): Result<Uri> = withContext(Dispatchers.IO) {
         runCatching {
             val cachePath = File(context.cacheDir, "images").apply { mkdirs() }
             val file = File(cachePath, "shared_${System.currentTimeMillis()}.png").apply {
@@ -30,6 +31,13 @@ class GenerateShareableUriUseCase @Inject constructor(
             // --- START EXIF Modification ---
             try {
                 val exifInterface = ExifInterface(file.absoluteFile) // <-- Use file path
+
+                if (originalUri != null) {
+                    context.contentResolver.openInputStream(originalUri)?.use { inputStream ->
+                        val oldExif = ExifInterface(inputStream)
+                        ExifCopier.copyExif(oldExif, exifInterface)
+                    }
+                }
 
                 exifInterface.setAttribute(ExifInterface.TAG_SOFTWARE, context.getString(R.string.app_name))
                 exifInterface.setAttribute(ExifInterface.TAG_USER_COMMENT, context.getString(R.string.created_by))
