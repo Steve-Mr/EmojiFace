@@ -29,6 +29,10 @@ object ExifUtils {
 
         val matrix = Matrix()
         matrix.postRotate(rotationDegrees)
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        if (rotatedBitmap != bitmap) {
+            bitmap.recycle()
+        }
+        return rotatedBitmap
     }
 }

@@ -33,9 +33,13 @@ class GenerateShareableUriUseCase @Inject constructor(
                 val exifInterface = ExifInterface(file.absoluteFile) // <-- Use file path
 
                 if (originalUri != null) {
-                    context.contentResolver.openInputStream(originalUri)?.use { inputStream ->
-                        val oldExif = ExifInterface(inputStream)
-                        ExifCopier.copyExif(oldExif, exifInterface)
+                    try {
+                        context.contentResolver.openInputStream(originalUri)?.use { inputStream ->
+                            val oldExif = ExifInterface(inputStream)
+                            ExifCopier.copyExif(oldExif, exifInterface)
+                        }
+                    } catch (e: Exception) {
+                        Log.w("GenerateShareableUri", "Failed to copy EXIF metadata", e)
                     }
                 }
 

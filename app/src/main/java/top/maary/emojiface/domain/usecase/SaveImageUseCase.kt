@@ -44,9 +44,13 @@ class SaveImageUseCase @Inject constructor(
                     val exifInterface = ExifInterface(pfd.fileDescriptor)
 
                     if (originalUri != null) {
-                        resolver.openInputStream(originalUri)?.use { inputStream ->
-                            val oldExif = ExifInterface(inputStream)
-                            ExifCopier.copyExif(oldExif, exifInterface)
+                        try {
+                            resolver.openInputStream(originalUri)?.use { inputStream ->
+                                val oldExif = ExifInterface(inputStream)
+                                ExifCopier.copyExif(oldExif, exifInterface)
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.w("SaveImageUseCase", "Failed to copy EXIF metadata", e)
                         }
                     }
 
