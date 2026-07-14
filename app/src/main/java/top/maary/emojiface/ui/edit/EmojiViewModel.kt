@@ -50,6 +50,7 @@ import kotlin.random.Random
 
 // Define the UI State Data Class (can be in a separate file)
 data class EditUiState(
+    val originalUri: Uri? = null,
     val originalBitmap: Bitmap? = null, // 新增：始终保存高分辨率原图
     val displayedBitmap: Bitmap? = null, // 修改：这是用于UI显示和实时处理的位图（低分辨率）
     val selectedEmojis: List<EmojiDetection> = emptyList(),
@@ -295,6 +296,7 @@ class EmojiViewModel @Inject constructor(
                     //    - `originalBitmap` 保存高分辨率原图，以备后用。
                     //    - `displayedBitmap` 保存低分辨率预览图，用于UI和实时计算。
                     _uiState.update { it.copy(
+                        originalUri = inputUri,
                         originalBitmap = highResBitmap,
                         displayedBitmap = displayBitmap, // <--- 使用缩放后的图
                         aspectRatio = aspectRatio
@@ -440,7 +442,8 @@ class EmojiViewModel @Inject constructor(
                     return@launch
                 }
 
-                generateShareableUriUseCase(finalBitmap).fold(
+                val originalUri = _uiState.value.originalUri
+                generateShareableUriUseCase(finalBitmap, originalUri).fold(
                     onSuccess = { uri ->
                         _shareEvent.emit(ShareEvent.ShareImage(uri))
                     },
@@ -478,7 +481,8 @@ class EmojiViewModel @Inject constructor(
                     return@launch
                 }
 
-                saveImageUseCase(finalBitmap).fold(
+                val originalUri = _uiState.value.originalUri
+                saveImageUseCase(finalBitmap, originalUri).fold(
                     onSuccess = {
                         _shareEvent.emit(ShareEvent.Success(Constants.STATUS_SAVE))
                     },

@@ -10,15 +10,20 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 
+import top.maary.emojiface.util.ExifUtils
+
 class GetBitmapUseCase @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
     suspend operator fun invoke(inputUri: Uri): Result<Bitmap> = withContext(Dispatchers.IO) {
         runCatching { // 使用 runCatching 简化 try-catch 和 Result 返回
-            context.contentResolver.openInputStream(inputUri)?.use { stream ->
+            val rawBitmap = context.contentResolver.openInputStream(inputUri)?.use { stream ->
                 BitmapFactory.decodeStream(stream)
                     ?: throw IllegalArgumentException("Failed to decode bitmap from URI.")
             } ?: throw IllegalStateException("Could not open InputStream from URI.") // 处理 stream 为 null 的情况
+
+            // 处理旋转
+            ExifUtils.handleImageOrientation(context, inputUri, rawBitmap)
         }
     }
 }
