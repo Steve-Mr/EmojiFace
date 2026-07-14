@@ -1,5 +1,5 @@
 [versions]
-agp = "8.11.1"
+agp = "8.13.2"
 datastorePreferences = "1.2.0-alpha02"
 exifinterface = "1.4.1"
 hiltAndroidCompiler = "2.56.2"
