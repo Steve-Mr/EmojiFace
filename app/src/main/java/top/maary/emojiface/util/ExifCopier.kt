@@ -10,7 +10,7 @@ object ExifCopier {
             ExifInterface.TAG_DATETIME_ORIGINAL,
             ExifInterface.TAG_EXPOSURE_TIME,
             ExifInterface.TAG_F_NUMBER,
-            ExifInterface.TAG_ISO_SPEED_RATINGS,
+            ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY,
             ExifInterface.TAG_MAKE,
             ExifInterface.TAG_MODEL,
             ExifInterface.TAG_FOCAL_LENGTH,
