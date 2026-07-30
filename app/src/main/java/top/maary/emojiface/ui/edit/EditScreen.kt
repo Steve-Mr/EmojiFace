@@ -11,6 +11,3 @@ fun EditScreen(emojiViewModel: EmojiViewModel = viewModel(),
     EditScreenContentInternal(emojiViewModel, windowSizeClass)
 
 }
-
-
-

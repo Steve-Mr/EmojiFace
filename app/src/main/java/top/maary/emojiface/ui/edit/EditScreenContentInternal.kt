@@ -19,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -34,6 +35,8 @@ import top.maary.emojiface.ui.edit.state.ShareEvent
 import top.maary.emojiface.util.Constants
 import top.maary.emojiface.util.getFileNameWithoutExtensionUsingPath
 import top.maary.emojiface.util.getParcelableExtraCompat
+import top.maary.emojiface.ui.components.ReplaceImageBottomSheet
+import top.maary.emojiface.MainActivity
 
 @Composable
 fun EditScreenContentInternal(
@@ -43,6 +46,7 @@ fun EditScreenContentInternal(
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val mainActivity = activity as? MainActivity
 
     // --- 1. Observe ViewModel's Single State Flow ---
     // Use collectAsStateWithLifecycle for better lifecycle awareness
@@ -55,18 +59,22 @@ fun EditScreenContentInternal(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var emojiIndexToDelete by remember { mutableStateOf<Int?>(null) }
 
+    // Use rememberSaveable to persist the uri across rotation
+    var newSharedUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    val newSharedUri = remember(newSharedUriString) { newSharedUriString?.let { Uri.parse(it) } }
+
     var pickerLaunchedOnMain by remember { mutableStateOf(false) }
 
     // --- 3. Implement Launchers (No changes needed here) ---
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        uri?.let { viewModel.detect(it) } // Call VM method
+        uri?.let { viewModel.detect(it) }
     }
 
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
+    ) { uri: Uri? ->
         uri?.let { viewModel.copyFontToInternal(it) } // Call VM method
     }
 
@@ -100,17 +108,36 @@ fun EditScreenContentInternal(
 
     // --- 4. Implement Effects ---
 
-    // Handle incoming ACTION_SEND intent (No changes needed here)
+    // Handle incoming ACTION_SEND intent initially
     LaunchedEffect(activity?.intent) {
         val intent = activity?.intent
-        if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
+        // Only trigger if we have an intent and we haven't already shown a prompt for it.
+        // We use newSharedUri as a guard to not show the sheet multiple times on rotation.
+        if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true && newSharedUri == null) {
             val sharedUri: Parcelable? = intent.getParcelableExtraCompat(Intent.EXTRA_STREAM)
-            (sharedUri as? Uri)?.let {
-                // Check if already processed (using uiState.originalBitmap as indicator)
+            (sharedUri as? Uri)?.let { uri ->
                 if (uiState.originalBitmap == null) {
-                    viewModel.detect(it)
+                    viewModel.detect(uri)
+                } else {
+                    newSharedUriString = uri.toString()
                 }
-                intent.action = null // Prevent re-processing
+                intent.action = null // Prevent re-processing on rotation
+            }
+        }
+    }
+
+    LaunchedEffect(mainActivity) {
+        mainActivity?.newIntents?.collectLatest { intent ->
+            if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
+                val sharedUri: Parcelable? = intent.getParcelableExtraCompat(Intent.EXTRA_STREAM)
+                (sharedUri as? Uri)?.let { uri ->
+                    if (uiState.originalBitmap == null) {
+                        viewModel.detect(uri)
+                    } else {
+                        newSharedUriString = uri.toString()
+                    }
+                    intent.action = null
+                }
             }
         }
     }
@@ -142,10 +169,7 @@ fun EditScreenContentInternal(
                         }
                     }
 
-                    // 统一显示 Toast
-                    if (messageToShow.isNotEmpty()) {
-                        Toast.makeText(context, messageToShow, Toast.LENGTH_SHORT).show()
-                    }
+                    Toast.makeText(context, messageToShow, Toast.LENGTH_SHORT).show()
                 }
                 is ShareEvent.Success -> { // Handle potential success messages
                     if (event.status == Constants.STATUS_SAVE) {
@@ -330,6 +354,13 @@ fun EditScreenContentInternal(
         )
     }
 
+    ReplaceImageBottomSheet(
+        newUri = newSharedUri,
+        onDismissRequest = { newSharedUriString = null },
+        onConfirm = {
+            newSharedUri?.let { viewModel.detect(it) }
+        }
+    )
 
     // --- 8. Layout Dispatching ---
     when {

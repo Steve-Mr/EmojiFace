@@ -41,4 +41,7 @@
     <string name="face">面部</string>
     <string name="eyes">眼部</string>
     <string name="mosaic_target">目标</string>
+    <string name="replace_image_title">替换当前图片？</string>
+    <string name="replace_image_message">是否使用新分享的图片替换当前正在编辑的图片？</string>
+    <string name="replace">替换</string>
 </resources>

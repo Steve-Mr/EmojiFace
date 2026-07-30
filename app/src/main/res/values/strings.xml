@@ -41,4 +41,7 @@
     <string name="face">Face</string>
     <string name="eyes">Eyes</string>
     <string name="mosaic_target">Target</string>
+    <string name="replace_image_title">Replace Current Image?</string>
+    <string name="replace_image_message">Do you want to replace the current image with the newly shared one? Your current edits will be lost.</string>
+    <string name="replace">Replace</string>
 </resources>
