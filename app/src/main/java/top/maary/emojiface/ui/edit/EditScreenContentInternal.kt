@@ -18,25 +18,26 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.flow.collectLatest
+import top.maary.emojiface.MainActivity
 import top.maary.emojiface.R
+import top.maary.emojiface.ui.components.ReplaceImageBottomSheet
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 import top.maary.emojiface.ui.edit.state.ShareEvent
 import top.maary.emojiface.util.Constants
 import top.maary.emojiface.util.getFileNameWithoutExtensionUsingPath
 import top.maary.emojiface.util.getParcelableExtraCompat
-import top.maary.emojiface.ui.components.ReplaceImageBottomSheet
-import top.maary.emojiface.MainActivity
 
 @Composable
 fun EditScreenContentInternal(
@@ -61,7 +62,7 @@ fun EditScreenContentInternal(
 
     // Use rememberSaveable to persist the uri across rotation
     var newSharedUriString by rememberSaveable { mutableStateOf<String?>(null) }
-    val newSharedUri = remember(newSharedUriString) { newSharedUriString?.let { Uri.parse(it) } }
+    val newSharedUri = remember(newSharedUriString) { newSharedUriString?.toUri() }
 
     var pickerLaunchedOnMain by remember { mutableStateOf(false) }
 
