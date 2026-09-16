@@ -3,6 +3,7 @@ package top.maary.emojiface.ui.components
 import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -864,7 +865,7 @@ fun SettingsItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun FaceThumbnailCard(
     occlusion: FaceOcclusion,
@@ -882,17 +883,10 @@ fun FaceThumbnailCard(
             .size(64.dp)
             .clip(shape)
             .background(containerColor)
-            .then(
-                if (indicatorColor != null) {
-                    Modifier.border(2.5.dp, indicatorColor, shape)
-                } else Modifier
-            )
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { onClick() },
-                    onLongPress = { onLongClick() }
-                )
-            },
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         contentAlignment = Alignment.Center
     ) {
         when (val mode = occlusion.mode) {
@@ -920,17 +914,12 @@ fun FaceThumbnailCard(
             is OcclusionMode.Avatar -> {
                 val bitmap = cachedAvatarBitmaps[mode.avatarId]
                 if (bitmap != null) {
-                    val shape = when (mode.cropShape) {
-                        OcclusionMode.Avatar.AvatarCropShape.Circle -> CircleShape
-                        OcclusionMode.Avatar.AvatarCropShape.RoundedRect -> RoundedCornerShape(8.dp)
-                        OcclusionMode.Avatar.AvatarCropShape.Square -> RoundedCornerShape(0.dp)
-                    }
                     Image(
                         bitmap = bitmap.asImageBitmap(),
                         contentDescription = stringResource(R.string.avatar),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(48.dp)
+                            .fillMaxSize()
                             .clip(shape)
                     )
                 } else {
@@ -943,6 +932,14 @@ fun FaceThumbnailCard(
                 }
             }
         }
+
+        if (indicatorColor != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(2.5.dp, indicatorColor, shape)
+            )
+        }
     }
 }
 
@@ -951,7 +948,7 @@ fun FaceThumbnailCard(
 fun FaceAddCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest
+    containerColor: Color = MaterialTheme.colorScheme.tertiaryContainer
 ) {
     Box(
         modifier = modifier
@@ -965,7 +962,7 @@ fun FaceAddCard(
             imageVector = Icons.Outlined.Add,
             contentDescription = stringResource(R.string.add),
             modifier = Modifier.size(32.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            tint = MaterialTheme.colorScheme.onTertiaryContainer
         )
     }
 }
@@ -1055,8 +1052,8 @@ fun FaceSelectionBar(
             // Floating Edit Button on the left end
             Surface(
                 shape = CircleShape,
-                color = if (state.isEditMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = if (state.isEditMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                color = if (state.isEditMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+                contentColor = if (state.isEditMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
                 shadowElevation = 4.dp,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
@@ -1078,8 +1075,8 @@ fun FaceSelectionBar(
             // Floating Add Button on the right end
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                 shadowElevation = 4.dp,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)

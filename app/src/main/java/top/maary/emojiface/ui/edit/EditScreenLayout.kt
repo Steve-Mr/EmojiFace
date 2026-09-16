@@ -392,7 +392,7 @@ fun LargeScreenLayout(
                                     item {
                                         FaceAddCard(
                                             onClick = actions.onAddClicked,
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
                                         )
                                     }
                                 }
