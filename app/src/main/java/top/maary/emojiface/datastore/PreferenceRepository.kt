@@ -10,10 +10,12 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import top.maary.emojiface.BuildConfig
+import top.maary.emojiface.domain.model.Avatar
 import top.maary.emojiface.ui.edit.model.EmojiList
 import top.maary.emojiface.util.Constants.DEFAULT_FONT_MARKER
 import javax.inject.Inject
@@ -36,6 +38,10 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
         val MOSAIC_MODE = intPreferencesKey("mosaic_mode")
         const val MOSAIC_MODE_EMOJI = 0
         const val MOSAIC_MODE_BLUR = 1
+        const val MOSAIC_MODE_AVATAR = 2
+        val AVATAR_METADATA_LIST = stringPreferencesKey("avatar_metadata_list")
+        val SELECTED_DEFAULT_AVATAR_ID = stringPreferencesKey("selected_default_avatar_id")
+        const val DEFAULT_AVATAR_ID = "DEFAULT"
         val MOSAIC_TYPE = intPreferencesKey("mosaic_type")
         const val MOSAIC_TYPE_GAUSSIAN = 0  // 高斯模糊
         const val MOSAIC_TYPE_PIXELATED = 1 // 像素化
@@ -145,7 +151,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
     }.distinctUntilChanged()
 
     suspend fun setMosaicMode(mode: Int) {
-        if (mode == MOSAIC_MODE_EMOJI || mode == MOSAIC_MODE_BLUR) {
+        if (mode == MOSAIC_MODE_EMOJI || mode == MOSAIC_MODE_BLUR || mode == MOSAIC_MODE_AVATAR) {
             // 仅允许设置为已定义的模式
             dataStore.edit { prefs ->
                 prefs[MOSAIC_MODE] = mode
@@ -184,4 +190,38 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
             throw IllegalArgumentException("Invalid mosaic target: $target")
         }
     }
+
+    val avatarsMetadataFlow: Flow<List<Avatar>> = dataStore.data.map { preferences ->
+        preferences[AVATAR_METADATA_LIST]?.let { jsonString ->
+            runCatching { Json.decodeFromString<List<Avatar>>(jsonString) }.getOrNull()
+        } ?: emptyList()
+    }.distinctUntilChanged()
+
+    suspend fun updateAvatarsMetadata(avatars: List<Avatar>) {
+        val jsonString = Json.encodeToString(avatars)
+        dataStore.edit { preferences ->
+            preferences[AVATAR_METADATA_LIST] = jsonString
+        }
+    }
+
+    val selectedDefaultAvatarIdFlow: Flow<String> = dataStore.data.map { preferences ->
+        preferences[SELECTED_DEFAULT_AVATAR_ID] ?: DEFAULT_AVATAR_ID
+    }.distinctUntilChanged()
+
+    suspend fun setSelectedDefaultAvatarId(id: String) {
+        dataStore.edit { preferences ->
+            preferences[SELECTED_DEFAULT_AVATAR_ID] = id
+        }
+    }
+
+    val activeDefaultAvatarFlow: Flow<Avatar?> = combine(
+        avatarsMetadataFlow,
+        selectedDefaultAvatarIdFlow
+    ) { avatars, selectedId ->
+        if (avatars.isEmpty()) {
+            null
+        } else {
+            avatars.find { it.id == selectedId } ?: avatars.firstOrNull()
+        }
+    }.distinctUntilChanged()
 }
