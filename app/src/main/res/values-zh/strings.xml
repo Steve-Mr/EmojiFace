@@ -44,4 +44,17 @@
     <string name="replace_image_title">替换当前图片？</string>
     <string name="replace_image_message">是否使用新分享的图片替换当前正在编辑的图片？</string>
     <string name="replace">替换</string>
+    <string name="avatar">头像</string>
+    <string name="manage_avatars">管理遮挡头像</string>
+    <string name="import_avatar">导入头像</string>
+    <string name="no_avatars_hint">暂无自定义头像，点击上方按钮导入</string>
+    <string name="crop_shape">裁切形状</string>
+    <string name="circle">圆形</string>
+    <string name="rounded_rect">圆角</string>
+    <string name="square">方形</string>
+    <string name="delete_face">删除此人脸</string>
+    <string name="default_mosaic_mode">默认遮挡模式</string>
+    <string name="default_avatar">默认</string>
+    <string name="set_as_default">设为默认</string>
+    <string name="delete">删除</string>
 </resources>

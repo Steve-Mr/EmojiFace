@@ -20,8 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import top.maary.emojiface.R
-import top.maary.emojiface.ui.edit.model.BlurRegion
-import top.maary.emojiface.ui.edit.model.EmojiDetection
+import top.maary.emojiface.domain.model.occlusion.FaceOcclusion
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 
@@ -30,8 +29,8 @@ fun DisplayPane(
     modifier: Modifier,
     state: EditScreenState,
     actions: EditScreenActions,
-    editingEmoji: EmojiDetection?,
-    editingBlurRegion: BlurRegion?) {
+    editingOcclusion: FaceOcclusion? = state.editingOcclusion
+) {
     // --- 圖片顯示區域 ---
     Box(
         modifier = modifier,
@@ -100,9 +99,8 @@ fun DisplayPane(
 
                 EmojiOverlay(
                     state = state,
-                    actions = actions, // <-- 传入 actions
-                    editingEmoji = editingEmoji,
-                    editingBlurRegion = editingBlurRegion, // <-- 传入新增的 editingBlurRegion
+                    actions = actions,
+                    editingOcclusion = editingOcclusion,
                     padding = PaddingValues(
                         horizontal = horizontalPadding,
                         vertical = verticalPadding

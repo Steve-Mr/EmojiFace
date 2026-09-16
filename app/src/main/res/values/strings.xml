@@ -44,4 +44,17 @@
     <string name="replace_image_title">Replace Current Image?</string>
     <string name="replace_image_message">Do you want to replace the current image with the newly shared one? Your current edits will be lost.</string>
     <string name="replace">Replace</string>
+    <string name="avatar">Avatar</string>
+    <string name="manage_avatars">Manage Avatars</string>
+    <string name="import_avatar">Import Avatar</string>
+    <string name="no_avatars_hint">No avatars imported yet. Tap + to add.</string>
+    <string name="crop_shape">Crop Shape</string>
+    <string name="circle">Circle</string>
+    <string name="rounded_rect">Rounded</string>
+    <string name="square">Square</string>
+    <string name="delete_face">Delete Face</string>
+    <string name="default_mosaic_mode">Default Mode</string>
+    <string name="default_avatar">Default</string>
+    <string name="set_as_default">Set as Default</string>
+    <string name="delete">Delete</string>
 </resources>
