@@ -30,6 +30,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.dp
 import top.maary.emojiface.domain.model.geometry.AnchorTarget
 import top.maary.emojiface.domain.model.geometry.Point2D
 import top.maary.emojiface.domain.model.occlusion.FaceOcclusion
@@ -37,6 +41,7 @@ import top.maary.emojiface.domain.model.occlusion.OcclusionMode
 import top.maary.emojiface.ui.edit.model.BlurRegion
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
+import top.maary.emojiface.ui.theme.OcclusionIndicatorPalette
 import top.maary.emojiface.util.createBlurredRegionBitmap
 import top.maary.emojiface.util.createHalftoneRegionBitmap
 import top.maary.emojiface.util.createPixelatedRegionBitmap
@@ -63,6 +68,8 @@ fun EmojiOverlay(
     val density = LocalDensity.current
     val horizontalPaddingPx = with(density) { padding.calculateLeftPadding(LayoutDirection.Ltr).toPx() }
     val verticalPaddingPx = with(density) { padding.calculateTopPadding().toPx() }
+    val strokeWidthPx = with(density) { 2.5.dp.toPx() }
+    val strokeStyle = remember(strokeWidthPx) { Stroke(width = strokeWidthPx) }
 
     val blurBitmapCache = remember { mutableMapOf<String, ImageBitmap>() }
     LaunchedEffect(state.occlusions, state.mosaicType, state.displayedBitmap) {
@@ -161,6 +168,9 @@ fun EmojiOverlay(
                                 occlusion.geometry.contains(originalTapPoint, treatAsEllipse = treatAsEllipse)
                             }
                             if (selectedIndex != null) {
+                                if (!state.isEditMode) {
+                                    actions.onSetEditMode(true)
+                                }
                                 actions.onOcclusionSelected(selectedIndex)
                             }
                         }
@@ -168,7 +178,12 @@ fun EmojiOverlay(
                 } else Modifier
             )
     ) {
-        occlusionsToRender.forEach { occlusion ->
+        occlusionsToRender.forEachIndexed { i, occlusion ->
+            val isEditingThisFace = (editingOcclusion != null && occlusion == editingOcclusion) ||
+                    (state.editingOcclusionIndex == i)
+            val shouldDrawIndicator = state.isEditMode || isEditingThisFace
+            val indicatorColor = OcclusionIndicatorPalette[i % OcclusionIndicatorPalette.size]
+
             val geom = occlusion.geometry
             val centerX = geom.center.x * scale
             val centerY = geom.center.y * scale
@@ -194,6 +209,20 @@ fun EmojiOverlay(
                             centerY - verticalOffset,
                             emojiPaint
                         )
+                    }
+
+                    if (shouldDrawIndicator) {
+                        rotate(
+                            degrees = rotation,
+                            pivot = Offset(centerX, centerY)
+                        ) {
+                            drawCircle(
+                                color = indicatorColor,
+                                radius = halfDim,
+                                center = Offset(centerX, centerY),
+                                style = strokeStyle
+                            )
+                        }
                     }
                 }
 
@@ -255,6 +284,20 @@ fun EmojiOverlay(
                         }
                         canvas.nativeCanvas.restore()
                     }
+
+                    if (shouldDrawIndicator) {
+                        rotate(
+                            degrees = rotation,
+                            pivot = Offset(destinationRect.centerX(), destinationRect.centerY())
+                        ) {
+                            drawOval(
+                                color = indicatorColor,
+                                topLeft = Offset(destinationRect.left, destinationRect.top),
+                                size = Size(destinationRect.width(), destinationRect.height()),
+                                style = strokeStyle
+                            )
+                        }
+                    }
                 }
 
                 is OcclusionMode.Avatar -> {
@@ -294,6 +337,42 @@ fun EmojiOverlay(
                                 canvas.nativeCanvas.drawBitmap(avatarBitmap, srcRect, destinationRect, bitmapPaint)
                             }
                             canvas.nativeCanvas.restore()
+                        }
+
+                        if (shouldDrawIndicator) {
+                            rotate(
+                                degrees = rotation,
+                                pivot = Offset(centerX, centerY)
+                            ) {
+                                when (mode.cropShape) {
+                                    OcclusionMode.Avatar.AvatarCropShape.Circle -> {
+                                        drawCircle(
+                                            color = indicatorColor,
+                                            radius = halfDim,
+                                            center = Offset(centerX, centerY),
+                                            style = strokeStyle
+                                        )
+                                    }
+                                    OcclusionMode.Avatar.AvatarCropShape.RoundedRect -> {
+                                        val cornerRadiusPx = (halfDim * 2f) * mode.cornerRadiusRatio
+                                        drawRoundRect(
+                                            color = indicatorColor,
+                                            topLeft = Offset(centerX - halfDim, centerY - halfDim),
+                                            size = Size(halfDim * 2f, halfDim * 2f),
+                                            cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx),
+                                            style = strokeStyle
+                                        )
+                                    }
+                                    OcclusionMode.Avatar.AvatarCropShape.Square -> {
+                                        drawRect(
+                                            color = indicatorColor,
+                                            topLeft = Offset(centerX - halfDim, centerY - halfDim),
+                                            size = Size(halfDim * 2f, halfDim * 2f),
+                                            style = strokeStyle
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

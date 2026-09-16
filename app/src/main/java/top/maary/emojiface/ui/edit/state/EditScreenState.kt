@@ -37,5 +37,7 @@ data class EditScreenState(
     val mosaicMode: Int = PreferenceRepository.MOSAIC_MODE_EMOJI,
     val mosaicType: Int = PreferenceRepository.MOSAIC_TYPE_GAUSSIAN,
     val mosaicTarget: Int = PreferenceRepository.MOSAIC_TARGET_FACE,
-    val isSliding: Boolean = false
+    val isSliding: Boolean = false,
+    val isEditMode: Boolean = false,
+    val shakeEditButtonTrigger: Long = 0L
 )

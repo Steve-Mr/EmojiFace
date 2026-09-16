@@ -173,34 +173,12 @@ fun SettingsBottomSheetContent(
                             }
                         }
                     }
-                    PreferenceRepository.MOSAIC_MODE_BLUR -> {
+                    else -> {
                         SettingsItem(GroupPosition.BOTTOM) {
                             MosaicTargetRow(
                                 selectedTarget = mosaicTarget,
                                 onTargetSelected = onMosaicTargetSelected
                             )
-                        }
-                    }
-                    else -> {
-                        SettingsItem(GroupPosition.BOTTOM) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onManageAvatarsClick() }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.manage_avatars),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Icon(
-                                    imageVector = Icons.Outlined.ChevronRight,
-                                    contentDescription = stringResource(R.string.manage_avatars),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
                     }
                 }

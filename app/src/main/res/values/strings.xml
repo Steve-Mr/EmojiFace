@@ -57,4 +57,5 @@
     <string name="default_avatar">Default</string>
     <string name="set_as_default">Set as Default</string>
     <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
 </resources>

@@ -92,4 +92,60 @@ class FaceOcclusionTest {
 
         assertEquals(listOf(occ2, occ3, occ1), sorted)
     }
+
+    @Test
+    fun defaultIsCustomized_isFalse() {
+        val occlusion = FaceOcclusion(
+            geometry = sampleGeometry,
+            mode = OcclusionMode.Emoji("😀")
+        )
+        assertTrue("Default isCustomized should be false", !occlusion.isCustomized)
+    }
+
+    @Test
+    fun withMode_preservesIsCustomized() {
+        val customized = FaceOcclusion(
+            geometry = sampleGeometry,
+            mode = OcclusionMode.Emoji("😀"),
+            isCustomized = true
+        )
+        val updated = customized.withMode(OcclusionMode.Blur())
+        assertTrue("withMode must preserve isCustomized = true", updated.isCustomized)
+
+        val uncustomized = FaceOcclusion(
+            geometry = sampleGeometry,
+            mode = OcclusionMode.Emoji("😀"),
+            isCustomized = false
+        )
+        val updatedUncustomized = uncustomized.withMode(OcclusionMode.Blur())
+        assertTrue("withMode must preserve isCustomized = false", !updatedUncustomized.isCustomized)
+    }
+
+    @Test
+    fun uncustomizedAdaptation_onlyUpdatesUncustomizedOcclusions() {
+        val customizedOcc = FaceOcclusion(
+            geometry = sampleGeometry,
+            mode = OcclusionMode.Emoji("😎"),
+            isCustomized = true
+        )
+        val uncustomizedOcc = FaceOcclusion(
+            geometry = sampleGeometry,
+            mode = OcclusionMode.Emoji("😀"),
+            isCustomized = false
+        )
+
+        val list = listOf(customizedOcc, uncustomizedOcc)
+        val newDefaultMode = OcclusionMode.Blur()
+
+        val updatedList = list.map { occ ->
+            if (!occ.isCustomized) occ.withMode(newDefaultMode) else occ
+        }
+
+        assertEquals(customizedOcc, updatedList[0])
+        assertEquals("😎", (updatedList[0].mode as OcclusionMode.Emoji).emoji)
+        assertTrue(updatedList[0].isCustomized)
+
+        assertEquals(newDefaultMode, updatedList[1].mode)
+        assertTrue(!updatedList[1].isCustomized)
+    }
 }

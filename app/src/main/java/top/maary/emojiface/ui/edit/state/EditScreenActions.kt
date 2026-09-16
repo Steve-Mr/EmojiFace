@@ -55,5 +55,8 @@ data class EditScreenActions(
     val onMosaicTypeSelected: (type: Int) -> Unit,
     val onMosaicTargetSelected: (Int) -> Unit,
 
-    val onSlidingStateChange: (isSliding: Boolean) -> Unit
+    val onSlidingStateChange: (isSliding: Boolean) -> Unit,
+    val onToggleEditMode: () -> Unit = {},
+    val onSetEditMode: (Boolean) -> Unit = {},
+    val onTriggerEditButtonShake: () -> Unit = {}
 )

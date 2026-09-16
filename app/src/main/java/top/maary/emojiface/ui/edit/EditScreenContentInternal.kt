@@ -270,7 +270,9 @@ fun EditScreenContentInternal(
         mosaicMode = uiState.mosaicMode,
         mosaicType = uiState.mosaicType,
         mosaicTarget = uiState.mosaicTarget,
-        isSliding = uiState.isSliding
+        isSliding = uiState.isSliding,
+        isEditMode = uiState.isEditMode,
+        shakeEditButtonTrigger = uiState.shakeEditButtonTrigger
     )
 
     // --- 7. Create EditScreenActions Instance ---
@@ -349,7 +351,10 @@ fun EditScreenContentInternal(
             onMosaicModeSelected = { mode -> viewModel.setMosaicMode(mode) },
             onMosaicTypeSelected = { type -> viewModel.setMosaicType(type) },
             onMosaicTargetSelected = { target -> viewModel.setMosaicTarget(target) },
-            onSlidingStateChange = { isSliding -> viewModel.onSlidingStateChanged(isSliding) }
+            onSlidingStateChange = { isSliding -> viewModel.onSlidingStateChanged(isSliding) },
+            onToggleEditMode = { viewModel.toggleEditMode() },
+            onSetEditMode = { viewModel.setEditMode(it) },
+            onTriggerEditButtonShake = { viewModel.triggerEditButtonShake() }
         )
     }
 

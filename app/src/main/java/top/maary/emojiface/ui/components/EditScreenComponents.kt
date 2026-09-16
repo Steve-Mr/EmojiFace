@@ -34,14 +34,19 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TagFaces
@@ -74,6 +79,7 @@ import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
@@ -84,6 +90,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -114,7 +121,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.maary.emojiface.BuildConfig
 import top.maary.emojiface.R
-import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_AVATAR
+import top.maary.emojiface.ui.theme.OcclusionIndicatorPalette
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TARGET_EYES
@@ -616,8 +623,7 @@ fun MosaicModeRow(
 ){
     val options = listOf(
         stringResource(R.string.emoji) to MOSAIC_MODE_EMOJI,
-        stringResource(R.string.mosaic) to MOSAIC_MODE_BLUR,
-        stringResource(R.string.avatar) to MOSAIC_MODE_AVATAR
+        stringResource(R.string.mosaic) to MOSAIC_MODE_BLUR
     )
 
     Row (
@@ -864,16 +870,23 @@ fun FaceThumbnailCard(
     occlusion: FaceOcclusion,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    indicatorColor: Color? = null,
     onLongClick: () -> Unit = {},
     cachedAvatarBitmaps: Map<String, Bitmap> = emptyMap(),
     fontFamily: FontFamily? = null,
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant
 ) {
+    val shape = MaterialShapes.Cookie4Sided.toShape()
     Box(
         modifier = modifier
             .size(64.dp)
-            .clip(MaterialShapes.Cookie4Sided.toShape())
+            .clip(shape)
             .background(containerColor)
+            .then(
+                if (indicatorColor != null) {
+                    Modifier.border(2.5.dp, indicatorColor, shape)
+                } else Modifier
+            )
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { onClick() },
@@ -957,50 +970,131 @@ fun FaceAddCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FaceSelectionBar(
-    occlusions: List<FaceOcclusion>,
-    onOcclusionClick: (index: Int) -> Unit,
-    onOcclusionLongClick: (index: Int) -> Unit,
-    onAddClick: () -> Unit,
-    cachedAvatarBitmaps: Map<String, Bitmap> = emptyMap(),
-    fontFamily: FontFamily? = null,
+    state: EditScreenState,
+    actions: EditScreenActions,
     modifier: Modifier = Modifier
 ) {
+    val shakeOffset = remember { Animatable(0f) }
+    LaunchedEffect(state.shakeEditButtonTrigger) {
+        if (state.shakeEditButtonTrigger > 0L) {
+            shakeOffset.snapTo(0f)
+            shakeOffset.animateTo(
+                targetValue = 0f,
+                animationSpec = keyframes {
+                    durationMillis = 400
+                    0f at 0
+                    (-12f) at 50
+                    12f at 100
+                    (-10f) at 150
+                    10f at 200
+                    (-6f) at 250
+                    6f at 300
+                    (-2f) at 350
+                    0f at 400
+                }
+            )
+        }
+    }
+
     Card(
         modifier = modifier.padding(horizontal = 8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(
-                horizontal = 8.dp,
-                vertical = 8.dp
-            ),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp),
+            contentAlignment = Alignment.Center
         ) {
-            itemsIndexed(
-                items = occlusions,
-                key = { _, item -> item.id }
-            ) { index, occlusion ->
-                FaceThumbnailCard(
-                    modifier = Modifier.animateItem(),
-                    occlusion = occlusion,
-                    onClick = { onOcclusionClick(index) },
-                    onLongClick = { onOcclusionLongClick(index) },
-                    cachedAvatarBitmaps = cachedAvatarBitmaps,
-                    fontFamily = fontFamily,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    start = 64.dp,
+                    end = 64.dp,
+                    top = 8.dp,
+                    bottom = 8.dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                itemsIndexed(
+                    items = state.occlusions,
+                    key = { _, item -> item.id }
+                ) { index, occlusion ->
+                    val indicatorColor = OcclusionIndicatorPalette[index % OcclusionIndicatorPalette.size]
+                    FaceThumbnailCard(
+                        modifier = Modifier.animateItem(),
+                        occlusion = occlusion,
+                        indicatorColor = indicatorColor,
+                        onClick = {
+                            if (state.isEditMode) {
+                                actions.onOcclusionSelected(index)
+                            } else {
+                                actions.onTriggerEditButtonShake()
+                            }
+                        },
+                        onLongClick = {
+                            if (state.isEditMode) {
+                                actions.onOcclusionLongClick(index)
+                            } else {
+                                actions.onTriggerEditButtonShake()
+                            }
+                        },
+                        cachedAvatarBitmaps = state.cachedAvatarBitmaps,
+                        fontFamily = state.fontFamily,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
             }
-            item {
-                FaceAddCard(
-                    onClick = onAddClick,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                )
+
+            // Floating Edit Button on the left end
+            Surface(
+                shape = CircleShape,
+                color = if (state.isEditMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = if (state.isEditMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 8.dp)
+                    .graphicsLayer { translationX = shakeOffset.value }
+                    .size(48.dp)
+            ) {
+                IconButton(
+                    onClick = { actions.onToggleEditMode() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = if (state.isEditMode) Icons.Outlined.Check else Icons.Outlined.Edit,
+                        contentDescription = if (state.isEditMode) stringResource(R.string.done) else stringResource(R.string.edit)
+                    )
+                }
+            }
+
+            // Floating Add Button on the right end
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 8.dp)
+                    .size(48.dp)
+            ) {
+                IconButton(
+                    onClick = { actions.onAddClicked() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.add)
+                    )
+                }
             }
         }
     }

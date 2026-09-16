@@ -147,11 +147,12 @@ class PreferenceRepository @Inject constructor(@ApplicationContext context: Cont
     }
 
     val mosaicMode: Flow<Int> = dataStore.data.map { prefs ->
-        prefs[MOSAIC_MODE] ?: MOSAIC_MODE_EMOJI
+        val mode = prefs[MOSAIC_MODE] ?: MOSAIC_MODE_EMOJI
+        if (mode == MOSAIC_MODE_EMOJI || mode == MOSAIC_MODE_BLUR) mode else MOSAIC_MODE_EMOJI
     }.distinctUntilChanged()
 
     suspend fun setMosaicMode(mode: Int) {
-        if (mode == MOSAIC_MODE_EMOJI || mode == MOSAIC_MODE_BLUR || mode == MOSAIC_MODE_AVATAR) {
+        if (mode == MOSAIC_MODE_EMOJI || mode == MOSAIC_MODE_BLUR) {
             // 仅允许设置为已定义的模式
             dataStore.edit { prefs ->
                 prefs[MOSAIC_MODE] = mode

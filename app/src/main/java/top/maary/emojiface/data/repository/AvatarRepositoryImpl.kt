@@ -3,10 +3,8 @@ package top.maary.emojiface.data.repository
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.BitmapRegionDecoder
-import android.graphics.Rect
+import android.graphics.ImageDecoder
 import android.net.Uri
-import android.os.Build
 import android.provider.OpenableColumns
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +14,6 @@ import kotlinx.coroutines.withContext
 import top.maary.emojiface.datastore.PreferenceRepository
 import top.maary.emojiface.domain.model.Avatar
 import top.maary.emojiface.domain.repository.AvatarRepository
-import top.maary.emojiface.util.ExifUtils
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
@@ -25,7 +22,6 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
-import kotlin.math.min
 
 /**
  * Concrete implementation of [AvatarRepository] handling internal storage persistence,
@@ -86,31 +82,59 @@ class AvatarRepositoryImpl @Inject constructor(
                     throw IllegalArgumentException("File size exceeds maximum allowed limit of 15MB.")
                 }
 
-                // 3. Decode raw image bounds
-                val boundsOptions = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
+                // 3. Open single source using modern ImageDecoder (minSdk=30)
+                val source = ImageDecoder.createSource(context.contentResolver, uri)
+                val fullBitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                    decoder.isMutableRequired = true
+                    val maxDim = max(info.size.width, info.size.height)
+                    if (maxDim > MAX_IMPORT_DIMENSION) {
+                        var sampleSize = 1
+                        while (maxDim / (sampleSize * 2) >= MAX_IMPORT_DIMENSION) {
+                            sampleSize *= 2
+                        }
+                        decoder.setTargetSampleSize(sampleSize)
+                    }
                 }
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    BitmapFactory.decodeStream(stream, null, boundsOptions)
-                } ?: throw IOException("Unable to open input stream for URI: $uri")
 
-                val rawWidth = boundsOptions.outWidth
-                val rawHeight = boundsOptions.outHeight
-                if (rawWidth <= 0 || rawHeight <= 0) {
-                    throw IllegalArgumentException("Invalid image dimensions (${rawWidth}x$rawHeight)")
+                // 4. Compute 1:1 minimal-loss square crop
+                val crop = Avatar.calculateSquareCrop(fullBitmap.width, fullBitmap.height)
+                var croppedBitmap = Bitmap.createBitmap(
+                    fullBitmap,
+                    crop.x,
+                    crop.y,
+                    crop.size,
+                    crop.size
+                )
+                if (croppedBitmap != fullBitmap) {
+                    fullBitmap.recycle()
                 }
 
-                // 4. Calculate 1:1 square crop coordinates
-                val crop = Avatar.calculateSquareCrop(rawWidth, rawHeight)
+                // 5. Ensure max size <= 1536px
+                if (croppedBitmap.width > MAX_IMPORT_DIMENSION || croppedBitmap.height > MAX_IMPORT_DIMENSION) {
+                    val scaled = Bitmap.createScaledBitmap(
+                        croppedBitmap,
+                        MAX_IMPORT_DIMENSION,
+                        MAX_IMPORT_DIMENSION,
+                        true
+                    )
+                    if (scaled != croppedBitmap) {
+                        croppedBitmap.recycle()
+                        croppedBitmap = scaled
+                    }
+                }
 
-                // 5. Decode cropped 1:1 bitmap with safe memory bounds & transparency preservation
-                val finalBitmap = decodeCroppedBitmap(uri, crop)
-                    ?: throw IOException("Failed to decode cropped avatar bitmap from URI: $uri")
+                // 6. Ensure config is ARGB_8888 to preserve transparency
+                if (croppedBitmap.config != Bitmap.Config.ARGB_8888) {
+                    val argbBitmap = croppedBitmap.copy(Bitmap.Config.ARGB_8888, true)
+                    croppedBitmap.recycle()
+                    croppedBitmap = argbBitmap
+                }
 
-                val finalWidth = finalBitmap.width
-                val finalHeight = finalBitmap.height
+                val finalWidth = croppedBitmap.width
+                val finalHeight = croppedBitmap.height
 
-                // 6. Generate IDs and file targets
+                // 7. Generate IDs and file targets
                 val id = UUID.randomUUID().toString()
                 val timestamp = System.currentTimeMillis()
                 val fileName = "avatar_${timestamp}_${id}.png"
@@ -119,13 +143,13 @@ class AvatarRepositoryImpl @Inject constructor(
                 val finalFile = File(avatarsDir, fileName)
 
                 try {
-                    // 7. Write to temporary file with lossless PNG compression
+                    // 8. Write to temporary file with lossless PNG compression
                     FileOutputStream(tmpFile).use { outStream ->
-                        finalBitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream)
+                        croppedBitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream)
                         outStream.flush()
                     }
 
-                    // 8. Atomic rename to final file
+                    // 9. Atomic rename to final file
                     val renamed = tmpFile.renameTo(finalFile)
                     if (!renamed) {
                         tmpFile.copyTo(finalFile, overwrite = true)
@@ -136,7 +160,7 @@ class AvatarRepositoryImpl @Inject constructor(
                     if (finalFile.exists()) finalFile.delete()
                     throw e
                 } finally {
-                    finalBitmap.recycle()
+                    croppedBitmap.recycle()
                 }
 
                 // 9. Determine display name
@@ -279,94 +303,8 @@ class AvatarRepositoryImpl @Inject constructor(
         }
     }
 
-    /**
-     * Decodes a 1:1 square centered crop safely with bounded memory usage.
-     */
-    private fun decodeCroppedBitmap(uri: Uri, crop: Avatar.CropCoordinates): Bitmap? {
-        val s = crop.size
-        var sampleSize = 1
-        while (s / (sampleSize * 2) >= MAX_IMPORT_DIMENSION) {
-            sampleSize *= 2
-        }
-
-        // Attempt 1: Region Decoder
-        val regionResult = runCatching {
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                val decoder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    BitmapRegionDecoder.newInstance(stream)
-                } else {
-                    @Suppress("DEPRECATION")
-                    BitmapRegionDecoder.newInstance(stream, false)
-                }
-                val regionOptions = BitmapFactory.Options().apply {
-                    inSampleSize = sampleSize
-                    inPreferredConfig = Bitmap.Config.ARGB_8888
-                }
-                val cropRect = Rect(crop.x, crop.y, crop.x + crop.size, crop.y + crop.size)
-                val decoded = decoder?.decodeRegion(cropRect, regionOptions)
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                    @Suppress("DEPRECATION")
-                    decoder?.recycle()
-                }
-                decoded
-            }
-        }.getOrNull()
-
-        var bitmap = regionResult
-
-        // Attempt 2: Fallback to downsampled full decode + center crop
-        if (bitmap == null) {
-            val fullOptions = BitmapFactory.Options().apply {
-                inSampleSize = sampleSize
-                inPreferredConfig = Bitmap.Config.ARGB_8888
-            }
-            val fullBitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, fullOptions)
-            } ?: return null
-
-            val rotatedFull = ExifUtils.handleImageOrientation(context, uri, fullBitmap)
-            val fullCrop = Avatar.calculateSquareCrop(rotatedFull.width, rotatedFull.height)
-            bitmap = Bitmap.createBitmap(
-                rotatedFull,
-                fullCrop.x,
-                fullCrop.y,
-                fullCrop.size,
-                fullCrop.size
-            )
-            if (bitmap != rotatedFull) {
-                rotatedFull.recycle()
-            }
-        } else {
-            // Apply EXIF rotation if needed on region-decoded image
-            bitmap = ExifUtils.handleImageOrientation(context, uri, bitmap)
-        }
-
-        // Downscale to MAX_IMPORT_DIMENSION if still oversized
-        if (bitmap.width > MAX_IMPORT_DIMENSION || bitmap.height > MAX_IMPORT_DIMENSION) {
-            val scaled = Bitmap.createScaledBitmap(
-                bitmap,
-                MAX_IMPORT_DIMENSION,
-                MAX_IMPORT_DIMENSION,
-                true
-            )
-            if (scaled != bitmap) {
-                bitmap.recycle()
-                bitmap = scaled
-            }
-        }
-
-        // Ensure ARGB_8888 config to preserve transparency
-        if (bitmap.config != Bitmap.Config.ARGB_8888) {
-            val argbBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
-            bitmap.recycle()
-            bitmap = argbBitmap
-        }
-
-        return bitmap
-    }
-
     private fun queryDisplayName(uri: Uri): String? {
-        return runCatching {
+        val nameFromQuery = runCatching {
             context.contentResolver.query(
                 uri,
                 arrayOf(OpenableColumns.DISPLAY_NAME),
@@ -376,12 +314,14 @@ class AvatarRepositoryImpl @Inject constructor(
             )?.use { cursor ->
                 if (cursor.moveToFirst()) {
                     val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (index != -1) {
-                        val nameWithExt = cursor.getString(index)
-                        nameWithExt?.substringBeforeLast('.')
+                    if (index != -1 && !cursor.isNull(index)) {
+                        cursor.getString(index)
                     } else null
                 } else null
             }
         }.getOrNull()
+
+        val rawName = nameFromQuery ?: uri.lastPathSegment
+        return rawName?.substringAfterLast('/')?.substringBeforeLast('.')?.takeIf { it.isNotBlank() }
     }
 }

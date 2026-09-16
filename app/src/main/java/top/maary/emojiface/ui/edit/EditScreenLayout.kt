@@ -11,12 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
@@ -62,6 +59,8 @@ import top.maary.emojiface.ui.components.SurfaceSideSheet
 import top.maary.emojiface.ui.components.UnifiedEditBottomSheetContent
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
+
+import top.maary.emojiface.ui.theme.OcclusionIndicatorPalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,12 +133,8 @@ fun CompactScreenLayout(
 
             if (state.displayedBitmap != null) {
                 FaceSelectionBar(
-                    occlusions = state.occlusions,
-                    onOcclusionClick = actions.onOcclusionSelected,
-                    onOcclusionLongClick = actions.onOcclusionLongClick,
-                    onAddClick = actions.onAddClicked,
-                    cachedAvatarBitmaps = state.cachedAvatarBitmaps,
-                    fontFamily = state.fontFamily
+                    state = state,
+                    actions = actions
                 )
             }
 
@@ -369,11 +364,25 @@ fun LargeScreenLayout(
                                     items = state.occlusions,
                                     key = { _, item -> item.id }
                                 ) { index, occlusion ->
+                                    val indicatorColor = OcclusionIndicatorPalette[index % OcclusionIndicatorPalette.size]
                                     FaceThumbnailCard(
                                         modifier = Modifier.animateItem(),
                                         occlusion = occlusion,
-                                        onClick = { actions.onOcclusionSelected(index) },
-                                        onLongClick = { actions.onOcclusionLongClick(index) },
+                                        indicatorColor = indicatorColor,
+                                        onClick = {
+                                            if (state.isEditMode) {
+                                                actions.onOcclusionSelected(index)
+                                            } else {
+                                                actions.onTriggerEditButtonShake()
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (state.isEditMode) {
+                                                actions.onOcclusionLongClick(index)
+                                            } else {
+                                                actions.onTriggerEditButtonShake()
+                                            }
+                                        },
                                         cachedAvatarBitmaps = state.cachedAvatarBitmaps,
                                         fontFamily = state.fontFamily,
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest

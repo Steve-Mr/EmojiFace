@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import top.maary.emojiface.datastore.PreferenceRepository
-import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_AVATAR
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
 import top.maary.emojiface.domain.model.Avatar
@@ -73,6 +72,8 @@ data class EditUiState(
     val mosaicType: Int = PreferenceRepository.MOSAIC_TYPE_GAUSSIAN,
     val mosaicTarget: Int = PreferenceRepository.MOSAIC_TARGET_FACE,
     val isSliding: Boolean = false,
+    val isEditMode: Boolean = false,
+    val shakeEditButtonTrigger: Long = 0L,
     val aspectRatio: Float? = null
 )
 
@@ -149,7 +150,30 @@ class EmojiViewModel @Inject constructor(
         }
         viewModelScope.launch {
             preferenceRepository.mosaicMode.collect { mode ->
-                _uiState.update { it.copy(defaultMosaicMode = mode, mosaicMode = mode) }
+                _uiState.update { state ->
+                    val updatedOcclusions = state.occlusions.map { occ ->
+                        if (!occ.isCustomized) {
+                            val newMode = when (mode) {
+                                PreferenceRepository.MOSAIC_MODE_BLUR -> OcclusionMode.Blur(
+                                    type = mapMosaicType(state.mosaicType),
+                                    target = mapMosaicTarget(state.mosaicTarget)
+                                )
+                                else -> OcclusionMode.Emoji(
+                                    emoji = getRandomEmoji(),
+                                    fontPath = state.selectedFontPath
+                                )
+                            }
+                            occ.withMode(newMode)
+                        } else {
+                            occ
+                        }
+                    }
+                    state.copy(
+                        defaultMosaicMode = mode,
+                        mosaicMode = mode,
+                        occlusions = updatedOcclusions
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -196,12 +220,6 @@ class EmojiViewModel @Inject constructor(
         else -> OcclusionMode.Blur.BlurTarget.Face
     }
 
-    private fun getActiveAvatarId(): String {
-        val state = _uiState.value
-        return state.availableAvatars.find { it.id == state.selectedDefaultAvatarId }?.id
-            ?: state.availableAvatars.firstOrNull()?.id
-            ?: PreferenceRepository.DEFAULT_AVATAR_ID
-    }
 
     private fun createDefaultOcclusionMode(): OcclusionMode {
         val state = _uiState.value
@@ -209,10 +227,6 @@ class EmojiViewModel @Inject constructor(
             MOSAIC_MODE_BLUR -> OcclusionMode.Blur(
                 type = mapMosaicType(state.mosaicType),
                 target = mapMosaicTarget(state.mosaicTarget)
-            )
-            MOSAIC_MODE_AVATAR -> OcclusionMode.Avatar(
-                avatarId = getActiveAvatarId(),
-                cropShape = OcclusionMode.Avatar.AvatarCropShape.Circle
             )
             else -> OcclusionMode.Emoji(
                 emoji = getRandomEmoji(),
@@ -253,6 +267,8 @@ class EmojiViewModel @Inject constructor(
                 occlusions = emptyList(),
                 editingOcclusion = null,
                 editingOcclusionIndex = null,
+                isEditMode = false,
+                shakeEditButtonTrigger = 0L,
                 isProcessing = false,
                 isRendering = false,
                 errorMessage = null,
@@ -287,7 +303,6 @@ class EmojiViewModel @Inject constructor(
                     detectFaceGeometriesUseCase(displayBitmap).fold(
                         onSuccess = { detectionResult ->
                             val defaultMode = _uiState.value.defaultMosaicMode
-                            val activeAvatarId = getActiveAvatarId()
 
                             val occlusions = detectionResult.geometries.map { geometry ->
                                 val mode: OcclusionMode = when (defaultMode) {
@@ -295,16 +310,12 @@ class EmojiViewModel @Inject constructor(
                                         type = mapMosaicType(_uiState.value.mosaicType),
                                         target = mapMosaicTarget(_uiState.value.mosaicTarget)
                                     )
-                                    MOSAIC_MODE_AVATAR -> OcclusionMode.Avatar(
-                                        avatarId = activeAvatarId,
-                                        cropShape = OcclusionMode.Avatar.AvatarCropShape.Circle
-                                    )
                                     else -> OcclusionMode.Emoji(
                                         emoji = getRandomEmoji(),
                                         fontPath = _uiState.value.selectedFontPath
                                     )
                                 }
-                                FaceOcclusion(geometry = geometry, mode = mode)
+                                FaceOcclusion(geometry = geometry, mode = mode, isCustomized = false)
                             }
 
                             if (_uiState.value.isTooDeep) {
@@ -461,7 +472,8 @@ class EmojiViewModel @Inject constructor(
 
         val newOcclusion = FaceOcclusion(
             geometry = geometry,
-            mode = mode
+            mode = mode,
+            isCustomized = true
         )
 
         _uiState.update {
@@ -506,9 +518,21 @@ class EmojiViewModel @Inject constructor(
         }
     }
 
+    fun toggleEditMode() {
+        _uiState.update { it.copy(isEditMode = !it.isEditMode) }
+    }
+
+    fun setEditMode(enabled: Boolean) {
+        _uiState.update { it.copy(isEditMode = enabled) }
+    }
+
+    fun triggerEditButtonShake() {
+        _uiState.update { it.copy(shakeEditButtonTrigger = System.currentTimeMillis()) }
+    }
+
     fun confirmEditing() {
         val state = _uiState.value
-        val editing = state.editingOcclusion ?: return
+        val editing = state.editingOcclusion?.copy(isCustomized = true) ?: return
         val index = state.editingOcclusionIndex
         val currentList = state.occlusions.toMutableList()
 

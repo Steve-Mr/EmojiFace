@@ -56,4 +56,5 @@
     <string name="default_avatar">預設</string>
     <string name="set_as_default">設為預設</string>
     <string name="delete">刪除</string>
+    <string name="edit">編輯</string>
 </resources>
