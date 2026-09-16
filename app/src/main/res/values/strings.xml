@@ -26,7 +26,9 @@
     <string name="emoji_list">Emoji List</string>
     <string name="emoji_font">Emoji Font</string>
     <string name="confirm_delete_title">Confirm Deletion</string>
-    <string name="confirm_delete_message">Are you sure you want to delete this emoji?</string>
+    <string name="confirm_delete_message">Are you sure you want to delete this mask?</string>
+    <string name="confirm_delete_avatar_title">Delete Avatar</string>
+    <string name="confirm_delete_avatar_message">Are you sure you want to delete this avatar?</string>
 <!--    <string name="too_deep">Deep Recognition (Too Deep)</string>-->
     <string name="too_deep">Deeeeep Recognition</string>
     <string name="too_deep_description">(Too Deep)</string>

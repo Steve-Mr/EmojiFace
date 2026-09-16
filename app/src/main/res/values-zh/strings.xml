@@ -27,7 +27,9 @@
     <string name="emoji_list">Emoji 列表</string>
     <string name="emoji_font">Emoji 字体</string>
     <string name="confirm_delete_title">确认删除</string>
-    <string name="confirm_delete_message">您确定要删除这个表情符号吗？</string>
+    <string name="confirm_delete_message">您确定要删除此遮挡吗？</string>
+    <string name="confirm_delete_avatar_title">确认删除头像</string>
+    <string name="confirm_delete_avatar_message">确定要删除此自定义头像吗？</string>
     <string name="too_deep">深 度 识 别</string>
     <string name="too_deep_description">（超深！）</string>
     <string name="just_kidding">开个玩笑，不会保存到最终结果。</string>

@@ -305,7 +305,8 @@ fun EditScreenContentInternal(
                 showDeleteConfirmDialog = true
             },
             onDeleteOcclusion = { index ->
-                viewModel.removeOcclusion(index)
+                occlusionIndexToDelete = index
+                showDeleteConfirmDialog = true
             },
 
             onCloseClick = { activity?.finish() },
@@ -369,7 +370,10 @@ fun EditScreenContentInternal(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        occlusionIndexToDelete?.let { viewModel.removeOcclusion(it) }
+                        occlusionIndexToDelete?.let {
+                            viewModel.removeOcclusion(it)
+                            viewModel.cancelEditing()
+                        }
                         showDeleteConfirmDialog = false
                         occlusionIndexToDelete = null
                     }

@@ -53,10 +53,12 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TagFaces
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.rounded.SaveAlt
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -1109,6 +1111,7 @@ fun AvatarManagementSheet(
     onDismissRequest: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var avatarToDelete by remember { mutableStateOf<Avatar?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -1249,7 +1252,7 @@ fun AvatarManagementSheet(
                                     }
 
                                     IconButton(
-                                        onClick = { onAvatarDelete(avatar.id) },
+                                        onClick = { avatarToDelete = avatar },
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
@@ -1266,6 +1269,33 @@ fun AvatarManagementSheet(
                 }
             }
         }
+    }
+
+    if (avatarToDelete != null) {
+        val avatar = avatarToDelete!!
+        AlertDialog(
+            onDismissRequest = { avatarToDelete = null },
+            title = { Text(stringResource(R.string.confirm_delete_avatar_title)) },
+            text = { Text(stringResource(R.string.confirm_delete_avatar_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onAvatarDelete(avatar.id)
+                        avatarToDelete = null
+                    }
+                ) {
+                    Text(
+                        stringResource(R.string.delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { avatarToDelete = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 

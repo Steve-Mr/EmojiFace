@@ -492,6 +492,7 @@ fun UnifiedEditBottomSheetContent(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                 .padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             item {
@@ -505,7 +506,6 @@ fun UnifiedEditBottomSheetContent(
                                         Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.import_avatar))
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
                             }
 
                             if (availableAvatars.isEmpty()) {
@@ -524,7 +524,6 @@ fun UnifiedEditBottomSheetContent(
                                     Card(
                                         modifier = Modifier
                                             .size(56.dp)
-                                            .padding(end = 8.dp)
                                             .clickable { onModeChange(avatarMode.copy(avatarId = avatar.id)) },
                                         shape = RoundedCornerShape(12.dp),
                                         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
@@ -622,11 +621,11 @@ fun UnifiedEditBottomSheetContent(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Delete,
-                    contentDescription = stringResource(R.string.delete_face),
+                    contentDescription = stringResource(R.string.delete),
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(stringResource(R.string.delete_face))
+                Text(stringResource(R.string.delete))
             }
 
             Row {
@@ -704,11 +703,11 @@ fun UnifiedEditSideSheetContent(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
-                        contentDescription = stringResource(R.string.delete_face),
+                        contentDescription = stringResource(R.string.delete),
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(stringResource(R.string.delete_face))
+                    Text(stringResource(R.string.delete))
                 }
 
                 Row {
@@ -849,6 +848,7 @@ fun UnifiedEditSideSheetContent(
                             .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                             .padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         item {
@@ -862,7 +862,6 @@ fun UnifiedEditSideSheetContent(
                                     Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.import_avatar))
                                 }
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
                         }
 
                         if (availableAvatars.isEmpty()) {
@@ -881,7 +880,6 @@ fun UnifiedEditSideSheetContent(
                                 Card(
                                     modifier = Modifier
                                         .size(56.dp)
-                                        .padding(end = 8.dp)
                                         .clickable { onModeChange(avatarMode.copy(avatarId = avatar.id)) },
                                     shape = RoundedCornerShape(12.dp),
                                     border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
