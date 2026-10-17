@@ -2,6 +2,8 @@ package top.maary.emojiface.ui.components
 
 import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,23 +26,39 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
+import android.graphics.Bitmap
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Done
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TagFaces
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.rounded.SaveAlt
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +68,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -58,19 +77,23 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -82,8 +105,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -99,6 +124,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.maary.emojiface.BuildConfig
 import top.maary.emojiface.R
+import top.maary.emojiface.ui.theme.OcclusionIndicatorPalette
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TARGET_EYES
@@ -106,6 +132,9 @@ import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TARGE
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TYPE_GAUSSIAN
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TYPE_HALFTONE
 import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_TYPE_PIXELATED
+import top.maary.emojiface.domain.model.Avatar
+import top.maary.emojiface.domain.model.occlusion.FaceOcclusion
+import top.maary.emojiface.domain.model.occlusion.OcclusionMode
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
 import top.maary.emojiface.ui.theme.Typography
@@ -604,7 +633,7 @@ fun MosaicModeRow(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically){
         Text(
-            text = stringResource(R.string.mosaic_mode),
+            text = stringResource(R.string.default_mosaic_mode),
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.weight(1f)) // 占位符，推送文本到左侧
@@ -837,3 +866,436 @@ fun SettingsItem(
         content()
     }
 }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
+@Composable
+fun FaceThumbnailCard(
+    occlusion: FaceOcclusion,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    indicatorColor: Color? = null,
+    onLongClick: () -> Unit = {},
+    cachedAvatarBitmaps: Map<String, Bitmap> = emptyMap(),
+    fontFamily: FontFamily? = null,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant
+) {
+    val shape = MaterialShapes.Cookie4Sided.toShape()
+    Box(
+        modifier = modifier
+            .size(64.dp)
+            .clip(shape)
+            .background(containerColor)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        when (val mode = occlusion.mode) {
+            is OcclusionMode.Emoji -> {
+                Text(
+                    text = mode.emoji,
+                    fontSize = 28.sp,
+                    fontFamily = fontFamily,
+                    modifier = Modifier.padding(4.dp)
+                )
+            }
+            is OcclusionMode.Blur -> {
+                val iconRes = when (mode.type) {
+                    OcclusionMode.Blur.BlurType.Gaussian -> R.drawable.gaussian
+                    OcclusionMode.Blur.BlurType.Pixelated -> R.drawable.pixelated
+                    OcclusionMode.Blur.BlurType.Halftone -> R.drawable.halftone
+                }
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = stringResource(R.string.mosaic),
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            is OcclusionMode.Avatar -> {
+                val bitmap = cachedAvatarBitmaps[mode.avatarId]
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = stringResource(R.string.avatar),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(shape)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.AccountCircle,
+                        contentDescription = stringResource(R.string.avatar),
+                        modifier = Modifier.size(36.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        if (indicatorColor != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(2.5.dp, indicatorColor, shape)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun FaceAddCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.tertiaryContainer
+) {
+    Box(
+        modifier = modifier
+            .size(64.dp)
+            .clip(MaterialShapes.Cookie4Sided.toShape())
+            .background(containerColor)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Add,
+            contentDescription = stringResource(R.string.add),
+            modifier = Modifier.size(32.dp),
+            tint = MaterialTheme.colorScheme.onTertiaryContainer
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun FaceSelectionBar(
+    state: EditScreenState,
+    actions: EditScreenActions,
+    modifier: Modifier = Modifier
+) {
+    val shakeOffset = remember { Animatable(0f) }
+    LaunchedEffect(state.shakeEditButtonTrigger) {
+        if (state.shakeEditButtonTrigger > 0L) {
+            shakeOffset.snapTo(0f)
+            shakeOffset.animateTo(
+                targetValue = 0f,
+                animationSpec = keyframes {
+                    durationMillis = 400
+                    0f at 0
+                    (-12f) at 50
+                    12f at 100
+                    (-10f) at 150
+                    10f at 200
+                    (-6f) at 250
+                    6f at 300
+                    (-2f) at 350
+                    0f at 400
+                }
+            )
+        }
+    }
+
+    Card(
+        modifier = modifier.padding(horizontal = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    start = 64.dp,
+                    end = 64.dp,
+                    top = 8.dp,
+                    bottom = 8.dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                itemsIndexed(
+                    items = state.occlusions,
+                    key = { _, item -> item.id }
+                ) { index, occlusion ->
+                    val indicatorColor = OcclusionIndicatorPalette[index % OcclusionIndicatorPalette.size]
+                    FaceThumbnailCard(
+                        modifier = Modifier.animateItem(),
+                        occlusion = occlusion,
+                        indicatorColor = indicatorColor,
+                        onClick = {
+                            if (state.isEditMode) {
+                                actions.onOcclusionSelected(index)
+                            } else {
+                                actions.onTriggerEditButtonShake()
+                            }
+                        },
+                        onLongClick = {
+                            if (state.isEditMode) {
+                                actions.onOcclusionLongClick(index)
+                            } else {
+                                actions.onTriggerEditButtonShake()
+                            }
+                        },
+                        cachedAvatarBitmaps = state.cachedAvatarBitmaps,
+                        fontFamily = state.fontFamily,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
+            }
+
+            // Floating Edit Button on the left end
+            Surface(
+                shape = CircleShape,
+                color = if (state.isEditMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+                contentColor = if (state.isEditMode) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 8.dp)
+                    .graphicsLayer { translationX = shakeOffset.value }
+                    .size(48.dp)
+            ) {
+                IconButton(
+                    onClick = { actions.onToggleEditMode() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = if (state.isEditMode) Icons.Outlined.Check else Icons.Outlined.Edit,
+                        contentDescription = if (state.isEditMode) stringResource(R.string.done) else stringResource(R.string.edit)
+                    )
+                }
+            }
+
+            // Floating Add Button on the right end
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 8.dp)
+                    .size(48.dp)
+            ) {
+                IconButton(
+                    onClick = { actions.onAddClicked() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.add)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AvatarManagementSheet(
+    avatars: List<Avatar>,
+    cachedAvatarBitmaps: Map<String, Bitmap>,
+    defaultAvatarId: String,
+    onAvatarClick: (avatarId: String) -> Unit,
+    onAvatarDelete: (avatarId: String) -> Unit,
+    onImportAvatarClick: () -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var avatarToDelete by remember { mutableStateOf<Avatar?>(null) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
+        ) {
+            // Header Row: Title & Import Button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.manage_avatars),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                FilledTonalButton(
+                    onClick = onImportAvatarClick,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.import_avatar),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = stringResource(R.string.import_avatar))
+                }
+            }
+
+            if (avatars.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.no_avatars_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 100.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(avatars, key = { it.id }) { avatar ->
+                        val isDefault = avatar.id == defaultAvatarId
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onAvatarClick(avatar.id) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isDefault) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                }
+                            ),
+                            border = if (isDefault) {
+                                BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                            } else null
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    val bitmap = cachedAvatarBitmaps[avatar.id]
+                                    if (bitmap != null) {
+                                        Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = avatar.displayName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Outlined.AccountCircle,
+                                            contentDescription = avatar.displayName,
+                                            modifier = Modifier.size(40.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(
+                                    text = avatar.displayName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isDefault) {
+                                        Text(
+                                            text = stringResource(R.string.default_avatar),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else {
+                                        Text(
+                                            text = stringResource(R.string.set_as_default),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.outline,
+                                            modifier = Modifier.clickable { onAvatarClick(avatar.id) }
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = { avatarToDelete = avatar },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Delete,
+                                            contentDescription = stringResource(R.string.delete),
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (avatarToDelete != null) {
+        val avatar = avatarToDelete!!
+        AlertDialog(
+            onDismissRequest = { avatarToDelete = null },
+            title = { Text(stringResource(R.string.confirm_delete_avatar_title)) },
+            text = { Text(stringResource(R.string.confirm_delete_avatar_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onAvatarDelete(avatar.id)
+                        avatarToDelete = null
+                    }
+                ) {
+                    Text(
+                        stringResource(R.string.delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { avatarToDelete = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+}
+

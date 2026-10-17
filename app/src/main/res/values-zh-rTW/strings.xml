@@ -26,7 +26,9 @@
     <string name="emoji_list">Emoji 列表</string>
     <string name="emoji_font">Emoji 字體</string>
     <string name="confirm_delete_title">確認刪除</string>
-    <string name="confirm_delete_message">您確定要刪除這個表情符號嗎？</string>
+    <string name="confirm_delete_message">您確定要刪除此遮擋嗎？</string>
+    <string name="confirm_delete_avatar_title">確認刪除頭像</string>
+    <string name="confirm_delete_avatar_message">確定要刪除此自訂頭像嗎？</string>
     <string name="too_deep">深 度 識 別</string>
     <string name="too_deep_description">（有夠深！）</string>
     <string name="just_kidding">開個玩笑，不會保存到最終結果。</string>
@@ -43,4 +45,18 @@
     <string name="replace_image_title">替換目前圖片？</string>
     <string name="replace_image_message">是否使用新分享的圖片替換目前正在編輯的圖片？</string>
     <string name="replace">替換</string>
+    <string name="avatar">頭像</string>
+    <string name="manage_avatars">管理遮擋頭像</string>
+    <string name="import_avatar">匯入頭像</string>
+    <string name="no_avatars_hint">暫無自訂頭像，點擊上方按鈕匯入</string>
+    <string name="crop_shape">裁切形狀</string>
+    <string name="circle">圓形</string>
+    <string name="rounded_rect">圓角</string>
+    <string name="square">方形</string>
+    <string name="delete_face">刪除此人臉</string>
+    <string name="default_mosaic_mode">預設遮擋模式</string>
+    <string name="default_avatar">預設</string>
+    <string name="set_as_default">設為預設</string>
+    <string name="delete">刪除</string>
+    <string name="edit">編輯</string>
 </resources>

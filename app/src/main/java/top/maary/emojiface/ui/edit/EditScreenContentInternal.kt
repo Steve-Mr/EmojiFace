@@ -31,6 +31,7 @@ import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.flow.collectLatest
 import top.maary.emojiface.MainActivity
 import top.maary.emojiface.R
+import top.maary.emojiface.ui.components.AvatarManagementSheet
 import top.maary.emojiface.ui.components.ReplaceImageBottomSheet
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
@@ -55,10 +56,11 @@ fun EditScreenContentInternal(
 
     // --- 2. Hoist Remembered UI State (Local state managed within Composable) ---
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showAvatarManagementSheet by remember { mutableStateOf(false) }
     var isAddMode by remember { mutableStateOf(false) }
     var imageContainerSize by remember { mutableStateOf(IntSize.Zero) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var emojiIndexToDelete by remember { mutableStateOf<Int?>(null) }
+    var occlusionIndexToDelete by remember { mutableStateOf<Int?>(null) }
 
     // Use rememberSaveable to persist the uri across rotation
     var newSharedUriString by rememberSaveable { mutableStateOf<String?>(null) }
@@ -66,7 +68,7 @@ fun EditScreenContentInternal(
 
     var pickerLaunchedOnMain by remember { mutableStateOf(false) }
 
-    // --- 3. Implement Launchers (No changes needed here) ---
+    // --- 3. Implement Launchers ---
     val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
@@ -83,6 +85,28 @@ fun EditScreenContentInternal(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { viewModel.detect(it) }
+    }
+
+    val avatarPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let { viewModel.importAvatar(it) }
+    }
+
+    val avatarGetContentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.importAvatar(it) }
+    }
+
+    val onImportAvatarClick = {
+        if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(context)) {
+            avatarPicker.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
+        } else {
+            avatarGetContentLauncher.launch("image/*")
+        }
     }
 
     LaunchedEffect(activity, uiState.originalBitmap, pickerLaunchedOnMain) {
@@ -225,30 +249,33 @@ fun EditScreenContentInternal(
     val stateForUiLayout = EditScreenState(
         displayedBitmap = displayedBitmapForUi,
         aspectRatio = aspectRatio,
-        emojiDetections = uiState.selectedEmojis, // Direct from uiState
-        predefinedEmojiList = uiState.predefinedEmojiOptions, // Direct from uiState
-        fontFamily = uiState.loadedFontFamily, // Direct from uiState
-        isAddMode = isAddMode, // Local UI state
-        isProcessing = isProcessingForAnimation, // Use combined state for animation
-        imageContainerSize = imageContainerSize, // Local UI state
-        isAppIconHidden = uiState.isAppIconHidden, // Direct from uiState
-        availableFontNames = fontNames, // Derived value
-        selectedFontIndex = selectedFontIndex, // Derived value
-        typeface = uiState.loadedTypeface, // Direct from uiState
-        editingEmojiIndex = uiState.editingEmoji?.let { uiState.selectedEmojis.indexOf(it) }, // Get index of currently editing emoji
+        occlusions = uiState.occlusions,
+        editingOcclusionIndex = uiState.editingOcclusionIndex,
+        editingOcclusion = uiState.editingOcclusion,
+        availableAvatars = uiState.availableAvatars,
+        cachedAvatarBitmaps = uiState.cachedAvatarBitmaps,
+        defaultMosaicMode = uiState.defaultMosaicMode,
+        predefinedEmojiList = uiState.predefinedEmojiOptions,
+        fontFamily = uiState.loadedFontFamily,
+        typeface = uiState.loadedTypeface,
+        isAddMode = isAddMode,
+        isProcessing = isProcessingForAnimation,
+        imageContainerSize = imageContainerSize,
+        isAppIconHidden = uiState.isAppIconHidden,
+        availableFontNames = fontNames,
+        selectedFontIndex = selectedFontIndex,
         isEasterEggEnabled = uiState.isEasterEggEnabled,
         isTooDeep = uiState.isTooDeep,
         fakeDetections = uiState.fakeDetections,
         mosaicMode = uiState.mosaicMode,
         mosaicType = uiState.mosaicType,
-        blurRegions = uiState.blurRegions, // 传递 mosaicMode
-        editingBlurRegionIndex = uiState.editingBlurRegionIndex,
         mosaicTarget = uiState.mosaicTarget,
         isSliding = uiState.isSliding,
+        isEditMode = uiState.isEditMode,
+        shakeEditButtonTrigger = uiState.shakeEditButtonTrigger
     )
 
-    // --- 7. Create EditScreenActions Instance (Largely unchanged) ---
-    // The public method names on ViewModel were kept the same
+    // --- 7. Create EditScreenActions Instance ---
     val actions = remember(viewModel) { // Remember actions instance tied to VM
         EditScreenActions(
             onImageTapToAdd = { offset ->
@@ -268,19 +295,37 @@ fun EditScreenContentInternal(
                 }
             },
             onClearImageClick = { viewModel.clearImage() },
-            onEmojiCardClick = { index ->
-                viewModel.startEditing(index)
+
+            onAddClicked = { isAddMode = true }, // Enter Add Mode
+            onOcclusionSelected = { index ->
+                viewModel.startEditingOcclusion(index)
             },
-            onEmojiCardLongClick = { index ->
-                emojiIndexToDelete = index
+            onOcclusionLongClick = { index ->
+                occlusionIndexToDelete = index
                 showDeleteConfirmDialog = true
             },
-            onAddClicked = { isAddMode = true }, // Enter Add Mode
+            onDeleteOcclusion = { index ->
+                occlusionIndexToDelete = index
+                showDeleteConfirmDialog = true
+            },
+
             onCloseClick = { activity?.finish() },
-            // Share/Save now ignore the bitmap param internally in VM
             onShareClick = { viewModel.shareImage() },
             onSaveClick = { viewModel.saveImageToGallery() },
             onSettingsClick = { showBottomSheet = true },
+
+            // --- Unified Editing Operations ---
+            onOcclusionModeChange = { newMode -> viewModel.updateEditingMode(newMode) },
+            onOcclusionSizeChange = { factor -> viewModel.updateEditingGeometry(scaleFactor = factor) },
+            onOcclusionAngleChange = { angle -> viewModel.updateEditingGeometry(angle = angle) },
+            onConfirmEditing = { viewModel.confirmEditing() },
+            onCancelEditing = { viewModel.cancelEditing() },
+
+            // --- Avatar Management Operations ---
+            onManageAvatarsClick = { showAvatarManagementSheet = true },
+            onAvatarImported = { uri -> viewModel.importAvatar(uri) },
+            onAvatarDeleted = { avatarId -> viewModel.deleteAvatar(avatarId) },
+            onAvatarDefaultSet = { avatarId -> viewModel.setDefaultAvatar(avatarId) },
 
             // Bottom Sheet Actions
             onSettingsSheetDismiss = {
@@ -302,24 +347,15 @@ fun EditScreenContentInternal(
                     }
                 }
             },
-            // --- 实时编辑 Actions ---
-            onEditingValueChanged = { emoji, diameter, rotation ->
-                viewModel.updateEditingEmoji(emoji, diameter, rotation)
-            },
-            onConfirmEditing = { viewModel.confirmEditing() },
-            onCancelEditing = { viewModel.cancelEditing() },
             onEasterEggStateChanged = { enabled -> viewModel.setEasterEggEnabled(enabled) },
             onTooDeepStateChanged = { enabled -> viewModel.setTooDeepEnabled(enabled) },
             onMosaicModeSelected = { mode -> viewModel.setMosaicMode(mode) },
             onMosaicTypeSelected = { type -> viewModel.setMosaicType(type) },
-            onBlurRegionSelected = { index -> viewModel.selectBlurRegionForEditing(index) },
-            onEmojiChange = { emoji -> viewModel.updateEditingEmoji(emoji = emoji) },
-            onSizeFactorChange = { factor -> viewModel.updateEditingEmojiSize(factor) },
-            onAngleChange = { angle -> viewModel.updateEditingAngle(angle) },
-            onBlurRegionSizeChange = { factor -> viewModel.updateEditingBlurRegionSize(factor) },
-            onBlurRegionAngleChange = { angle -> viewModel.updateEditingAngle(angle) }, // 角度更新可以共用一个函数
             onMosaicTargetSelected = { target -> viewModel.setMosaicTarget(target) },
-            onSlidingStateChange = { isSliding -> viewModel.onSlidingStateChanged(isSliding) }
+            onSlidingStateChange = { isSliding -> viewModel.onSlidingStateChanged(isSliding) },
+            onToggleEditMode = { viewModel.toggleEditMode() },
+            onSetEditMode = { viewModel.setEditMode(it) },
+            onTriggerEditButtonShake = { viewModel.triggerEditButtonShake() }
         )
     }
 
@@ -327,16 +363,19 @@ fun EditScreenContentInternal(
         AlertDialog(
             onDismissRequest = {
                 showDeleteConfirmDialog = false
-                emojiIndexToDelete = null
+                occlusionIndexToDelete = null
             },
             title = { Text(stringResource(R.string.confirm_delete_title)) },
             text = { Text(stringResource(R.string.confirm_delete_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        emojiIndexToDelete?.let { viewModel.removeEmoji(it) }
+                        occlusionIndexToDelete?.let {
+                            viewModel.removeOcclusion(it)
+                            viewModel.cancelEditing()
+                        }
                         showDeleteConfirmDialog = false
-                        emojiIndexToDelete = null
+                        occlusionIndexToDelete = null
                     }
                 ) {
                     Text(stringResource(R.string.ok))
@@ -346,12 +385,28 @@ fun EditScreenContentInternal(
                 TextButton(
                     onClick = {
                         showDeleteConfirmDialog = false
-                        emojiIndexToDelete = null
+                        occlusionIndexToDelete = null
                     }
                 ) {
                     Text(stringResource(R.string.cancel))
                 }
             }
+        )
+    }
+
+    if (showAvatarManagementSheet) {
+        AvatarManagementSheet(
+            avatars = uiState.availableAvatars,
+            cachedAvatarBitmaps = uiState.cachedAvatarBitmaps,
+            defaultAvatarId = uiState.selectedDefaultAvatarId,
+            onAvatarClick = { avatarId ->
+                actions.onAvatarDefaultSet(avatarId)
+            },
+            onAvatarDelete = { avatarId ->
+                actions.onAvatarDeleted(avatarId)
+            },
+            onImportAvatarClick = onImportAvatarClick,
+            onDismissRequest = { showAvatarManagementSheet = false }
         )
     }
 
@@ -369,8 +424,6 @@ fun EditScreenContentInternal(
             LargeScreenLayout(
                 state = stateForUiLayout,
                 actions = actions,
-                editingEmoji = uiState.editingEmoji,
-                editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
                 onDismissSettingsSheet = actions.onSettingsSheetDismiss,
                 isMediumLayout = false)
@@ -379,8 +432,6 @@ fun EditScreenContentInternal(
             LargeScreenLayout(
                 state = stateForUiLayout,
                 actions = actions,
-                editingEmoji = uiState.editingEmoji,
-                editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
                 onDismissSettingsSheet = actions.onSettingsSheetDismiss,
                 isMediumLayout = true)
@@ -389,8 +440,6 @@ fun EditScreenContentInternal(
             CompactScreenLayout(
                 state = stateForUiLayout,
                 actions = actions,
-                editingEmoji = uiState.editingEmoji,
-                editingBlurRegion = uiState.editingBlurRegion,
                 showSettingsSheet = showBottomSheet,
                 onDismissSettingsSheet = actions.onSettingsSheetDismiss)
         }

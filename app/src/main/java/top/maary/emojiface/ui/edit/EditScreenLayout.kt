@@ -11,12 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteSweep
@@ -51,29 +48,25 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import top.maary.emojiface.R
-import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_BLUR
-import top.maary.emojiface.datastore.PreferenceRepository.Companion.MOSAIC_MODE_EMOJI
 import top.maary.emojiface.ui.components.ActionRow
 import top.maary.emojiface.ui.components.DisplayPane
-import top.maary.emojiface.ui.components.EditBottomSheetContent
-import top.maary.emojiface.ui.components.EmojiCard
-import top.maary.emojiface.ui.components.MosaicTypeBlock
-import top.maary.emojiface.ui.components.MosaicTypeToolbar
+import top.maary.emojiface.ui.components.FaceAddCard
+import top.maary.emojiface.ui.components.FaceSelectionBar
+import top.maary.emojiface.ui.components.FaceThumbnailCard
 import top.maary.emojiface.ui.components.SettingsBottomSheetContent
 import top.maary.emojiface.ui.components.SideSheetContent
 import top.maary.emojiface.ui.components.SurfaceSideSheet
-import top.maary.emojiface.ui.edit.model.BlurRegion
-import top.maary.emojiface.ui.edit.model.EmojiDetection
+import top.maary.emojiface.ui.components.UnifiedEditBottomSheetContent
 import top.maary.emojiface.ui.edit.state.EditScreenActions
 import top.maary.emojiface.ui.edit.state.EditScreenState
+
+import top.maary.emojiface.ui.theme.OcclusionIndicatorPalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CompactScreenLayout(
     state: EditScreenState,
     actions: EditScreenActions,
-    editingEmoji: EmojiDetection?,
-    editingBlurRegion: BlurRegion?,
     showSettingsSheet: Boolean,
     onDismissSettingsSheet: () -> Unit,
     isMediumLayout: Boolean = false
@@ -135,62 +128,14 @@ fun CompactScreenLayout(
                     .padding(8.dp),
                 state = state,
                 actions = actions,
-                editingEmoji = editingEmoji,
-                editingBlurRegion = editingBlurRegion
+                editingOcclusion = state.editingOcclusion
             )
 
             if (state.displayedBitmap != null) {
-                if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
-                    Card(
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
-                        )
-                    ) {
-                        // --- 偵測到的表情符號行 ---
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(
-                                horizontal = 0.dp,
-                                vertical = 8.dp
-                            ) // 增加垂直 padding
-                        ) {
-                            itemsIndexed(
-                                items = state.emojiDetections,
-                                key = { _, item -> item.id } // key 使用 item 的唯一 id
-                            ) { index, detection ->
-                                Spacer(modifier = Modifier.width(8.dp))
-                                EmojiCard(
-                                    modifier = Modifier.animateItem(),
-                                    emoji = detection.emoji,
-                                    onClick = { actions.onEmojiCardClick(index) },
-                                    onLongClick = { actions.onEmojiCardLongClick(index) },
-                                    fontFamily = state.fontFamily,
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                    // hPadding 和 vPadding 使用 EmojiCard 的默認值或按需調整
-                                )
-                            }
-                            item {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                EmojiCard(
-                                    emoji = "➕", // 或使用 Icons.Outlined.AddReaction
-                                    onClick = actions.onAddClicked, // 使用 action
-                                    clickable = true,
-                                    fontFamily = state.fontFamily,
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
-
-                        }
-                    }
-                } else {
-                    MosaicTypeToolbar(
-                        selectedType = state.mosaicType, // <-- 传递当前选中的类型
-                        onMosaicTypeSelected = actions.onMosaicTypeSelected, // <-- 传递 Action
-                        onAddBlurRegionClick = actions.onAddClicked
-                    )
-                }
+                FaceSelectionBar(
+                    state = state,
+                    actions = actions
+                )
             }
 
             // --- 底部操作按鈕區域 ---
@@ -200,7 +145,7 @@ fun CompactScreenLayout(
 
         }
     }
-    if (editingEmoji != null || editingBlurRegion != null) {
+    if (state.editingOcclusion != null) {
         val bottomSheetState = rememberModalBottomSheetState(
             skipPartiallyExpanded = true,
         )
@@ -229,28 +174,30 @@ fun CompactScreenLayout(
             sheetGesturesEnabled = false,
             containerColor = containerColor
         ) {
-            // 完全复用现有的 Composable
-            EditBottomSheetContent(
-                mosaicMode = state.mosaicMode,
-                // 传递瞬时状态
-                editingEmoji = editingEmoji,
-                editingBlurRegion = editingBlurRegion,
-                // 传递其他参数
+            UnifiedEditBottomSheetContent(
+                editingOcclusion = state.editingOcclusion,
                 availableEmojis = state.predefinedEmojiList ?: emptyList(),
                 fontFamily = state.fontFamily,
-                // 统一的回调
-                onEmojiChange = actions.onEmojiChange,
-                onSizeChange = { newFactor ->
-                    if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
-                        actions.onSizeFactorChange(newFactor)
-                    } else {
-                        actions.onBlurRegionSizeChange(newFactor)
-                    }
-                },
-                onAngleChange = actions.onAngleChange,
+                availableAvatars = state.availableAvatars,
+                cachedAvatarBitmaps = state.cachedAvatarBitmaps,
+                onModeChange = actions.onOcclusionModeChange,
+                onSizeChange = actions.onOcclusionSizeChange,
+                onAngleChange = actions.onOcclusionAngleChange,
                 onConfirm = actions.onConfirmEditing,
                 onDismiss = actions.onCancelEditing,
-                onSlidingStateChange = actions.onSlidingStateChange,
+                onDelete = {
+                    val index = state.editingOcclusionIndex
+                    if (index != null && index >= 0) {
+                        actions.onDeleteOcclusion(index)
+                    } else {
+                        actions.onCancelEditing()
+                    }
+                },
+                onManageAvatarsClick = actions.onManageAvatarsClick,
+                onSlidingStateChange = { sliding ->
+                    isSliding = sliding
+                    actions.onSlidingStateChange(sliding)
+                }
             )
         }
     }
@@ -287,7 +234,8 @@ fun CompactScreenLayout(
                 mosaicMode = state.mosaicMode,
                 onMosaicModeSelected = actions.onMosaicModeSelected,
                 mosaicTarget = state.mosaicTarget,
-                onMosaicTargetSelected = actions.onMosaicTargetSelected
+                onMosaicTargetSelected = actions.onMosaicTargetSelected,
+                onManageAvatarsClick = actions.onManageAvatarsClick
             )
         }
     }
@@ -297,20 +245,16 @@ fun CompactScreenLayout(
 fun LargeScreenLayout(
     state: EditScreenState,
     actions: EditScreenActions,
-    editingEmoji: EmojiDetection?,
-    editingBlurRegion: BlurRegion?,
     showSettingsSheet: Boolean,
     onDismissSettingsSheet: () -> Unit,
     isMediumLayout: Boolean
 ) {
-    val showSideSheet = editingEmoji != null || showSettingsSheet || editingBlurRegion != null
-
-    var isSliding by remember { mutableStateOf(false) }
+    val showSideSheet = state.editingOcclusion != null || showSettingsSheet
 
     val sideSheetColor by animateColorAsState(
-        targetValue = if (isSliding) {
+        targetValue = if (state.isSliding) {
             MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.5f)
-        } else if (editingEmoji != null){
+        } else if (state.editingOcclusion != null){
             MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.9f)
         } else {
             MaterialTheme.colorScheme.surfaceContainerLowest
@@ -319,7 +263,7 @@ fun LargeScreenLayout(
     )
 
     val onDismiss = {
-        if (editingEmoji != null) {
+        if (state.editingOcclusion != null) {
             actions.onCancelEditing()
         } else {
             onDismissSettingsSheet()
@@ -329,15 +273,14 @@ fun LargeScreenLayout(
     SurfaceSideSheet (
         showSheet = showSideSheet,
         onDismissSheet = onDismiss,
-        isModal = (editingEmoji == null),
+        isModal = (state.editingOcclusion == null),
         sheetContainerColor = sideSheetColor,
         sheetContent = {
             SideSheetContent(
                 state = state,
                 actions = actions,
-                editingEmoji = editingEmoji,
                 showSettingsSheet = showSettingsSheet,
-                editingBlurRegion = editingBlurRegion
+                editingOcclusion = state.editingOcclusion
             )
         }
     ) {
@@ -393,8 +336,7 @@ fun LargeScreenLayout(
                             .fillMaxHeight(),
                         state = state,
                         actions = actions,
-                        editingEmoji = editingEmoji,
-                        editingBlurRegion = editingBlurRegion
+                        editingOcclusion = state.editingOcclusion
                     )
 
                     // --- Side Panel (Smaller Portion) ---
@@ -411,51 +353,48 @@ fun LargeScreenLayout(
                             modifier = Modifier.fillMaxHeight(), // Column fills the card height
                             verticalArrangement = Arrangement.SpaceBetween // Pushes grid up and buttons down
                         ) {
-                            if (state.mosaicMode == MOSAIC_MODE_EMOJI) {
-                                // --- Emoji Grid ---
-                                LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(minSize = 76.dp), // Adaptive columns
-                                    modifier = Modifier.weight(1f) // Grid takes available space
-                                ) {
-                                    itemsIndexed(
-                                        items = state.emojiDetections,
-                                        key = { _, item -> item.id } // key 使用 item 的唯一 id
-                                    ) { index, detection ->
-                                        EmojiCard(
-                                            modifier = Modifier.animateItem(),
-                                            emoji = detection.emoji,
-                                            onClick = { actions.onEmojiCardClick(index) },
-                                            onLongClick = { actions.onEmojiCardLongClick(index) },
-                                            fontFamily = state.fontFamily,
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                            hPadding = 8.dp,
-                                            vPadding = 8.dp
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 76.dp),
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                itemsIndexed(
+                                    items = state.occlusions,
+                                    key = { _, item -> item.id }
+                                ) { index, occlusion ->
+                                    val indicatorColor = OcclusionIndicatorPalette[index % OcclusionIndicatorPalette.size]
+                                    FaceThumbnailCard(
+                                        modifier = Modifier.animateItem(),
+                                        occlusion = occlusion,
+                                        indicatorColor = indicatorColor,
+                                        onClick = {
+                                            if (state.isEditMode) {
+                                                actions.onOcclusionSelected(index)
+                                            } else {
+                                                actions.onTriggerEditButtonShake()
+                                            }
+                                        },
+                                        onLongClick = {
+                                            if (state.isEditMode) {
+                                                actions.onOcclusionLongClick(index)
+                                            } else {
+                                                actions.onTriggerEditButtonShake()
+                                            }
+                                        },
+                                        cachedAvatarBitmaps = state.cachedAvatarBitmaps,
+                                        fontFamily = state.fontFamily,
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                                    )
+                                }
+                                if (state.displayedBitmap != null) {
+                                    item {
+                                        FaceAddCard(
+                                            onClick = actions.onAddClicked,
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
                                         )
                                     }
-                                    // Show Add button only if an image is present
-                                    if (state.displayedBitmap != null) {
-                                        item {
-                                            EmojiCard(
-                                                emoji = "➕",
-                                                onClick = actions.onAddClicked, // Use action
-                                                clickable = true,
-                                                fontFamily = state.fontFamily,
-                                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                                hPadding = 8.dp,
-                                                vPadding = 8.dp
-                                            )
-                                        }
-                                    }
-                                }
-                            } else if (state.mosaicMode == MOSAIC_MODE_BLUR) {
-                                if (state.displayedBitmap != null) {
-                                    MosaicTypeBlock(
-                                        selectedType = state.mosaicType, // <-- 传递当前选中的类型
-                                        onMosaicTypeSelected = actions.onMosaicTypeSelected, // <-- 传递 Action
-                                        onAddBlurRegionClick = actions.onAddClicked
-                                    )
-                                } else {
-                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
                             }
 
